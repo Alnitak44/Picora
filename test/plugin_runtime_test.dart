@@ -8,7 +8,7 @@ import 'package:picora/hero/diagnostics.dart';
 import 'package:picora/hero/models.dart';
 import 'package:picora/hero/plugins/plugin_manager.dart';
 import 'package:picora/hero/plugins/plugin_manifest.dart';
-import 'package:picora/hero/plugins/plugin_package.dart';
+import 'plugin_fixture.dart';
 import 'package:picora/hero/plugins/uploader_registry.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -20,14 +20,8 @@ void main() {
     await SpUtil.getInstance();
   });
 
-  Future<PicoraPluginManifest> telegraphManifest() async {
-    final data = await rootBundle.load(
-      'assets/plugins/telegraph-image.picora-plugin.zip',
-    );
-    return PicoraPluginPackage.decode(
-      data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
-    ).manifest;
-  }
+  Future<PicoraPluginManifest> telegraphManifest() async =>
+      telegraphPackage().manifest;
 
   test('all supplied provider icons are bundled', () async {
     for (final id in ['aliyun', 'qiniu', 'tencent', 'upyun', 'github']) {
@@ -96,22 +90,33 @@ void main() {
     },
   );
 
-  test('plugin manager registers the example plugin as enabled', () async {
-    final registry = UploaderRegistry();
-    final directory = Directory('artifacts/plugin-manager-test');
-    await directory.create(recursive: true);
-    final manager = PicoraPluginManager(
-      registry: registry,
-      storageRoot: directory,
-    );
-    await manager.initialize(force: true);
-    expect(
-      manager.installed.map((item) => item.id),
-      contains('dev.picora.telegraph-image'),
-    );
-    expect(manager.isBundled('dev.picora.telegraph-image'), true);
-    expect(registry.contains('plugin.dev.picora.telegraph-image'), true);
-  });
+  test(
+    'fresh installs have no example plugin; downloaded example is removable',
+    () async {
+      await Directory('artifacts').create(recursive: true);
+      final directory = await Directory(
+        'artifacts',
+      ).createTemp('fresh-plugins-');
+      try {
+        final registry = UploaderRegistry();
+        final manager = PicoraPluginManager(
+          registry: registry,
+          storageRoot: directory,
+        );
+        await manager.initialize();
+        expect(manager.installed, isEmpty);
+        expect(registry.contains('plugin.dev.picora.telegraph-image'), isFalse);
+        final package = telegraphPackage();
+        await manager.installPackage(package.bytes);
+        expect(manager.isExample(package.manifest.id), isTrue);
+        expect(registry.contains(package.manifest.hostId), isTrue);
+        await manager.remove(package.manifest.id);
+        expect(manager.installed, isEmpty);
+      } finally {
+        await directory.delete(recursive: true);
+      }
+    },
+  );
 
   test(
     'Telegraph runtime rejects a partial Basic auth configuration',

@@ -2,15 +2,12 @@
 
 ![插件图标](assets/icon.svg)
 
-为 Picora 添加 cf-pages/Telegraph-Image 自建图床上传功能。本示例移植原 PicGo 插件的上传流程，可以为多个站点分别创建配置。
-
+为 Picora 添加 [cf-pages/Telegraph-Image](https://github.com/cf-pages/Telegraph-Image)自建图床支持。需要先搭建起项目并配置好域名。
 ## 安装与配置
 
-1. 在“插件中心 → 安装插件”导入此 ZIP 文件。
-2. 在“仓库 → 添加配置”搜索 Telegraph-Image。
-3. 填写配置名称，例如“主站”或“备用站”。
-4. 填写图床基础 URL，例如 `https://images.example.com`；不要附加 `/upload`、查询参数或锚点。
-5. 保存后在上传页面选择此配置，再选择图片上传。
+1. 在“插件中心 → 模块仓库”安装 Telegraph-Image，也可通过“安装插件”导入此 ZIP 文件。
+2. 在“仓库 → 添加配置”找到 Telegraph-Image。
+3. 直接填入你的域名，如``https://example.com``，不需要任何多余参数，不要在域名后加``/upload``
 
 ## 上传鉴权
 

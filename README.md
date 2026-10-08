@@ -24,7 +24,7 @@ Picora在继承[PicHoro](https://github.com/Kuingsmile/PicHoro)大部分功能�
 
 阿里云 OSS、腾讯云 COS、七牛云、又拍云、S3 兼容存储、GitHub、SM.MS、Imgur、兰空图床、OpenList(Alist)、WebDAV、FTP / SFTP、自定义 Web 图床。
 
-原生插件使用 ZIP + JSON HTTP 协议，支持资源图标、离线教程和同 ID 覆盖更新。PicGo 插件可通过 PicGo Bridge 调用。
+原生插件使用 ZIP + JSON HTTP 协议，支持模块仓库下载、资源图标、离线教程和同 ID 更新。PicGo 插件可通过 PicGo Bridge 调用。
 
 [插件开放说明](%E6%8F%92%E4%BB%B6%E5%BC%80%E6%94%BE%E8%AF%B4%E6%98%8E.md) · [插件模板](plugins/template) · [Telegraph-Image 示例](plugins/telegraph-image)
 

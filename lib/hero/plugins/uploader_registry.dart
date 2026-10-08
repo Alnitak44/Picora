@@ -92,7 +92,13 @@ class UploaderRegistry {
     required Map<String, dynamic> config,
   }) async {
     final provider = _providers[host];
-    if (provider == null) throw HeroFailure('未找到上传器：$host');
+    if (provider == null) {
+      throw HeroFailure(
+        host.startsWith('plugin.')
+            ? '该配置对应的插件未安装，请前往插件中心的模块仓库下载'
+            : '未找到上传器：$host',
+      );
+    }
     if (!provider.enabled) throw const HeroFailure('该插件已停用，请先在插件中心启用');
     return provider.upload(path: path, name: name, config: config);
   }
@@ -103,7 +109,13 @@ class UploaderRegistry {
     required Map<String, dynamic> config,
   }) async {
     final provider = _providers[host];
-    if (provider == null) throw HeroFailure('未找到上传器：$host');
+    if (provider == null) {
+      throw HeroFailure(
+        host.startsWith('plugin.')
+            ? '该配置对应的插件未安装，请前往插件中心的模块仓库下载'
+            : '未找到上传器：$host',
+      );
+    }
     if (!provider.enabled) throw const HeroFailure('该插件已停用，无法删除云端文件');
     if (provider.delete == null) {
       throw const HeroFailure('此图床未提供云端删除接口，请关闭同步删除云端文件');

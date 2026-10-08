@@ -182,7 +182,10 @@ class PicoraController extends ChangeNotifier {
           host: config.host,
           slot: config.slot,
           name: config.name,
-          values: normalizeValues(spec, config.values),
+          values:
+              pluginManager.installed.any((item) => item.hostId == config.host)
+              ? normalizeValues(spec, config.values)
+              : Map<String, dynamic>.from(config.values),
         ),
       );
     }

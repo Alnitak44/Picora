@@ -167,6 +167,16 @@ Future<void> editRepository(
   HostSpec spec, {
   RepositoryConfig? existing,
 }) async {
+  if (spec.isRuntimePlugin &&
+      !controller.installedPlugins.any((plugin) => plugin.hostId == spec.id)) {
+    heroSnack(context, '请先从模块仓库下载对应插件，已有配置已保留');
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PluginCenterPage(controller: controller),
+      ),
+    );
+    return;
+  }
   final result = await Navigator.of(context).push<bool>(
     MaterialPageRoute(
       builder: (_) => RepositoryEditor(

@@ -16,10 +16,9 @@ import 'package:picora/hero/plugins/plugin_package.dart';
 import 'package:picora/hero/plugins/uploader_registry.dart';
 import 'package:picora/hero/repositories_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'plugin_fixture.dart';
 
-PicoraPluginPackage sample() => PicoraPluginPackage.decode(
-  File('assets/plugins/telegraph-image.picora-plugin.zip').readAsBytesSync(),
-);
+PicoraPluginPackage sample() => telegraphPackage();
 
 Uint8List packageBytes({
   Map<String, dynamic>? metadata,
@@ -59,7 +58,7 @@ void main() {
     'example ZIP includes separate metadata, program, tutorial and provider icon',
     () {
       final package = sample();
-      expect(package.manifest.version, '1.1.0');
+      expect(package.manifest.version, '1.1.1');
       expect(package.readme, contains('上传鉴权'));
       expect(package.repository, startsWith('https://github.com/'));
       expect(package.toHostSpec().iconBytes, isNotEmpty);
@@ -336,7 +335,15 @@ void main() {
           packageBytes(metadata: {'version': '2.0.0'}),
         );
         expect(manager.packageFor(legacy.id).manifest.version, '2.0.0');
-        expect(manager.isEnabled(legacy.id), isTrue);
+        expect(manager.isEnabled(legacy.id), isFalse);
+        await expectLater(
+          manager.installPackage(packageBytes()),
+          throwsA(isA<HeroFailure>()),
+        );
+        await manager.installPackage(
+          packageBytes(metadata: {'version': '2.0.0'}),
+        );
+        expect(manager.isEnabled(legacy.id), isFalse);
         await manager.initialize(force: true);
         expect(manager.packageFor(legacy.id).manifest.version, '2.0.0');
         expect((await manager.readRepositories()).map((e) => e.id), [
@@ -408,7 +415,7 @@ void main() {
     });
     final registry = UploaderRegistry();
     final manager = PicoraPluginManager(registry: registry, storageRoot: root);
-    await tester.runAsync(() => manager.initialize());
+    await tester.runAsync(() => manager.installPackage(sample().bytes));
     final controller = PicoraController(
       uploaderRegistry: registry,
       pluginManager: manager,

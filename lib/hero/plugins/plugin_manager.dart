@@ -4,11 +4,12 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:collection/collection.dart';
 import 'package:flustars_flutter3/flustars_flutter3.dart';
-import 'package:flutter/services.dart';
+import 'dart:typed_data';
 import 'package:path_provider/path_provider.dart';
 
 import '../diagnostics.dart';
 import '../models.dart';
+import '../app_updates.dart';
 import 'plugin_manifest.dart';
 import 'plugin_package.dart';
 import 'uploader_registry.dart';
@@ -21,15 +22,11 @@ class PluginInstallResult {
 }
 
 class PicoraPluginManager {
-  static const bundledPluginAssets = [
-    'assets/plugins/telegraph-image.picora-plugin.zip',
-  ];
-
   final UploaderRegistry registry;
   final Directory? storageRoot;
   final Map<String, PicoraPluginManifest> _installed = {};
   final Map<String, PicoraPluginPackage> _packages = {};
-  final Set<String> _bundledIds = {};
+
   Directory? _pluginDirectory;
   File? _repositoryFile;
   bool _initialized = false;
@@ -43,7 +40,7 @@ class PicoraPluginManager {
   }
 
   bool get initialized => _initialized;
-  bool isBundled(String id) => _bundledIds.contains(id);
+  bool isExample(String id) => _packages[id]?.metadata['example'] == true;
   PicoraPluginPackage packageFor(String id) {
     final package = _packages[id];
     if (package == null) throw const HeroFailure('插件不存在');
@@ -64,26 +61,6 @@ class PicoraPluginManager {
     await _pluginDirectory!.create(recursive: true);
     _installed.clear();
     _packages.clear();
-    _bundledIds.clear();
-    for (final asset in bundledPluginAssets) {
-      try {
-        final data = await rootBundle.load(asset);
-        final package = PicoraPluginPackage.decode(
-          data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
-        );
-        final manifest = package.manifest;
-        _installed[manifest.id] = manifest;
-        _packages[manifest.id] = package;
-        _bundledIds.add(manifest.id);
-      } catch (error, stack) {
-        HeroDiagnostics.instance.record(
-          '加载示例插件',
-          error,
-          stack: stack,
-          context: {'asset': asset},
-        );
-      }
-    }
     final entries = await _pluginDirectory!.list().toList();
     // ZIP versions win over legacy files retained as migration backups.
     entries.sort((a, b) => a.path.compareTo(b.path));
@@ -104,7 +81,7 @@ class PicoraPluginManager {
                 inspect(await entity.readAsString()),
               );
         final manifest = package.manifest;
-        if (_bundledIds.contains(manifest.id)) continue;
+
         if (!zip) {
           final target = File('${_pluginDirectory!.path}/${manifest.id}.zip');
           if (await target.exists()) continue;
@@ -157,14 +134,20 @@ class PicoraPluginManager {
     await initialize();
     final package = inspectPackage(bytes);
     final manifest = package.manifest;
-    if (_bundledIds.contains(manifest.id)) {
-      throw const HeroFailure('这是随 Picora 提供的示例插件，无需重复安装');
+    final incomingVersion = AppVersion.parse(manifest.version);
+    final previous = _installed[manifest.id];
+    if (previous != null &&
+        incomingVersion.compareTo(AppVersion.parse(previous.version)) < 0) {
+      throw const HeroFailure('不能覆盖安装更旧版本的插件');
     }
-    final updated = _installed.containsKey(manifest.id);
+    final updated = previous != null;
     await _persistPackage(package);
     _installed[manifest.id] = manifest;
     _packages[manifest.id] = package;
-    await SpUtil.putBool('hero_plugin_enabled_${manifest.id}', true);
+    if (!updated &&
+        SpUtil.getBool('hero_plugin_enabled_${manifest.id}') == null) {
+      await SpUtil.putBool('hero_plugin_enabled_${manifest.id}', true);
+    }
     _syncRuntime();
     return PluginInstallResult(manifest, updated: updated);
   }
@@ -212,9 +195,6 @@ class PicoraPluginManager {
     await initialize();
     final manifest = _installed[id];
     if (manifest == null) throw const HeroFailure('插件不存在');
-    if (_bundledIds.contains(id)) {
-      throw const HeroFailure('示例插件不能卸载，可以将它停用');
-    }
     final repositories = await readRepositories();
     if (repositories.any((item) => item.host == manifest.hostId)) {
       throw const HeroFailure('请先删除这个插件创建的图床配置');
@@ -249,7 +229,13 @@ class PicoraPluginManager {
     for (final item in decoded) {
       if (item is! Map || item['values'] is! Map) continue;
       final host = item['host']?.toString() ?? '';
-      if (!hostSpecs.any((spec) => spec.id == host && spec.isPlugin)) continue;
+      // Retain configurations whose plugin is missing after an app upgrade.
+      if (!host.startsWith('plugin.') ||
+          !RegExp(
+            r'^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$',
+          ).hasMatch(host.substring(7))) {
+        continue;
+      }
       result.add(
         RepositoryConfig(
           host: host,
@@ -270,6 +256,9 @@ class PicoraPluginManager {
   }) async {
     await initialize();
     if (!spec.isPlugin) throw const HeroFailure('这不是插件图床');
+    if (!_installed.containsKey(spec.pluginId)) {
+      throw const HeroFailure('请先从模块仓库安装对应插件，再编辑配置');
+    }
     final repositories = await readRepositories();
     final used = repositories
         .where((item) => item.host == spec.id)

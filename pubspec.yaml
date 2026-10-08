@@ -141,7 +141,6 @@ flutter:
      - assets/files/
      - assets/images/
      - assets/images/providers/
-     - assets/plugins/
      - assets/validateImage/
      - assets/icons/
   #   - images/a_dot_ham.jpeg

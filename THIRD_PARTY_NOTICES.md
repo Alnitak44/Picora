@@ -9,11 +9,11 @@ designed by @ubnm and remastered by @meethuthu, and is licensed under
 
 ## Telegraph-Image PicGo plugin port
 
-The bundled Picora Telegraph-Image manifest ports the behavior of
+The example Picora Telegraph-Image plugin in `plugins/telegraph-image/` ports the behavior of
 `picgo-plugin-telegraph-image` 1.0.0. Copyright (c) 2026
 picgo-plugin-telegraph-image contributors. It is licensed under the MIT
 License; the complete text is included at
-`assets/plugins/telegraph-image.LICENSE`.
+`plugins/telegraph-image/LICENSE`. This plugin is distributed separately through the online module repository.
 
 ## Syncfusion PDF viewer Android patch
 

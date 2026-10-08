@@ -32,7 +32,7 @@
     "method": "POST",
     "url": "${normalizeBaseUrl(config.baseUrl)}/upload",
     "headers": {
-      "User-Agent": "Picora-Telegraph-Image/1.1.0",
+      "User-Agent": "Picora-Telegraph-Image/1.1.1",
       "Accept": "application/json",
       "Authorization": "${basicAuth(config.username,config.password)}"
     },

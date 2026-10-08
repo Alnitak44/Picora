@@ -44,6 +44,7 @@ host.picora-plugin.zip
 | name / version / description / author | 必填，长度上限分别为 60 / 30 / 160 / 80 |
 | homepage / repository | 可选 HTTP/HTTPS 地址 |
 | icon | 可选，assets/ 中的 PNG/JPEG/WebP/GIF/SVG |
+| example | 可选布尔值，标记开发示例，不限制更新或卸载 |
 | mark / color | 可选；1–3 字符 / #RRGGBB，无图标时回退到 mark |
 
 ## uploader.json
@@ -142,7 +143,7 @@ host.picora-plugin.zip
 
 ## 更新与限制
 
-同 ID 安装替换程序、教程和资源，保留配置并重新启用插件；当前不比较版本大小。升级保持 ID 与 config.key 稳定。应用附带示例 ID `dev.picora.telegraph-image` 不允许外部覆盖。
+同 ID 安装替换程序、教程和资源，保留配置与启用状态；允许同版本重装，拒绝降级。版本使用 SemVer，升级保持 ID 与 config.key 稳定。Telegraph-Image 是模块仓库中的首个插件及开发示例，不随应用内置，与其他插件采用相同安装和更新流程。
 
 ZIP 上限 10 MB，解压合计 20 MB，最多 128 个条目；单文件 2 MB，元信息和程序各 1 MB，readme 512 KB。安装器校验路径、CRC、体积和必要文件，拒绝链接、加密和不支持的压缩方式。
 
@@ -154,4 +155,4 @@ ZIP 上限 10 MB，解压合计 20 MB，最多 128 个条目；单文件 2 MB，
 .\tools\package-plugin.ps1 -SourceDirectory '.\plugins\my-host' -OutputPath '.\releases\plugins\my-host-1.0.0.picora-plugin.zip'
 ```
 
-安装入口支持本地 ZIP 与下载 URL。插件发布使用 GitHub Release 附件，在线目录方案见 [PLUGIN_MARKETPLACE.md](PLUGIN_MARKETPLACE.md)。
+安装入口支持模块仓库、本地 ZIP 与下载 URL。插件发布使用 GitHub Release 附件，模块目录协议见 [PLUGIN_MARKETPLACE.md](PLUGIN_MARKETPLACE.md)。

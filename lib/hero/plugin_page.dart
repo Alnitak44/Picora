@@ -12,6 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'controller.dart';
 import 'hero_theme.dart';
 import 'models.dart';
+import 'module_repository_page.dart';
 import 'plugins/plugin_manifest.dart';
 import 'plugins/plugin_package.dart';
 import 'upload_page.dart';
@@ -145,6 +146,18 @@ class _PluginCenterPageState extends State<PluginCenterPage> {
     );
   }
 
+  Future<void> _modules() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ModuleRepositoryPage(
+          controller: widget.controller,
+          review: _review,
+        ),
+      ),
+    );
+    if (mounted) setState(() {});
+  }
+
   Future<bool?> _review(PicoraPluginPackage package) {
     final manifest = package.manifest;
     return heroSheet<bool>(
@@ -223,7 +236,6 @@ class _PluginCenterPageState extends State<PluginCenterPage> {
   );
 
   Future<void> _details(PicoraPluginManifest manifest) async {
-    final bundled = widget.controller.pluginManager.isBundled(manifest.id);
     final action = await heroSheet<String>(
       context,
       Padding(
@@ -258,18 +270,18 @@ class _PluginCenterPageState extends State<PluginCenterPage> {
                 title: const Text('打开项目网站'),
                 onTap: () => Navigator.pop(context, 'homepage'),
               ),
-            if (!bundled)
-              ListTile(
-                leading: Icon(
-                  Icons.delete_outline_rounded,
-                  color: Theme.of(context).colorScheme.error,
-                ),
-                title: Text(
-                  '卸载插件',
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-                onTap: () => Navigator.pop(context, 'remove'),
+
+            ListTile(
+              leading: Icon(
+                Icons.delete_outline_rounded,
+                color: Theme.of(context).colorScheme.error,
               ),
+              title: Text(
+                '卸载插件',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+              onTap: () => Navigator.pop(context, 'remove'),
+            ),
           ],
         ),
       ),
@@ -336,7 +348,7 @@ class _PluginCenterPageState extends State<PluginCenterPage> {
 
   Widget _pluginCard(PicoraPluginManifest manifest) {
     final enabled = widget.controller.pluginManager.isEnabled(manifest.id);
-    final bundled = widget.controller.pluginManager.isBundled(manifest.id);
+    final example = widget.controller.pluginManager.isExample(manifest.id);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: HeroPanel(
@@ -366,7 +378,7 @@ class _PluginCenterPageState extends State<PluginCenterPage> {
                         'v${manifest.version} · ${manifest.author}',
                         style: const TextStyle(color: heroMuted, fontSize: 10),
                       ),
-                      if (bundled)
+                      if (example)
                         const Text(
                           '示例',
                           style: TextStyle(color: heroBlue, fontSize: 10),
@@ -439,6 +451,17 @@ class _PluginCenterPageState extends State<PluginCenterPage> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(24, 12, 24, 110),
         children: [
+          HeroPanel(
+            padding: EdgeInsets.zero,
+            child: ListTile(
+              leading: const Icon(Icons.extension_outlined, color: heroBlue),
+              title: const Text('模块仓库'),
+              subtitle: const Text('发现、下载和更新图床插件'),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: _working ? null : _modules,
+            ),
+          ),
+          const SizedBox(height: 24),
           const SectionLabel('内置连接器'),
           HeroPanel(
             padding: const EdgeInsets.all(16),
@@ -494,7 +517,7 @@ class _PluginCenterPageState extends State<PluginCenterPage> {
               child: HeroEmpty(
                 icon: Icons.extension_outlined,
                 title: '还没有安装插件',
-                message: '导入 ZIP 插件包，为图床列表增加新的上传目标。',
+                message: '从模块仓库下载插件，或导入本地 ZIP。',
                 action: FilledButton.icon(
                   onPressed: _install,
                   icon: const Icon(Icons.add_rounded),
