@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -14,20 +16,93 @@ import 'upload_page.dart';
 import 'config_exchange.dart';
 import 'plugin_page.dart';
 import 'filename_template_sheet.dart';
+import 'app_updates.dart';
+import 'app_update_sheet.dart';
+import 'diagnostics.dart';
 
 class SettingsPage extends StatefulWidget {
   final PicoraController controller;
   final VoidCallback openRepositories;
+  final AppUpdateService? updateService;
+  final Future<PackageInfo> Function()? appInfoLoader;
   const SettingsPage({
     super.key,
     required this.controller,
     required this.openRepositories,
+    this.updateService,
+    this.appInfoLoader,
   });
   @override
   State<SettingsPage> createState() => _SettingsPageState();
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  PackageInfo? _appInfo;
+  bool _checkingUpdate = false;
+  late final AppUpdateService _updates =
+      widget.updateService ?? AppUpdateService();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAppInfo();
+  }
+
+  Future<PackageInfo> _readAppInfo() =>
+      (widget.appInfoLoader ?? PackageInfo.fromPlatform)();
+
+  Future<void> _loadAppInfo() async {
+    try {
+      final info = await _readAppInfo();
+      if (mounted) setState(() => _appInfo = info);
+    } catch (error, stack) {
+      HeroDiagnostics.instance.record('读取应用版本', error, stack: stack);
+    }
+  }
+
+  String _updateFailure(Object error, StackTrace stack) {
+    final logged = widget.controller.describeError('应用更新', error, stack);
+    if (error is! DioException) return logged;
+    final status = error.response?.statusCode;
+    final message = status == 403 || status == 429
+        ? 'GitHub 请求受限，请稍后重试'
+        : error.type == DioExceptionType.connectionTimeout ||
+              error.type == DioExceptionType.receiveTimeout
+        ? '连接 GitHub 超时，请检查网络后重试'
+        : '获取更新失败，请查看诊断日志';
+    return '$message · ${logged.split(' · ').last}';
+  }
+
+  Future<void> _checkUpdate() async {
+    if (_checkingUpdate) return;
+    setState(() => _checkingUpdate = true);
+    try {
+      final info = _appInfo ?? await _readAppInfo();
+      final release = await _updates.latest(forceRefresh: true);
+      if (!mounted) return;
+      setState(() => _appInfo = info);
+      if (release == null) {
+        heroSnack(context, '尚无正式发布版本');
+      } else if (!release.isNewerThan(info.version)) {
+        heroSnack(context, '已是最新版本（${info.version}）');
+      } else {
+        await heroSheet<void>(
+          context,
+          AppUpdateSheet(
+            release: release,
+            installedVersion: info.version,
+            describeError: _updateFailure,
+          ),
+        );
+      }
+    } catch (error, stack) {
+      final message = _updateFailure(error, stack);
+      if (mounted) heroSnack(context, message);
+    } finally {
+      if (mounted) setState(() => _checkingUpdate = false);
+    }
+  }
+
   Widget _group(String title, List<Widget> children) => Padding(
     padding: const EdgeInsets.only(bottom: 22),
     child: Column(
@@ -598,10 +673,17 @@ class _SettingsPageState extends State<SettingsPage> {
           ).push(MaterialPageRoute(builder: (_) => const DiagnosticsPage())),
         ),
         _row(
+          '检查更新',
+          Icons.system_update_rounded,
+          value: _checkingUpdate ? '检查中…' : null,
+          tap: _checkingUpdate ? null : _checkUpdate,
+        ),
+
+        _row(
           '项目与版本记录',
           Icons.open_in_new_rounded,
           subtitle: '基于 PicHoro v3.0.1',
-          value: '1.0.0',
+          value: _appInfo?.version,
           tap: () => _guard('打开项目', () async {
             await launchUrl(
               Uri.parse('https://github.com/Alnitak44/Picora'),
@@ -615,7 +697,7 @@ class _SettingsPageState extends State<SettingsPage> {
           tap: () => showAboutDialog(
             context: context,
             applicationName: 'Picora',
-            applicationVersion: '1.0.0',
+            applicationVersion: _appInfo?.version ?? '版本信息不可用',
             applicationIcon: Image.asset(
               'assets/images/picora.png',
               width: 48,
