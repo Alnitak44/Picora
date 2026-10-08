@@ -74,6 +74,4 @@
 
 `test/markdown_features_test.dart` 覆盖哈希、插入选择、图片语法、跳过代码、列表与引用、重复地址、本地 HTTP 410/403/HTML、体积与超时、停止、BOM/CRLF、文档 URI / 校验和 / 备份与窄屏界面。数据层测试验证多图片始终上传到所选配置并写入该配置的相册。
 
-本机可用 `tools/check-documents-native.ps1` 独立检查 Kotlin 文档接口，复用缓存的 Kotlin 2.1、Flutter Android 类库、Android SDK 36、Java 21；输出 `.class` 到 `artifacts/kotlin-documents-check/`，不调用 Gradle、不生成 APK。这不能替代真机验证。
-
-真机需要验收：本地 Downloads 文档、云盘只读文档、覆盖/另存、保存器取消、处理中修改原文件、部分失效链接、断网、停止任务、BOM/中文/CRLF、备份导出与存储空间不足。当前仅做自动化和独立编译检查，未做新 APK 或真机测试。
+真机需要验收：本地 Downloads 文档、云盘只读文档、覆盖/另存、保存器取消、处理中修改原文件、部分失效链接、断网、停止任务、BOM/中文/CRLF、备份导出与存储空间不足。

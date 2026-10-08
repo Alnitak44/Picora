@@ -139,3 +139,8 @@ releases/plugins/*.zip
 !/android/gradlew
 !/android/gradlew.bat
 !/android/gradle/wrapper/gradle-wrapper.jar
+
+# Maintainer-local handoff documents
+/打包说明.md
+/docs/ENVIRONMENT_RESTORE.md
+/docs/GITHUB_PUBLISH.md

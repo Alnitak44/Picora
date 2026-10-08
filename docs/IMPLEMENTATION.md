@@ -48,8 +48,4 @@ UI 覆盖四页面导航、空状态、目标/平台 Bottom Sheet、配置编辑
 
 ## 设备验收
 
-旧应用曾用工程内的 Android SDK 36、NDK 27.0.12077973、Gradle 8.10.2 与 Java 21 完成 Debug 构建。Picora 改名后尚未编译 APK；目标交付文件为 `releases/Picora-arm64-debug.apk`，Debug / Release 包名均为 `io.github.alnitak44.picora`，最低 Android 7.0（API 24）。新 APK 仍需重新核对应用名称、包名、签名与唯一 ARM64 架构，并在真机验收。真实上传需要使用者自己的图床凭据，自动测试没有触碰真实云端数据。
-
-在 Android 真机验收：首次启动空仓库 → 添加任意平台配置 → 设默认 → 图片选择上传 → 验证三种复制格式 → 链接下载上传 → 拍照/连续拍照 → 从系统分享面板发送图片 → 相册三视图与筛选 → 多配置临时切换 → 重启确认默认配置 → 错误凭据/断网时检查日志 → 配置导出导入 → 云端浏览下载与目录操作。
-
-iOS 沿用上游工程，其原 README 已说明未提供可用 iOS 版本；本轮没有宣称 iOS 打包或运行通过。
+见 [DEVICE_TESTING.md](DEVICE_TESTING.md)。
