@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:picora/hero/hero_theme.dart';
 
 class FileBottomSheetWidget extends StatelessWidget {
   final Future<Widget> thumbnailWidget;
-  final String fileName;
-  final String fileDate;
+  final String fileName, fileDate;
   final List<BottomSheetAction> actions;
-
   const FileBottomSheetWidget({
     super.key,
     required this.thumbnailWidget,
@@ -13,139 +12,105 @@ class FileBottomSheetWidget extends StatelessWidget {
     required this.fileDate,
     required this.actions,
   });
-
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
+  Widget build(BuildContext context) => SafeArea(
+    top: false,
+    child: Material(
+      color: Theme.of(context).colorScheme.surface,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+      clipBehavior: Clip.antiAlias,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * .85,
         ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            height: 6,
-            width: 40,
-            margin: const EdgeInsets.symmetric(vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.grey[300],
-              borderRadius: BorderRadius.circular(3),
-            ),
-          ),
-          // File information header
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey[200]!,
-                  width: 1,
-                ),
-              ),
-            ),
-            child: Row(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  width: 60,
-                  height: 60,
+                  width: 36,
+                  height: 4,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+                    color: heroMuted.withValues(alpha: .3),
+                    borderRadius: BorderRadius.circular(4),
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(7),
-                    child: FutureBuilder<Widget>(
-                      future: thumbnailWidget,
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
-                        } else if (snapshot.hasError) {
-                          return const Icon(Icons.error, size: 40);
-                        } else {
-                          return snapshot.data!;
-                        }
-                      },
+                ),
+                const SizedBox(height: 22),
+                Row(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: SizedBox(
+                        width: 56,
+                        height: 56,
+                        child: FutureBuilder<Widget>(
+                          future: thumbnailWidget,
+                          builder: (_, s) =>
+                              s.data ??
+                              const Icon(
+                                Icons.insert_drive_file_outlined,
+                                color: heroMuted,
+                              ),
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        fileName.length > 25
-                            ? '${fileName.substring(0, 12)}...${fileName.substring(fileName.length - 12)}'
-                            : fileName,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            fileName,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (fileDate.isNotEmpty) ...[
+                            const SizedBox(height: 5),
+                            Text(
+                              fileDate,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: heroMuted,
+                              ),
+                            ),
+                          ],
+                        ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        fileDate,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 20),
+                const Divider(),
+                const SizedBox(height: 8),
+                for (final action in actions)
+                  ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                    leading: Icon(
+                      action.icon,
+                      color: action.title.contains('删除')
+                          ? Theme.of(context).colorScheme.error
+                          : heroBlue,
+                      size: 23,
+                    ),
+                    title: Text(
+                      action.title,
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                    onTap: action.onTap,
+                  ),
               ],
             ),
           ),
-          // Action items
-          ...actions.map((action) => _buildActionTile(
-                icon: action.icon,
-                iconColor: action.iconColor,
-                title: action.title,
-                onTap: action.onTap,
-              )),
-          const SizedBox(height: 12),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionTile({
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return ListTile(
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: iconColor.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Icon(
-          icon,
-          color: iconColor,
-          size: 24,
         ),
       ),
-      title: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
-      trailing: const Icon(
-        Icons.chevron_right,
-        color: Colors.grey,
-      ),
-      onTap: onTap,
-    );
-  }
+    ),
+  );
 }
 
 class BottomSheetAction {
@@ -153,7 +118,6 @@ class BottomSheetAction {
   final Color iconColor;
   final String title;
   final VoidCallback onTap;
-
   BottomSheetAction({
     required this.icon,
     required this.iconColor,

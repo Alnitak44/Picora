@@ -1,135 +1,104 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:picora/hero/hero_theme.dart';
 
 void copyToClipboard(BuildContext context, String text) {
   Clipboard.setData(ClipboardData(text: text));
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: const Text('已复制到剪贴板'),
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-      ),
-      duration: const Duration(seconds: 1),
-      action: SnackBarAction(
-        label: '关闭',
-        onPressed: () {
-          ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        },
-      ),
-    ),
-  );
+  heroSnack(context, '已复制到剪贴板');
 }
 
-Widget buildInfoSection(String title, List<Widget> children) {
-  return Card(
-    margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-    elevation: 2,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-    ),
+Widget buildInfoSection(String title, List<Widget> children) => Padding(
+  padding: const EdgeInsets.fromLTRB(20, 8, 20, 8),
+  child: HeroPanel(
+    padding: const EdgeInsets.fromLTRB(8, 20, 8, 12),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SectionLabel(title),
         ),
         ...children,
-        const SizedBox(height: 8),
       ],
     ),
-  );
-}
-
+  ),
+);
 Widget buildInfoItem({
   required BuildContext context,
   required String title,
   required String value,
   required IconData icon,
   bool copyable = false,
-}) {
-  return ListTile(
-    leading: Icon(icon, color: Theme.of(context).primaryColor),
-    title: Text(title),
-    subtitle: SelectableText(
+}) => ListTile(
+  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 3),
+  leading: Icon(icon, color: heroBlue, size: 21),
+  title: Text(title, style: const TextStyle(fontSize: 12, color: heroMuted)),
+  subtitle: Padding(
+    padding: const EdgeInsets.only(top: 5),
+    child: SelectableText(
       value,
-      style: const TextStyle(fontSize: 15),
+      style: const TextStyle(fontSize: 14, height: 1.5),
     ),
-    trailing: copyable
-        ? IconButton(
-            icon: const Icon(Icons.copy, size: 20),
-            onPressed: () => copyToClipboard(context, value),
-            tooltip: '复制',
-          )
-        : null,
-  );
-}
-
+  ),
+  trailing: copyable
+      ? IconButton(
+          tooltip: '复制',
+          icon: const Icon(Icons.copy_rounded, size: 17, color: heroMuted),
+          onPressed: () => copyToClipboard(context, value),
+        )
+      : null,
+);
 Widget buildFeatureCard({
   required IconData icon,
   required String title,
   required String subtitle,
   required Color color,
   required VoidCallback onTap,
-}) {
-  return Card(
-    elevation: 4,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(15),
-      splashColor: color.withValues(alpha: 0.1),
-      highlightColor: color.withValues(alpha: 0.05),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 50,
-              height: 50,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 28),
+}) => Card(
+  child: InkWell(
+    borderRadius: BorderRadius.circular(24),
+    onTap: onTap,
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: heroBlue.withValues(alpha: .07),
+              borderRadius: BorderRadius.circular(14),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
+            child: Icon(icon, color: heroBlue, size: 24),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey.shade600,
-                    ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    height: 1.5,
+                    color: heroMuted,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            Icon(
-              Icons.chevron_right_rounded,
-              color: Colors.grey.shade400,
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 8),
+          const Icon(Icons.chevron_right_rounded, size: 20, color: heroMuted),
+        ],
       ),
     ),
-  );
-}
+  ),
+);

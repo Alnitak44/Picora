@@ -1,3 +1,7 @@
+.tooling/
+artifacts/
+releases/*.apk
+releases/*.aab
 # Miscellaneous
 *.class
 *.log
@@ -115,3 +119,23 @@ app.*.map.json
 **/.ios/Flutter/flutter_assets/
 **/.ios/ServiceDefinitions.json
 **/.ios/Runner/GeneratedPluginRegistrant.*
+
+
+ios/Flutter/ephemeral/
+
+# Local credentials and generated native state
+*.keystore
+*.p12
+*.pfx
+.env
+.env.*
+!.env.example
+ios/Flutter/flutter_export_environment.sh
+**/.cxx/
+**/.externalNativeBuild/
+releases/plugins/*.zip
+
+# Keep the main Android Gradle Wrapper for fresh clones
+!/android/gradlew
+!/android/gradlew.bat
+!/android/gradle/wrapper/gradle-wrapper.jar

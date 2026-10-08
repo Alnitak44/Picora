@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:horopic/widgets/common_widgets.dart';
+import 'package:picora/widgets/common_widgets.dart';
 
 import 'package:open_filex/open_filex.dart';
 import 'package:path/path.dart' as my_path;
@@ -11,9 +11,9 @@ import 'package:pull_to_refresh/pull_to_refresh.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:msh_checkbox/msh_checkbox.dart';
 
-import 'package:horopic/router/application.dart';
-import 'package:horopic/router/routers.dart';
-import 'package:horopic/utils/common_functions.dart';
+import 'package:picora/router/application.dart';
+import 'package:picora/router/routers.dart';
+import 'package:picora/utils/common_functions.dart';
 
 class FileExplorer extends StatefulWidget {
   const FileExplorer({super.key, required this.currentDirPath, required this.rootPath});

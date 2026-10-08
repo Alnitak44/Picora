@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import 'package:horopic/picture_host_manage/manage_api/github_manage_api.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/widgets/common_widgets.dart';
-import 'package:horopic/widgets/net_loading_dialog.dart';
+import 'package:picora/picture_host_manage/manage_api/github_manage_api.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/widgets/common_widgets.dart';
+import 'package:picora/widgets/net_loading_dialog.dart';
 
 class GithubNewRepoConfig extends StatefulWidget {
   const GithubNewRepoConfig({

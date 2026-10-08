@@ -24,12 +24,15 @@ if (flutterVersionName == null) {
 
 def keystorePropertiesFile = rootProject.file("key.properties")
 def keystoreProperties = new Properties()
-keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+} else if (gradle.startParameter.taskNames.any { it.toLowerCase().contains('release') }) {
+    throw new GradleException('Release builds require android/key.properties and a production keystore. Use --debug for local development.')
+}
 
 android {
-    //compileSdkVersion flutter.compileSdkVersion
-    namespace "com.example.horopic"
-    compileSdkVersion 35
+    namespace "io.github.alnitak44.picora"
+    compileSdkVersion flutter.compileSdkVersion
     //ndkVersion flutter.ndkVersion
     ndkVersion "27.0.12077973"
 
@@ -47,7 +50,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.example.horopic"
+        applicationId "io.github.alnitak44.picora"
         // You can update the following values to match your application needs.
         // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-build-configuration.
         minSdkVersion 24
@@ -61,19 +64,31 @@ android {
         release {
             keyAlias keystoreProperties['keyAlias']
             keyPassword keystoreProperties['keyPassword']
-            storeFile file(keystoreProperties['storeFile'])
+            storeFile keystorePropertiesFile.exists() ? file(keystoreProperties['storeFile']) : null
             storePassword keystoreProperties['storePassword']
         }
     }
     buildTypes {
+        debug {
+            versionNameSuffix "-debug"
+        }
         release {
             signingConfig signingConfigs.release
 
             minifyEnabled false
             shrinkResources false
 
-            // proguard文件是混淆 
+            // proguard文件是混淆
            // proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    applicationVariants.all { variant ->
+        variant.outputs.all { output ->
+            def abi = output.getFilter(com.android.build.OutputFile.ABI)
+            def architecture = abi == 'arm64-v8a' ? 'arm64' : abi
+            def suffix = architecture ? "-${architecture}" : ''
+            output.outputFileName = "Picora${suffix}-${variant.buildType.name}.apk"
         }
     }
 }

@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:minio/minio.dart';
 import 'package:path/path.dart' as my_path;
 
-import 'package:horopic/utils/common_functions.dart';
+import 'package:picora/utils/common_functions.dart';
 
 class AwsImageUploadUtils {
   //上传接口

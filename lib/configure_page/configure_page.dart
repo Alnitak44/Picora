@@ -3,16 +3,16 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:dio/dio.dart';
-import 'package:horopic/widgets/common_widgets.dart';
+import 'package:picora/widgets/common_widgets.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:ota_update/ota_update.dart';
 import 'package:fluro/fluro.dart';
 import 'package:provider/provider.dart';
 
-import 'package:horopic/router/application.dart';
-import 'package:horopic/router/routers.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/utils/theme_provider.dart';
+import 'package:picora/router/application.dart';
+import 'package:picora/router/routers.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/utils/theme_provider.dart';
 
 class ConfigurePage extends StatefulWidget {
   const ConfigurePage({super.key});
@@ -75,7 +75,7 @@ class ConfigurePageState extends State<ConfigurePage> with AutomaticKeepAliveCli
   }
 
   Future<String> getRemoteVersion() async {
-    const url = 'https://pichoro.msq.pub/version.json';
+    const url = 'https://raw.githubusercontent.com/Alnitak44/Picora/main/version.json';
     try {
       Response response = await Dio().get(url);
       return response.data['version'];
@@ -133,12 +133,12 @@ class ConfigurePageState extends State<ConfigurePage> with AutomaticKeepAliveCli
           // Cancel any existing update subscription
           _updateSubscription?.cancel();
 
-          String url = 'https://pichoro.msq.pub/PicHoro_V$latestVersion.apk';
+          String url = 'https://github.com/Alnitak44/Picora/releases/download/v$latestVersion/Picora-arm64-release.apk';
           try {
             _updateSubscription = OtaUpdate()
                 .execute(
               url,
-              destinationFilename: 'PicHoro_V$latestVersion.apk',
+              destinationFilename: 'Picora-arm64-release.apk',
             )
                 .listen(
               (OtaEvent event) {
@@ -380,7 +380,7 @@ class ConfigurePageState extends State<ConfigurePage> with AutomaticKeepAliveCli
                 onTap: () async {
                   Application.router.navigateTo(
                     context,
-                    '${Routes.webviewPage}?url=${Uri.encodeComponent('https://pichoro.horosama.com')}&title=${Uri.encodeComponent('使用手册')}&enableJs=${Uri.encodeComponent('true')}',
+                    '${Routes.webviewPage}?url=${Uri.encodeComponent('https://github.com/Alnitak44/Picora')}&title=${Uri.encodeComponent('使用手册')}&enableJs=${Uri.encodeComponent('true')}',
                     transition: TransitionType.inFromRight,
                   );
                 },

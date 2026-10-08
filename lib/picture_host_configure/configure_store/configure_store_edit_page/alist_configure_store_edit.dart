@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import 'package:horopic/picture_host_configure/configure_page/alist_configure.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/picture_host_configure/configure_store/configure_store_file.dart';
-import 'package:horopic/picture_host_manage/manage_api/alist_manage_api.dart';
-import 'package:horopic/picture_host_configure/configure_store/configure_template.dart';
-import 'package:horopic/widgets/configure_widgets.dart';
+import 'package:picora/picture_host_configure/configure_page/alist_configure.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/picture_host_configure/configure_store/configure_store_file.dart';
+import 'package:picora/picture_host_manage/manage_api/alist_manage_api.dart';
+import 'package:picora/picture_host_configure/configure_store/configure_template.dart';
+import 'package:picora/widgets/configure_widgets.dart';
 
 class AlistConfigureStoreEdit extends StatefulWidget {
   final String storeKey;
@@ -41,7 +41,8 @@ class AlistConfigureStoreEditState extends State<AlistConfigureStoreEdit> {
 
   _initConfig() {
     for (String element in AlistConfigModel.keysList) {
-      if (widget.psInfo[element] != ConfigureTemplate.placeholder && widget.psInfo[element] != null) {
+      if (widget.psInfo[element] != ConfigureTemplate.placeholder &&
+          widget.psInfo[element] != null) {
         switch (element) {
           case 'remarkName':
             _remarkNameController.text = widget.psInfo[element];
@@ -83,7 +84,10 @@ class AlistConfigureStoreEditState extends State<AlistConfigureStoreEdit> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: ConfigureWidgets.buildConfigAppBar(title: '备用配置设置', context: context),
+      appBar: ConfigureWidgets.buildConfigAppBar(
+        title: '备用配置设置',
+        context: context,
+      ),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -106,13 +110,16 @@ class AlistConfigureStoreEditState extends State<AlistConfigureStoreEdit> {
                 ConfigureWidgets.buildFormField(
                   controller: _hostController,
                   labelText: '域名',
-                  hintText: '例如: https://alist.test.com',
+                  hintText: '例如: https://openlist.example.com',
                   prefixIcon: Icons.link,
                   validator: (value) {
-                    if (value == null || value.isEmpty || value.toString().trim().isEmpty) {
+                    if (value == null ||
+                        value.isEmpty ||
+                        value.toString().trim().isEmpty) {
                       return '请输入域名';
                     }
-                    if (!value.startsWith('http://') && !value.startsWith('https://')) {
+                    if (!value.startsWith('http://') &&
+                        !value.startsWith('https://')) {
                       return '以http://或https://开头';
                     }
                     return null;
@@ -205,7 +212,8 @@ class AlistConfigureStoreEditState extends State<AlistConfigureStoreEdit> {
       Map configMap = await AlistManageAPI().getConfigMap();
       _hostController.text = configMap['host'];
       _tokenController.text = configMap['token'];
-      if (configMap['adminToken'] != 'None' && configMap['adminToken'] != null) {
+      if (configMap['adminToken'] != 'None' &&
+          configMap['adminToken'] != null) {
         _adminTokenController.text = configMap['adminToken'];
       }
       if (configMap['alistusername'] != 'None') {
@@ -302,7 +310,7 @@ class AlistConfigureStoreEditState extends State<AlistConfigureStoreEdit> {
         showToast('保存成功');
         return true;
       } catch (e) {
-        flogErr(e, {}, 'AlistConfigStoreEditPage', '_saveConfig');
+        flogErr(e, {}, 'OpenListConfigStoreEditPage', '_saveConfig');
       }
       showToast('保存失败');
       return false;

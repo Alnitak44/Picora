@@ -2,10 +2,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:dartssh2/dartssh2.dart';
-import 'package:horopic/widgets/common_widgets.dart';
+import 'package:picora/widgets/common_widgets.dart';
 import 'package:path_provider/path_provider.dart';
 
-import 'package:horopic/utils/common_functions.dart';
+import 'package:picora/utils/common_functions.dart';
 
 class SFTPLocalImagePreview extends StatefulWidget {
   final Map configMap;

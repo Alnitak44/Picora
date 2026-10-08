@@ -6,10 +6,10 @@ import 'package:collection/collection.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
-import 'package:horopic/picture_host_manage/common/download/common_service/base_download_task.dart';
-import 'package:horopic/picture_host_manage/common/download/common_service/base_download_status.dart';
-import 'package:horopic/picture_host_manage/common/download/common_service/base_download_request.dart';
-import 'package:horopic/utils/common_functions.dart';
+import 'package:picora/picture_host_manage/common/download/common_service/base_download_task.dart';
+import 'package:picora/picture_host_manage/common/download/common_service/base_download_status.dart';
+import 'package:picora/picture_host_manage/common/download/common_service/base_download_request.dart';
+import 'package:picora/utils/common_functions.dart';
 
 abstract class BaseDownloadManager {
   final Map<String, DownloadTask> cache = <String, DownloadTask>{};

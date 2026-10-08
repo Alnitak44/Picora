@@ -2,13 +2,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:f_logs/f_logs.dart';
-import 'package:horopic/widgets/common_widgets.dart';
+import 'package:picora/widgets/common_widgets.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 
-import 'package:horopic/widgets/net_loading_dialog.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/picture_host_manage/common/loading_state.dart' as loading_state;
+import 'package:picora/widgets/net_loading_dialog.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/picture_host_manage/common/loading_state.dart' as loading_state;
 
 class LogPage extends StatefulWidget {
   const LogPage({super.key});
@@ -269,7 +269,7 @@ class LogPageState extends loading_state.BaseLoadingPageState<LogPage> {
       String filePath = '$path/log';
       await Directory(filePath).create(recursive: true);
       String currentTimestamp = DateTime.now().millisecondsSinceEpoch.toString();
-      File file = File('$filePath/PicHoro_Log_$currentTimestamp.txt');
+      File file = File('$filePath/Picora_Log_$currentTimestamp.txt');
       await file.writeAsString(buffer.toString());
       await Clipboard.setData(ClipboardData(text: buffer.toString()));
       if (context.mounted) {

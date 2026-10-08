@@ -1,11 +1,11 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
-import 'package:horopic/widgets/common_widgets.dart';
+import 'package:picora/widgets/common_widgets.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:flutter/material.dart';
 
-import 'package:horopic/utils/common_functions.dart';
+import 'package:picora/utils/common_functions.dart';
 
 class PdfViewer extends StatefulWidget {
   final String url;

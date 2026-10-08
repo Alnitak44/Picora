@@ -1,7 +1,12 @@
 pluginManagement {
     def flutterSdkPath = {
         def properties = new Properties()
-        file("local.properties").withInputStream { properties.load(it) }
+        file("local.properties").withReader('UTF-8') { properties.load(it) }
+        // Flutter writes UTF-8 paths, while Android/Java readers use ISO-8859-1.
+        // Store non-ASCII paths as Unicode escapes for both readers.
+        file("local.properties").withOutputStream {
+            properties.store(it, 'Local Android and Flutter SDK paths')
+        }
         def flutterSdkPath = properties.getProperty("flutter.sdk")
         assert flutterSdkPath != null, "flutter.sdk not set in local.properties"
         return flutterSdkPath
@@ -24,3 +29,6 @@ plugins {
 }
 
 include ":app"
+
+// Preserve the pinned PDF Dart package, with its Android v2 registration patch.
+project(":syncfusion_flutter_pdfviewer").projectDir = file("vendor/syncfusion_flutter_pdfviewer")

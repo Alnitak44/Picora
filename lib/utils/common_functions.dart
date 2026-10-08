@@ -1,27 +1,25 @@
+import 'package:picora/hero/filename_template.dart';
 import 'dart:io';
 import 'dart:math';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:flutter/cupertino.dart';
+
 import 'package:flutter/material.dart';
 import 'package:mime/mime.dart';
-import 'package:horopic/picture_host_configure/configure_store/configure_template.dart';
+import 'package:picora/picture_host_configure/configure_store/configure_template.dart';
 
 import 'package:path/path.dart' as my_path;
-import 'package:uuid/uuid.dart';
-import "package:crypto/crypto.dart";
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:fluro/fluro.dart';
+
 import 'package:path_provider/path_provider.dart';
 import 'package:flustars_flutter3/flustars_flutter3.dart';
-import 'package:f_logs/f_logs.dart';
+import 'package:picora/hero/diagnostics.dart';
+import 'package:picora/hero/hero_theme.dart';
 
-import 'package:horopic/utils/global.dart';
-import 'package:horopic/router/application.dart';
-import 'package:horopic/router/routers.dart';
-import 'package:horopic/utils/permission.dart';
-import 'package:horopic/picture_host_configure/configure_store/configure_store_file.dart';
+import 'package:picora/utils/global.dart';
+
+import 'package:picora/picture_host_configure/configure_store/configure_store_file.dart';
 
 Map<String, String> psNameTranslate = {
   'aliyun': '阿里云',
@@ -34,7 +32,7 @@ Map<String, String> psNameTranslate = {
   'sm.ms': 'SM.MS',
   'imgur': 'Imgur',
   'lsky.pro': '兰空图床',
-  'alist': 'AList V3',
+  'alist': 'OpenList',
   'webdav': 'WebDAV',
 };
 
@@ -67,10 +65,7 @@ Future<File> ensureFileExists(File file) async {
 
 /// 默认图床参数和配置文件名对应关系
 String getpdconfig(String defaultConfig) {
-  const configMap = {
-    'lsky.pro': 'host_config',
-    'sm.ms': 'smms_config',
-  };
+  const configMap = {'lsky.pro': 'host_config', 'sm.ms': 'smms_config'};
 
   return configMap[defaultConfig] ?? '${defaultConfig}_config';
 }
@@ -106,7 +101,9 @@ supportedExtensions(String ext) {
   if (extLowerCase.startsWith('.')) {
     extLowerCase = extLowerCase.substring(1);
   }
-  return Global.imgExt.contains(extLowerCase) || Global.textExt.contains(extLowerCase) || extLowerCase == 'pdf';
+  return Global.imgExt.contains(extLowerCase) ||
+      Global.textExt.contains(extLowerCase) ||
+      extLowerCase == 'pdf';
 }
 
 BaseOptions setBaseOptions() {
@@ -117,7 +114,11 @@ BaseOptions setBaseOptions() {
   );
 }
 
-downloadTxtFile(String urlpath, String fileName, Map<String, dynamic>? headers) async {
+downloadTxtFile(
+  String urlpath,
+  String fileName,
+  Map<String, dynamic>? headers,
+) async {
   try {
     BaseOptions baseOptions = setBaseOptions();
     Dio dio = Dio(baseOptions);
@@ -127,84 +128,40 @@ downloadTxtFile(String urlpath, String fileName, Map<String, dynamic>? headers) 
       urlpath,
       tempfile.path,
       deleteOnError: false,
-      options: Options(
-        headers: headers ?? {},
-      ),
+      options: Options(headers: headers ?? {}),
     );
     if (response.statusCode == 200) {
       return tempfile.path;
     }
     return 'error';
   } catch (e) {
-    flogErr(
-      e,
-      {},
-      'common_functions',
-      "downloadTxtFile",
-    );
+    flogErr(e, {}, 'common_functions', "downloadTxtFile");
     return 'error';
   }
 }
 
-/// cupertino风格的alertDialog
+/// Compatibility entry point; all confirmation UI uses the new Bottom Sheet.
 showCupertinoAlertDialog({
   bool? barrierDismissible,
   required BuildContext context,
   required String title,
   required String content,
   String confirmText = '确定',
-}) {
-  return showCupertinoDialog(
-      context: context,
-      barrierDismissible: barrierDismissible ?? false,
-      builder: (BuildContext dialogContext) {
-        return CupertinoAlertDialog(
-          title: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 22.0,
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          content: Container(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.6,
-              maxWidth: MediaQuery.of(context).size.width * 0.8,
-            ),
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12.0),
-                child: Text(
-                  content,
-                  style: const TextStyle(
-                    fontSize: 16.0,
-                    height: 1.4,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-          ),
-          actions: [
-            CupertinoDialogAction(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(
-                confirmText,
-                style: TextStyle(
-                  color: CupertinoTheme.of(context).primaryColor,
-                  fontSize: 17.0,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-        );
-      });
-}
+}) => showModalBottomSheet<void>(
+  context: context,
+  isScrollControlled: true,
+  useSafeArea: true,
+  isDismissible: barrierDismissible ?? false,
+  enableDrag: barrierDismissible ?? false,
+  builder: (sheetContext) => _heroConfirmationContent(
+    sheetContext,
+    title,
+    content,
+    confirmText,
+    () => Navigator.pop(sheetContext),
+  ),
+);
 
-/// cupertino风格的alertDialog  带确认函数
 showCupertinoAlertDialogWithConfirmFunc({
   required BuildContext context,
   required String content,
@@ -213,70 +170,79 @@ showCupertinoAlertDialogWithConfirmFunc({
   String title = '通知',
   String cancelText = '取消',
   String confirmText = '确定',
-}) {
-  return showCupertinoDialog(
-      barrierDismissible: barrierDismissible,
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return CupertinoAlertDialog(
-          title: Text(
-            title,
-            style: const TextStyle(
-              fontSize: 22.0,
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          content: Container(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.6,
-              maxWidth: MediaQuery.of(context).size.width * 0.8,
-            ),
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12.0),
-                child: Text(
-                  content,
-                  style: const TextStyle(
-                    fontSize: 16.0,
-                    height: 1.4,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-          ),
-          actions: <Widget>[
-            CupertinoDialogAction(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: Text(
-                cancelText,
-                style: TextStyle(
-                  color: CupertinoColors.destructiveRed,
-                  fontSize: 17.0,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            CupertinoDialogAction(
-              onPressed: () async {
-                Navigator.pop(dialogContext);
-                onConfirm();
-              },
-              child: Text(
-                confirmText,
-                style: TextStyle(
-                  color: CupertinoTheme.of(context).primaryColor,
-                  fontSize: 17.0,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-        );
-      });
+}) async {
+  final confirmed = await showModalBottomSheet<bool>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    isDismissible: barrierDismissible,
+    enableDrag: barrierDismissible,
+    builder: (sheetContext) => _heroConfirmationContent(
+      sheetContext,
+      title,
+      content,
+      confirmText,
+      () => Navigator.pop(sheetContext, true),
+      cancelText: cancelText,
+    ),
+  );
+  if (confirmed == true) {
+    try {
+      await onConfirm();
+    } catch (error, stack) {
+      final id = HeroDiagnostics.instance.record('云端确认操作', error, stack: stack);
+      if (context.mounted) heroSnack(context, '操作失败，可在诊断日志中查看 $id');
+    }
+  }
 }
+
+Widget _heroConfirmationContent(
+  BuildContext context,
+  String title,
+  String content,
+  String confirmText,
+  VoidCallback onConfirm, {
+  String? cancelText,
+}) => SingleChildScrollView(
+  padding: EdgeInsets.fromLTRB(
+    24,
+    0,
+    24,
+    24 + MediaQuery.viewInsetsOf(context).bottom,
+  ),
+  child: Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        title,
+        style: const TextStyle(fontSize: 23, fontWeight: FontWeight.w600),
+      ),
+      const SizedBox(height: 16),
+      Text(
+        content,
+        style: const TextStyle(fontSize: 14, color: heroMuted, height: 1.6),
+      ),
+      const SizedBox(height: 24),
+      Row(
+        children: [
+          if (cancelText != null) ...[
+            Expanded(
+              child: TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(cancelText),
+              ),
+            ),
+            const SizedBox(width: 12),
+          ],
+          Expanded(
+            child: FilledButton(onPressed: onConfirm, child: Text(confirmText)),
+          ),
+        ],
+      ),
+    ],
+  ),
+);
 
 /// 弹出toast
 showToast(
@@ -288,15 +254,16 @@ showToast(
   Color? backgroundColor,
   Color? textColor,
 }) {
-  Fluttertoast.showToast(
-    msg: msg,
-    toastLength: toastLength,
-    timeInSecForIosWeb: timeInSecForIosWeb,
-    fontSize: fontSize,
-    gravity: gravity,
-    backgroundColor: backgroundColor ?? Colors.black.withValues(alpha: 0.7),
-    textColor: textColor ?? Colors.white,
-  );
+  heroMessengerKey.currentState
+    ?..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        duration: const Duration(milliseconds: 1500),
+        dismissDirection: DismissDirection.horizontal,
+        margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      ),
+    );
 }
 
 /// 带context的toast
@@ -308,37 +275,42 @@ showToastWithContext(
   double fontSize = 16.0,
   ToastGravity gravity = ToastGravity.BOTTOM,
 }) {
-  final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-  Fluttertoast.showToast(
-    msg: msg,
-    toastLength: toastLength,
-    timeInSecForIosWeb: timeInSecForIosWeb,
-    fontSize: fontSize,
-    gravity: gravity,
-    backgroundColor: isDarkMode ? Colors.white.withValues(alpha: 0.8) : Colors.black.withValues(alpha: 0.7),
-    textColor: isDarkMode ? Colors.black : Colors.white,
-  );
+  heroMessengerKey.currentState
+    ?..hideCurrentSnackBar()
+    ..showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        duration: const Duration(milliseconds: 1500),
+        dismissDirection: DismissDirection.horizontal,
+        margin: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+      ),
+    );
 }
 
 /// title text
-Widget titleText(String title,
-    {double? fontsize = 20, FontWeight fontWeight = FontWeight.bold, Color? color = Colors.white}) {
+Widget titleText(
+  String title, {
+  double? fontsize = 20,
+  FontWeight fontWeight = FontWeight.bold,
+  Color? color,
+}) {
   return Text(
     title,
-    style: TextStyle(
-      fontSize: fontsize,
-      color: color,
-      fontWeight: fontWeight,
-    ),
+    style: TextStyle(fontSize: fontsize, color: color, fontWeight: fontWeight),
   );
 }
 
 /// random String Generator
 String randomStringGenerator(int length) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const chars =
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   Random rnd = Random();
-  return String.fromCharCodes(Iterable.generate(length, (_) => chars.codeUnitAt(rnd.nextInt(chars.length))));
+  return String.fromCharCodes(
+    Iterable.generate(
+      length,
+      (_) => chars.codeUnitAt(rnd.nextInt(chars.length)),
+    ),
+  );
 }
 
 /// rename file with timestamp
@@ -362,45 +334,8 @@ renamePictureWithRandomString(File file) {
 }
 
 /// rename picture with custom format
-renamePictureWithCustomFormat(File file) async {
-  String customFormat = Global.getCustomeRenameFormat();
-  var path = file.path;
-  var fileExtension = my_path.extension(path);
-
-  DateTime now = DateTime.now();
-  String yearFourDigit = now.year.toString();
-  String yearTwoDigit = yearFourDigit.substring(2, 4);
-  String month = now.month.toString().padLeft(2, '0');
-  String day = now.day.toString().padLeft(2, '0');
-  String hour = now.hour.toString().padLeft(2, '0');
-  String minute = now.minute.toString().padLeft(2, '0');
-  String second = now.second.toString().padLeft(2, '0');
-  String milliSecond = now.millisecond.toString().padLeft(3, '0');
-  String timestampMilliSecond = (now.millisecondsSinceEpoch).floor().toString();
-
-  var fileBytes = await file.readAsBytes();
-  String fileMd5 = md5.convert(fileBytes).toString();
-  String fileMd5Short = fileMd5.substring(0, 16);
-
-  String oldFileName = my_path.basename(path).replaceAll(fileExtension, '');
-  String newFileName = customFormat
-      .replaceAll('{Y}', yearFourDigit)
-      .replaceAll('{y}', yearTwoDigit)
-      .replaceAll('{m}', month)
-      .replaceAll('{d}', day)
-      .replaceAll('{h}', hour)
-      .replaceAll('{i}', minute)
-      .replaceAll('{s}', second)
-      .replaceAll('{ms}', milliSecond)
-      .replaceAll('{timestamp}', timestampMilliSecond)
-      .replaceAll('{uuid}', const Uuid().v4().replaceAll('-', ''))
-      .replaceAll('{md5}', fileMd5)
-      .replaceAll('{md5-16}', fileMd5Short)
-      .replaceAllMapped(RegExp(r'\{str-(\d+)\}'), (match) => randomStringGenerator(int.parse(match.group(1) ?? '0')))
-      .replaceAll('{filename}', oldFileName);
-  newFileName = newFileName + fileExtension;
-  return newFileName;
-}
+Future<String> renamePictureWithCustomFormat(File file) =>
+    renderFilenameTemplate(file, Global.getCustomeRenameFormat());
 
 /// generate url formated url by raw url
 String generateUrl(String rawUrl, String fileName) {
@@ -429,17 +364,19 @@ String generateBBcodeFormatedUrl(String rawUrl, String fileName) {
 
 String generateCustomFormatedUrl(String rawUrl, String filename) {
   String encodeUrl = generateUrl(rawUrl, filename);
-  return Global.customLinkFormat.replaceAll(r'$fileName', my_path.basename(filename)).replaceAll(r'$url', encodeUrl);
+  return Global.customLinkFormat
+      .replaceAll(r'$fileName', my_path.basename(filename))
+      .replaceAll(r'$url', encodeUrl);
 }
 
 String getFileSize(int fileSize) {
   return fileSize < 1024
       ? '${fileSize}B'
       : fileSize < 1024 * 1024
-          ? '${(fileSize / 1024).toStringAsFixed(2)}KB'
-          : fileSize < 1024 * 1024 * 1024
-              ? '${(fileSize / 1024 / 1024).toStringAsFixed(2)}MB'
-              : '${(fileSize / 1024 / 1024 / 1024).toStringAsFixed(2)}GB';
+      ? '${(fileSize / 1024).toStringAsFixed(2)}KB'
+      : fileSize < 1024 * 1024 * 1024
+      ? '${(fileSize / 1024 / 1024).toStringAsFixed(2)}MB'
+      : '${(fileSize / 1024 / 1024 / 1024).toStringAsFixed(2)}GB';
 }
 
 /// 选择文件图标
@@ -468,7 +405,8 @@ String getContentType(String ext) {
     ext = '.$ext';
   }
   try {
-    return lookupMimeType('file${ext.toLowerCase()}') ?? 'application/octet-stream';
+    return lookupMimeType('file${ext.toLowerCase()}') ??
+        'application/octet-stream';
   } catch (e) {
     return 'application/octet-stream';
   }
@@ -519,15 +457,11 @@ String formatErrorMessage(
 
 /// 错误日志生成函数
 void flogErr(Object e, Map parameters, String className, String methodName) {
-  final errorMessage = e is DioException
-      ? formatErrorMessage(parameters, e.toString(), isDioError: true, dioErrorMessage: e)
-      : formatErrorMessage(parameters, e.toString());
-
-  FLog.error(
-    className: className,
-    methodName: methodName,
-    text: errorMessage,
-    dataLogType: DataLogType.ERRORS.toString(),
+  HeroDiagnostics.instance.record(
+    '$className.$methodName',
+    e,
+    stack: StackTrace.current,
+    context: Map<String, dynamic>.from(parameters),
   );
 }
 
@@ -552,14 +486,6 @@ Future<void> deleteApkFile() async {
 /// APPinit
 mainInit() async {
   await SpUtil.getInstance();
-  await PermissionHelper.requestStoragePermission();
-  await PermissionHelper.requestCameraPermission();
-  await PermissionHelper.requestPhotoPermission();
-  await PermissionHelper.requestVideoPermission();
-  await PermissionHelper.requestAudioPermission();
-  await PermissionHelper.requestManageExternalStoragePermission();
-  await PermissionHelper.requestMediaLibraryAccess();
-  await PermissionHelper.requestInstallPackagePermission();
   Global.setUser(Global.getUser());
   deleteApkFile();
   Global.setPassword(Global.getPassword());
@@ -591,10 +517,7 @@ mainInit() async {
   //初始化扩展图床相册数据库
   await Global.setDatabaseExtend(await Global.getDatabaseExtend());
 
-  //初始化路由
-  FluroRouter router = FluroRouter();
-  Application.router = router;
-  Routes.configureRoutes(router);
+  // Routes are configured synchronously by main before rendering.
   //初始化图床管理页面排列顺序
   List<String> psHostHomePageOrder = Global.getpsHostHomePageOrder();
   if (psHostHomePageOrder.length <= 22) {
@@ -641,10 +564,22 @@ mainInit() async {
 //获得小图标，图片预览
 Widget getImageIcon(String path) {
   try {
-    List imageType = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.avif'];
-    if (imageType.contains(path.substring(path.lastIndexOf('.')).toLowerCase())) {
+    List imageType = [
+      '.jpg',
+      '.jpeg',
+      '.png',
+      '.gif',
+      '.bmp',
+      '.webp',
+      '.avif',
+    ];
+    if (imageType.contains(
+      path.substring(path.lastIndexOf('.')).toLowerCase(),
+    )) {
       return Image.file(File(path), width: 30, height: 30, fit: BoxFit.fill);
-    } else if (Global.iconList.contains(my_path.extension(path).substring(1).toLowerCase())) {
+    } else if (Global.iconList.contains(
+      my_path.extension(path).substring(1).toLowerCase(),
+    )) {
       return Image.asset(
         'assets/icons/${my_path.extension(path).substring(1)}.png',
         width: 30,
@@ -652,10 +587,20 @@ Widget getImageIcon(String path) {
         fit: BoxFit.fill,
       );
     } else {
-      return Image.asset('assets/icons/unknown.png', width: 30, height: 30, fit: BoxFit.fill);
+      return Image.asset(
+        'assets/icons/unknown.png',
+        width: 30,
+        height: 30,
+        fit: BoxFit.fill,
+      );
     }
   } catch (e) {
-    return Image.asset('assets/icons/unknown.png', width: 30, height: 30, fit: BoxFit.fill);
+    return Image.asset(
+      'assets/icons/unknown.png',
+      width: 30,
+      height: 30,
+      fit: BoxFit.fill,
+    );
   }
 }
 
@@ -668,7 +613,9 @@ void setControllerText(TextEditingController controller, String? value) {
 }
 
 String checkPlaceholder(String? value) {
-  return (value == ConfigureTemplate.placeholder || value == null) ? 'None' : value;
+  return (value == ConfigureTemplate.placeholder || value == null)
+      ? 'None'
+      : value;
 }
 
 List<T> removeDuplicates<T>(List<T> list) {

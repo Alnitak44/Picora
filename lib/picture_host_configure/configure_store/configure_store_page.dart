@@ -3,25 +3,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluro/fluro.dart';
 
-import 'package:horopic/picture_host_configure/configure_store/configure_store_file.dart';
-import 'package:horopic/picture_host_configure/configure_page/configure_export.dart';
-import 'package:horopic/picture_host_configure/configure_store/configure_template.dart';
-import 'package:horopic/picture_host_manage/manage_api/alist_manage_api.dart';
-import 'package:horopic/picture_host_manage/manage_api/aliyun_manage_api.dart';
-import 'package:horopic/picture_host_manage/manage_api/aws_manage_api.dart';
-import 'package:horopic/picture_host_manage/manage_api/ftp_manage_api.dart';
-import 'package:horopic/picture_host_manage/manage_api/github_manage_api.dart';
-import 'package:horopic/picture_host_manage/manage_api/imgur_manage_api.dart';
-import 'package:horopic/picture_host_manage/manage_api/lskypro_manage_api.dart';
-import 'package:horopic/picture_host_manage/manage_api/qiniu_manage_api.dart';
-import 'package:horopic/picture_host_manage/manage_api/smms_manage_api.dart';
-import 'package:horopic/picture_host_manage/manage_api/tencent_manage_api.dart';
-import 'package:horopic/picture_host_manage/manage_api/upyun_manage_api.dart';
-import 'package:horopic/picture_host_manage/manage_api/webdav_manage_api.dart';
+import 'package:picora/picture_host_configure/configure_store/configure_store_file.dart';
+import 'package:picora/picture_host_configure/configure_page/configure_export.dart';
+import 'package:picora/picture_host_configure/configure_store/configure_template.dart';
+import 'package:picora/picture_host_manage/manage_api/alist_manage_api.dart';
+import 'package:picora/picture_host_manage/manage_api/aliyun_manage_api.dart';
+import 'package:picora/picture_host_manage/manage_api/aws_manage_api.dart';
+import 'package:picora/picture_host_manage/manage_api/ftp_manage_api.dart';
+import 'package:picora/picture_host_manage/manage_api/github_manage_api.dart';
+import 'package:picora/picture_host_manage/manage_api/imgur_manage_api.dart';
+import 'package:picora/picture_host_manage/manage_api/lskypro_manage_api.dart';
+import 'package:picora/picture_host_manage/manage_api/qiniu_manage_api.dart';
+import 'package:picora/picture_host_manage/manage_api/smms_manage_api.dart';
+import 'package:picora/picture_host_manage/manage_api/tencent_manage_api.dart';
+import 'package:picora/picture_host_manage/manage_api/upyun_manage_api.dart';
+import 'package:picora/picture_host_manage/manage_api/webdav_manage_api.dart';
 
-import 'package:horopic/router/application.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/widgets/common_widgets.dart';
+import 'package:picora/router/application.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/widgets/common_widgets.dart';
 
 class ConfigureStorePage extends StatefulWidget {
   final String psHost;
@@ -43,7 +43,7 @@ class ConfigureStorePageState extends State<ConfigureStorePage> {
     'sm.ms': 'SM.MS',
     'imgur': 'Imgur',
     'lsky.pro': '兰空图床',
-    'alist': 'Alist V3',
+    'alist': 'OpenList',
     'webdav': 'WebDAV',
   };
 
@@ -78,7 +78,9 @@ class ConfigureStorePageState extends State<ConfigureStorePage> {
     List values = pictureHostInfo.values.toList();
     List<Widget> psInfoListTile = [];
 
-    bool isConfigured = !ConfigureStoreFile().checkIfOneUndetermined(pictureHostInfo);
+    bool isConfigured = !ConfigureStoreFile().checkIfOneUndetermined(
+      pictureHostInfo,
+    );
 
     psInfoListTile.add(
       Card(
@@ -87,7 +89,9 @@ class ConfigureStorePageState extends State<ConfigureStorePage> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
           side: BorderSide(
-            color: isConfigured ? const Color.fromARGB(255, 88, 171, 240) : Colors.grey.shade300,
+            color: isConfigured
+                ? const Color.fromARGB(255, 88, 171, 240)
+                : Colors.grey.shade300,
             width: 1,
           ),
         ),
@@ -95,7 +99,9 @@ class ConfigureStorePageState extends State<ConfigureStorePage> {
           children: [
             ListTile(
               leading: CircleAvatar(
-                backgroundColor: isConfigured ? const Color.fromARGB(255, 88, 171, 240) : Colors.grey.shade300,
+                backgroundColor: isConfigured
+                    ? const Color.fromARGB(255, 88, 171, 240)
+                    : Colors.grey.shade300,
                 child: Text(
                   storeName,
                   style: TextStyle(
@@ -105,23 +111,31 @@ class ConfigureStorePageState extends State<ConfigureStorePage> {
                 ),
               ),
               title: Text(
-                remarkName == ConfigureTemplate.placeholder ? '配置$storeName' : '配置$storeName->$remarkName',
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                ),
+                remarkName == ConfigureTemplate.placeholder
+                    ? '配置$storeName'
+                    : '配置$storeName->$remarkName',
+                style: const TextStyle(fontWeight: FontWeight.bold),
               ),
               subtitle: isConfigured
                   ? const Text('已配置', style: TextStyle(color: Colors.green))
                   : const Text('未配置', style: TextStyle(color: Colors.grey)),
               trailing: IconButton(
-                icon: const Icon(Icons.more_horiz_outlined, color: Colors.amber),
+                icon: const Icon(
+                  Icons.more_horiz_outlined,
+                  color: Colors.amber,
+                ),
                 onPressed: () {
                   showModalBottomSheet(
-                      isScrollControlled: true,
-                      context: context,
-                      builder: (context) {
-                        return buildBottomSheetWidget(context, storeName, pictureHostInfo);
-                      });
+                    isScrollControlled: true,
+                    context: context,
+                    builder: (context) {
+                      return buildBottomSheetWidget(
+                        context,
+                        storeName,
+                        pictureHostInfo,
+                      );
+                    },
+                  );
                 },
               ),
             ),
@@ -163,9 +177,14 @@ class ConfigureStorePageState extends State<ConfigureStorePage> {
                           Expanded(
                             flex: 3,
                             child: SelectableText(
-                              values[i] == ConfigureTemplate.placeholder ? '未配置' : values[i].toString(),
+                              values[i] == ConfigureTemplate.placeholder
+                                  ? '未配置'
+                                  : values[i].toString(),
                               style: TextStyle(
-                                color: values[i] == ConfigureTemplate.placeholder ? Colors.grey : Colors.black87,
+                                color:
+                                    values[i] == ConfigureTemplate.placeholder
+                                    ? Colors.grey
+                                    : Colors.black87,
                               ),
                             ),
                           ),
@@ -187,7 +206,9 @@ class ConfigureStorePageState extends State<ConfigureStorePage> {
     List<Widget> allPsInfoListTile = [];
     String alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     for (var element in alphabet.split('')) {
-      allPsInfoListTile.addAll(buildPsInfoListTile(element, configMap[element]!));
+      allPsInfoListTile.addAll(
+        buildPsInfoListTile(element, configMap[element]!),
+      );
     }
     return allPsInfoListTile;
   }
@@ -235,9 +256,7 @@ class ConfigureStorePageState extends State<ConfigureStorePage> {
                   children: buildAllPsInfoListTile(snapshot.data),
                 );
               } else {
-                return const Center(
-                  child: CircularProgressIndicator(),
-                );
+                return const Center(child: CircularProgressIndicator());
               }
             },
           );
@@ -251,7 +270,9 @@ class ConfigureStorePageState extends State<ConfigureStorePage> {
             backgroundColor: const Color.fromARGB(255, 198, 135, 235),
             heroTag: 'exportConfig',
             onPressed: () async {
-              var result = await ConfigureStoreFile().exportConfigureToJson(widget.psHost);
+              var result = await ConfigureStoreFile().exportConfigureToJson(
+                widget.psHost,
+              );
               await Clipboard.setData(ClipboardData(text: result));
               showToast('已导出到剪贴板');
             },
@@ -268,7 +289,10 @@ class ConfigureStorePageState extends State<ConfigureStorePage> {
                 return;
               }
               try {
-                await ConfigureStoreFile().importConfigureFromJson(widget.psHost, clipboardData.text!);
+                await ConfigureStoreFile().importConfigureFromJson(
+                  widget.psHost,
+                  clipboardData.text!,
+                );
                 setState(() {
                   showToast('导入成功');
                 });
@@ -352,7 +376,15 @@ class ConfigureStorePageState extends State<ConfigureStorePage> {
     String customUrl = checkPlaceholder(psInfo['customUrl']);
     String options = checkPlaceholder(psInfo['options']);
 
-    final config = AliyunConfigModel(keyId, keySecret, bucket, area, path, customUrl, options);
+    final config = AliyunConfigModel(
+      keyId,
+      keySecret,
+      bucket,
+      area,
+      path,
+      customUrl,
+      options,
+    );
     final configFile = await AliyunManageAPI().localFile();
     await configFile.writeAsString(jsonEncode(config));
     showToast('设置成功');
@@ -365,7 +397,12 @@ class ConfigureStorePageState extends State<ConfigureStorePage> {
     String bucket = psInfo['bucket']!;
     String endpoint = psInfo['endpoint']!;
 
-    if (!validateUndetermined([accessKeyId, secretAccessKey, bucket, endpoint])) {
+    if (!validateUndetermined([
+      accessKeyId,
+      secretAccessKey,
+      bucket,
+      endpoint,
+    ])) {
       showToast('请先去设置参数');
       return false;
     }
@@ -377,7 +414,16 @@ class ConfigureStorePageState extends State<ConfigureStorePage> {
     bool isEnableSSL = psInfo['isEnableSSL'] ?? true;
 
     final config = AwsConfigModel(
-        accessKeyId, secretAccessKey, bucket, endpoint, region, uploadPath, customUrl, isS3PathStyle, isEnableSSL);
+      accessKeyId,
+      secretAccessKey,
+      bucket,
+      endpoint,
+      region,
+      uploadPath,
+      customUrl,
+      isS3PathStyle,
+      isEnableSSL,
+    );
     final configFile = await AwsManageAPI().localFile();
     await configFile.writeAsString(jsonEncode(config));
     showToast('设置成功');
@@ -403,7 +449,17 @@ class ConfigureStorePageState extends State<ConfigureStorePage> {
     String ftpWebPath = checkPlaceholder(psInfo['ftpWebPath']);
 
     final config = FTPConfigModel(
-        ftpHost, ftpPort, ftpUser, ftpPassword, ftpType, isAnonymous, uploadPath, ftpHomeDir, ftpCustomUrl, ftpWebPath);
+      ftpHost,
+      ftpPort,
+      ftpUser,
+      ftpPassword,
+      ftpType,
+      isAnonymous,
+      uploadPath,
+      ftpHomeDir,
+      ftpCustomUrl,
+      ftpWebPath,
+    );
     final configFile = await FTPManageAPI().localFile();
     await configFile.writeAsString(jsonEncode(config));
     showToast('设置成功');
@@ -426,7 +482,14 @@ class ConfigureStorePageState extends State<ConfigureStorePage> {
     storePath = checkPlaceholder(storePath);
     customDomain = checkPlaceholder(customDomain);
 
-    final config = GithubConfigModel(githubusername, repo, token, storePath, branch, customDomain);
+    final config = GithubConfigModel(
+      githubusername,
+      repo,
+      token,
+      storePath,
+      branch,
+      customDomain,
+    );
     final configFile = await GithubManageAPI().localFile();
     await configFile.writeAsString(jsonEncode(config));
     showToast('设置成功');
@@ -486,7 +549,15 @@ class ConfigureStorePageState extends State<ConfigureStorePage> {
     String options = checkPlaceholder(psInfo['options']);
     String path = checkPlaceholder(psInfo['path']);
 
-    final config = QiniuConfigModel(accessKey, secretKey, bucket, url, area, options, path);
+    final config = QiniuConfigModel(
+      accessKey,
+      secretKey,
+      bucket,
+      url,
+      area,
+      options,
+      path,
+    );
     final configFile = await QiniuManageAPI().localFile();
     await configFile.writeAsString(jsonEncode(config));
     showToast('设置成功');
@@ -524,7 +595,16 @@ class ConfigureStorePageState extends State<ConfigureStorePage> {
     String customUrl = checkPlaceholder(psInfo['customUrl']);
     String options = checkPlaceholder(psInfo['options']);
 
-    final config = TencentConfigModel(secretId, secretKey, bucket, appId, area, path, customUrl, options);
+    final config = TencentConfigModel(
+      secretId,
+      secretKey,
+      bucket,
+      appId,
+      area,
+      path,
+      customUrl,
+      options,
+    );
     final configFile = await TencentManageAPI().localFile();
     await configFile.writeAsString(jsonEncode(config));
     showToast('设置成功');
@@ -547,7 +627,16 @@ class ConfigureStorePageState extends State<ConfigureStorePage> {
     String antiLeechToken = checkPlaceholder(psInfo['antiLeechToken']);
     String antiLeechType = checkPlaceholder(psInfo['antiLeechType']);
 
-    final config = UpyunConfigModel(bucket, operator, password, url, options, path, antiLeechToken, antiLeechType);
+    final config = UpyunConfigModel(
+      bucket,
+      operator,
+      password,
+      url,
+      options,
+      path,
+      antiLeechToken,
+      antiLeechType,
+    );
     final configFile = await UpyunManageAPI().localFile();
     await configFile.writeAsString(jsonEncode(config));
     showToast('设置成功');
@@ -570,7 +659,16 @@ class ConfigureStorePageState extends State<ConfigureStorePage> {
     String webPath = checkPlaceholder(psInfo['webPath']);
     String customUrl = checkPlaceholder(psInfo['customUrl']);
 
-    final config = AlistConfigModel(host, adminToken, alistusername, password, token, uploadPath, webPath, customUrl);
+    final config = AlistConfigModel(
+      host,
+      adminToken,
+      alistusername,
+      password,
+      token,
+      uploadPath,
+      webPath,
+      customUrl,
+    );
     final configFile = await AlistManageAPI().localFile();
     await configFile.writeAsString(jsonEncode(config));
     showToast('设置成功');
@@ -591,14 +689,25 @@ class ConfigureStorePageState extends State<ConfigureStorePage> {
     String customUrl = checkPlaceholder(psInfo['customUrl']);
     String webPath = checkPlaceholder(psInfo['webPath']);
 
-    final config = WebdavConfigModel(host, webdavusername, password, uploadPath, customUrl, webPath);
+    final config = WebdavConfigModel(
+      host,
+      webdavusername,
+      password,
+      uploadPath,
+      customUrl,
+      webPath,
+    );
     final configFile = await WebdavManageAPI().localFile();
     await configFile.writeAsString(jsonEncode(config));
     showToast('设置成功');
     return true;
   }
 
-  Widget buildBottomSheetWidget(BuildContext context, String storeName, Map psInfo) {
+  Widget buildBottomSheetWidget(
+    BuildContext context,
+    String storeName,
+    Map psInfo,
+  ) {
     String remarkName = psInfo['remarkName']!;
     bool isConfigured = !ConfigureStoreFile().checkIfOneUndetermined(psInfo);
 
@@ -624,7 +733,9 @@ class ConfigureStorePageState extends State<ConfigureStorePage> {
             ListTile(
               dense: true,
               leading: CircleAvatar(
-                backgroundColor: isConfigured ? const Color.fromARGB(255, 88, 171, 240) : Colors.grey.shade300,
+                backgroundColor: isConfigured
+                    ? const Color.fromARGB(255, 88, 171, 240)
+                    : Colors.grey.shade300,
                 child: Text(
                   storeName,
                   style: TextStyle(
@@ -634,8 +745,13 @@ class ConfigureStorePageState extends State<ConfigureStorePage> {
                 ),
               ),
               title: Text(
-                remarkName == ConfigureTemplate.placeholder ? '配置$storeName' : '配置$storeName-$remarkName',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                remarkName == ConfigureTemplate.placeholder
+                    ? '配置$storeName'
+                    : '配置$storeName-$remarkName',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               subtitle: isConfigured
                   ? const Text('已配置', style: TextStyle(color: Colors.green))
@@ -671,7 +787,8 @@ class ConfigureStorePageState extends State<ConfigureStorePage> {
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () async {
                 Navigator.pop(context);
-                var result = await ConfigureStoreFile().exportConfigureKeyToJson(widget.psHost, storeName);
+                var result = await ConfigureStoreFile()
+                    .exportConfigureKeyToJson(widget.psHost, storeName);
                 await Clipboard.setData(ClipboardData(text: result));
                 showToast('已复制到剪贴板');
               },
@@ -686,7 +803,10 @@ class ConfigureStorePageState extends State<ConfigureStorePage> {
               title: const Text('替代图床默认配置'),
               trailing: const Icon(Icons.arrow_forward_ios, size: 16),
               onTap: () async {
-                bool success = await applyConfigAsDefault(widget.psHost, psInfo);
+                bool success = await applyConfigAsDefault(
+                  widget.psHost,
+                  psInfo,
+                );
                 if (!success) {
                   return showToast('保存失败');
                 }

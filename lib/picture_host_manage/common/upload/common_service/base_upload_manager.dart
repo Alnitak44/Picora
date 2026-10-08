@@ -5,9 +5,9 @@ import 'package:collection/collection.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
-import 'package:horopic/pages/upload_helper/upload_status.dart';
-import 'package:horopic/picture_host_manage/common/upload/common_service/base_upload_request.dart';
-import 'package:horopic/picture_host_manage/common/upload/common_service/base_upload_task.dart';
+import 'package:picora/pages/upload_helper/upload_status.dart';
+import 'package:picora/picture_host_manage/common/upload/common_service/base_upload_request.dart';
+import 'package:picora/picture_host_manage/common/upload/common_service/base_upload_task.dart';
 
 abstract class BaseUploadManager {
   final Map<String, UploadTask> _cache = <String, UploadTask>{};

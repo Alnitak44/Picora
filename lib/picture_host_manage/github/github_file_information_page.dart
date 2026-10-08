@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/picture_host_manage/manage_api/github_manage_api.dart';
-import 'package:horopic/widgets/common_widgets.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/picture_host_manage/manage_api/github_manage_api.dart';
+import 'package:picora/widgets/common_widgets.dart';
 
 class GithubFileInformation extends StatefulWidget {
   final Map fileMap;
@@ -68,7 +68,9 @@ class GithubFileInformationState extends State<GithubFileInformation> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('已复制到剪贴板'),
-                          duration: Duration(seconds: 1),
+                          duration: Duration(milliseconds: 1500),
+                          dismissDirection: DismissDirection.horizontal,
+                          margin: EdgeInsets.fromLTRB(20, 0, 20, 12),
                         ),
                       );
                     },

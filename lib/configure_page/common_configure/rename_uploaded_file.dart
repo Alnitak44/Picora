@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:horopic/utils/global.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/widgets/common_widgets.dart';
+import 'package:picora/utils/global.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/widgets/common_widgets.dart';
 
 class RenameFile extends StatefulWidget {
   const RenameFile({super.key});
@@ -22,8 +22,8 @@ class RenameFileState extends State<RenameFile> {
     '{ms}': "毫秒(000-999)",
     '{timestamp}': "时间戳(毫秒)",
     '{uuid}': "唯一字符串",
-    '{md5}': "随机md5",
-    '{md5-16}': "随机md5前16位",
+    '{md5}': "文件内容MD5",
+    '{md5-16}': "文件MD5前16位",
     '{str-number}': "随机number位字符串",
     '{filename}': "原始文件名",
   };

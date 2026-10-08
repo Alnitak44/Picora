@@ -2,193 +2,104 @@ import 'package:flutter/material.dart';
 
 class RenameDialog extends AlertDialog {
   RenameDialog({super.key, required Widget contentWidget})
-      : super(
-          content: contentWidget,
-          contentPadding: EdgeInsets.zero,
-          backgroundColor: Colors.white,
-          elevation: 10,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-        );
+    : super(
+        content: contentWidget,
+        contentPadding: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
+      );
 }
 
 class RenameDialogContent extends StatefulWidget {
-  final String title;
-  final String cancelButtonText;
-  final String confirmButtonTitle;
+  final String title, cancelButtonText, confirmButtonTitle, isCoverMsg;
   final VoidCallback onCancel;
   final Function(bool isCoverFile) onConfirm;
   final TextEditingController renameTextController;
-  final String isCoverMsg;
-  final double buttonHeight;
-  final double borderWidth;
+  final double buttonHeight, borderWidth;
   final bool isShowCoverFileWidget;
-
   const RenameDialogContent({
     super.key,
     required this.title,
-    this.cancelButtonText = "取消",
-    this.confirmButtonTitle = "确定",
+    this.cancelButtonText = '取消',
+    this.confirmButtonTitle = '确定',
     this.buttonHeight = 50,
     this.borderWidth = 1,
     this.isShowCoverFileWidget = false,
-    this.isCoverMsg = "是否覆盖同名文件",
+    this.isCoverMsg = '是否覆盖同名文件',
     required this.onCancel,
     required this.onConfirm,
     required this.renameTextController,
   });
-
   @override
   RenameDialogContentState createState() => RenameDialogContentState();
 }
 
 class RenameDialogContentState extends State<RenameDialogContent> {
-  var isCoverFile = false;
-
+  bool isCoverFile = false;
+  final _form = GlobalKey<FormState>();
   @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final primaryColor = theme.colorScheme.primary;
-    final backgroundColor = Colors.grey.shade50;
-
-    return Container(
-      width: MediaQuery.of(context).size.width * 0.85,
-      constraints: BoxConstraints(
-        minHeight: 200,
-        maxHeight: widget.isShowCoverFileWidget ? 260 : 200,
-      ),
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
-            child: Text(
+  Widget build(BuildContext context) => SingleChildScrollView(
+    child: Padding(
+      padding: const EdgeInsets.all(24),
+      child: Form(
+        key: _form,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
               widget.title,
-              style: TextStyle(
-                color: Colors.black87,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-            child: TextFormField(
-              cursorHeight: 20,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.black87, fontSize: 16),
+            const SizedBox(height: 22),
+            TextFormField(
               controller: widget.renameTextController,
-              validator: (value) {
-                if (value!.isEmpty) {
-                  return '不能为空';
-                }
-                return null;
-              },
-              decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                filled: true,
-                fillColor: Colors.grey.shade100,
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: primaryColor, width: 2),
-                ),
-                errorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: Colors.red, width: 2),
-                ),
-                focusedErrorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: Colors.red, width: 2),
+              autofocus: true,
+              validator: (value) =>
+                  value == null || value.trim().isEmpty ? '请输入名称' : null,
+              decoration: const InputDecoration(labelText: '新名称'),
+            ),
+            if (widget.isShowCoverFileWidget)
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                value: isCoverFile,
+                onChanged: (value) =>
+                    setState(() => isCoverFile = value ?? false),
+                title: Text(
+                  widget.isCoverMsg,
+                  style: const TextStyle(fontSize: 12),
                 ),
               ),
-            ),
-          ),
-          if (widget.isShowCoverFileWidget)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Row(
-                children: [
-                  Checkbox(
-                    value: isCoverFile,
-                    activeColor: primaryColor,
-                    onChanged: (value) {
-                      setState(() {
-                        isCoverFile = value!;
-                      });
-                    },
-                  ),
-                  Expanded(
-                    child: Text(
-                      widget.isCoverMsg,
-                      style: const TextStyle(color: Colors.black87, fontSize: 14),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          const Spacer(),
-          Divider(height: 1, color: Colors.grey.shade300),
-          IntrinsicHeight(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            const SizedBox(height: 24),
+            Row(
               children: [
                 Expanded(
                   child: TextButton(
                     onPressed: () {
-                      widget.renameTextController.text = "";
+                      widget.renameTextController.clear();
                       widget.onCancel();
-                      Navigator.of(context).pop();
+                      Navigator.pop(context);
                     },
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.only(
-                          bottomLeft: Radius.circular(20),
-                        ),
-                      ),
-                    ),
-                    child: Text(
-                      widget.cancelButtonText,
-                      style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
-                    ),
+                    child: Text(widget.cancelButtonText),
                   ),
                 ),
-                VerticalDivider(width: 1, color: Colors.grey.shade300),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: TextButton(
+                  child: FilledButton(
                     onPressed: () {
+                      if (!_form.currentState!.validate()) return;
                       widget.onConfirm(isCoverFile);
-                      Navigator.of(context).pop();
-                      widget.renameTextController.text = "";
+                      Navigator.pop(context);
+                      widget.renameTextController.clear();
                     },
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.only(
-                          bottomRight: Radius.circular(20),
-                        ),
-                      ),
-                    ),
-                    child: Text(
-                      widget.confirmButtonTitle,
-                      style: TextStyle(fontSize: 16, color: primaryColor, fontWeight: FontWeight.bold),
-                    ),
+                    child: Text(widget.confirmButtonTitle),
                   ),
                 ),
               ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    );
-  }
+    ),
+  );
 }

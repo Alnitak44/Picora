@@ -1,47 +1,44 @@
-name: " Bug Report"
-description: 提交一个问题 
+name: 问题反馈
+description: 报告 Picora 的异常或行为问题
 title: "[Bug]: "
-labels: ["bug"]
-assignees:
-  - Kuingsmile
-labels:
-  - bug
 body:
   - type: markdown
     attributes:
-      value: |+
-        ## PicHoro Bug Report 模板
-
-        请依照该模板来提交，否则将会被关闭。
-
+      value: 请提供复现步骤，分享日志前移除密钥与私人链接。
   - type: input
     id: version
     attributes:
-      label: PicHoro的版本 
-      placeholder: 例如 V1.8.3
+      label: Picora 版本
+      placeholder: 例如 1.0.0-debug
     validations:
       required: true
   - type: input
-    id: platform
+    id: device
     attributes:
-      label: 系统信息 
-      placeholder: 例如 ViVo X60 Pro
+      label: 设备与 Android 版本
+      placeholder: 手机型号、Android 版本、ARM64
+    validations:
+      required: true
+  - type: input
+    id: provider
+    attributes:
+      label: 图床或插件
+      description: 上传问题请填写图床类型；插件请提供 ID 和版本。
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 从哪个页面、进行了什么操作、发生了什么。
     validations:
       required: true
   - type: textarea
-    id: reproduce
+    id: expected
     attributes:
-      label: 问题重现 | Bug reproduce
-      description: 请复述Bug重现流程 
+      label: 预期结果
     validations:
       required: true
   - type: textarea
-    id: log
+    id: logs
     attributes:
-      label: 相关日志 | Logs
-      description: 请附上 PicHoro 的相关报错日志（用文本的形式）。报错日志可以在 PicHoro 设置 -> 软件日志 后右上角导出到剪贴板和本地文件。
-  - type: markdown
-    attributes:
-      value: |
-        最后，喜欢 PicHoro 的话不妨给它点个 star~
-        
+      label: 日志与截图
+      description: 设置 → 诊断日志；附诊断编号或脱敏片段，不要上传账号配置。

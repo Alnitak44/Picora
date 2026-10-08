@@ -4,7 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:path/path.dart' as my_path;
 
-import 'package:horopic/utils/common_functions.dart';
+import 'package:picora/utils/common_functions.dart';
 
 class QiniuImageUploadUtils {
   static Map<String, String> areaHostMap = {

@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:webdav_client/webdav_client.dart' as webdav;
 
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/picture_host_manage/manage_api/webdav_manage_api.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/picture_host_manage/manage_api/webdav_manage_api.dart';
 
 class WebdavImageUploadUtils {
   //上传接口

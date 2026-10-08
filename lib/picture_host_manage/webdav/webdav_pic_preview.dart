@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:extended_image/extended_image.dart';
-import 'package:horopic/widgets/common_widgets.dart';
-import 'package:horopic/widgets/load_state_change.dart';
-import 'package:horopic/utils/common_functions.dart';
+import 'package:picora/widgets/common_widgets.dart';
+import 'package:picora/widgets/load_state_change.dart';
+import 'package:picora/utils/common_functions.dart';
 
 class WebdavImagePreview extends StatefulWidget {
   final int index;

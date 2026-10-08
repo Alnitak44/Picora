@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import 'package:horopic/picture_host_manage/common/download/common_service/base_download_status.dart';
-import 'package:horopic/picture_host_manage/common/download/common_service/base_download_request.dart';
+import 'package:picora/picture_host_manage/common/download/common_service/base_download_status.dart';
+import 'package:picora/picture_host_manage/common/download/common_service/base_download_request.dart';
 
 class DownloadTask {
   final DownloadRequest request;

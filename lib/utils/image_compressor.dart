@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_avif/flutter_avif.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
-import 'package:horopic/utils/common_functions.dart';
+import 'package:picora/utils/common_functions.dart';
 import 'package:path_provider/path_provider.dart';
 
 Future<File> compressAndGetFile(String path, String fileName, String format,

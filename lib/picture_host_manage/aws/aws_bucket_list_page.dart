@@ -1,19 +1,19 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:horopic/picture_host_manage/common/rename_dialog_widgets.dart';
-import 'package:horopic/widgets/common_widgets.dart';
+import 'package:picora/picture_host_manage/common/rename_dialog_widgets.dart';
+import 'package:picora/widgets/common_widgets.dart';
 import 'package:minio/models.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
 import 'package:grouped_list/grouped_list.dart';
 import 'package:fluro/fluro.dart';
 
-import 'package:horopic/router/application.dart';
-import 'package:horopic/router/routers.dart';
-import 'package:horopic/picture_host_manage/common/loading_state.dart' as loading_state;
-import 'package:horopic/picture_host_manage/manage_api/aws_manage_api.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/utils/global.dart';
+import 'package:picora/router/application.dart';
+import 'package:picora/router/routers.dart';
+import 'package:picora/picture_host_manage/common/loading_state.dart' as loading_state;
+import 'package:picora/picture_host_manage/manage_api/aws_manage_api.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/utils/global.dart';
 
 class AwsBucketList extends StatefulWidget {
   const AwsBucketList({super.key});

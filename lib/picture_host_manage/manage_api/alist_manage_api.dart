@@ -4,10 +4,10 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 
-import 'package:horopic/utils/global.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/picture_host_configure/configure_page/alist_configure.dart';
-import 'package:horopic/picture_host_manage/common/base_manage_api.dart';
+import 'package:picora/utils/global.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/picture_host_configure/configure_page/alist_configure.dart';
+import 'package:picora/picture_host_manage/common/base_manage_api.dart';
 
 class AlistManageAPI extends BaseManageApi {
   static final AlistManageAPI _instance = AlistManageAPI._internal();
@@ -24,8 +24,8 @@ class AlistManageAPI extends BaseManageApi {
     '139Yun': '中国移动云盘',
     '189Cloud': '天翼云盘',
     '189CloudPC': '天翼云盘客户端',
-    'AList V2': 'Alist V2',
-    'AList V3': 'Alist V3',
+    'AList V2': 'OpenList V2',
+    'AList V3': 'OpenList V3',
     'Alias': '别名',
     'Aliyundrive': '阿里云盘',
     'AliyundriveOpen': '阿里云盘Open',
@@ -91,9 +91,7 @@ class AlistManageAPI extends BaseManageApi {
       };
 
       BaseOptions baseoptions = setBaseOptions();
-      baseoptions.headers = {
-        "Content-Type": "application/json",
-      };
+      baseoptions.headers = {"Content-Type": "application/json"};
       Dio dio = Dio(baseoptions);
 
       var response = await dio.post(url, data: queryParameters);
@@ -101,13 +99,7 @@ class AlistManageAPI extends BaseManageApi {
         return ['success', response.data['data']['token']];
       }
     } catch (e) {
-      flogErr(
-          e,
-          {
-            'host': host,
-          },
-          "AlistManageAPI",
-          "getToken");
+      flogErr(e, {'host': host}, "OpenListManageAPI", "getToken");
     }
     return ['failed'];
   }
@@ -116,7 +108,11 @@ class AlistManageAPI extends BaseManageApi {
     Map configMap = await getConfigMap();
     String uploadPath = configMap['uploadPath'] ?? 'None';
     String token = configMap['token'] ?? '';
-    var res = await getToken(configMap['host'], configMap['alistusername'], configMap['password']);
+    var res = await getToken(
+      configMap['host'],
+      configMap['alistusername'],
+      configMap['password'],
+    );
     if (res[0] != 'success') {
       return ['failed'];
     }
@@ -141,7 +137,9 @@ class AlistManageAPI extends BaseManageApi {
   static getUsedToken(Map configMap) {
     String token = configMap['token'];
     String? adminToken = configMap['adminToken'];
-    if (adminToken != null && adminToken != 'None' && adminToken.trim().isNotEmpty) {
+    if (adminToken != null &&
+        adminToken != 'None' &&
+        adminToken.trim().isNotEmpty) {
       token = adminToken;
     }
     return token;
@@ -170,13 +168,7 @@ class AlistManageAPI extends BaseManageApi {
       await alistConfigFile.writeAsString(alistConfigJson);
       return ['success'];
     } catch (e) {
-      flogErr(
-          e,
-          {
-            'path': path,
-          },
-          "AlistManageAPI",
-          "setDefaultBucket");
+      flogErr(e, {'path': path}, "OpenListManageAPI", "setDefaultBucket");
       return ['failed'];
     }
   }
@@ -197,19 +189,24 @@ class AlistManageAPI extends BaseManageApi {
       String url = '$host$endpoint';
 
       BaseOptions baseoptions = setBaseOptions();
-      baseoptions.headers = {
-        "Authorization": token,
-        ...?headers,
-      };
+      baseoptions.headers = {"Authorization": token, ...?headers};
       Dio dio = Dio(baseoptions);
 
       Response response;
       if (method == 'GET') {
         response = await dio.get(url, queryParameters: queryParameters);
       } else if (method == 'POST') {
-        response = await dio.post(url, data: data, queryParameters: queryParameters);
+        response = await dio.post(
+          url,
+          data: data,
+          queryParameters: queryParameters,
+        );
       } else {
-        response = await dio.put(url, data: data, queryParameters: queryParameters);
+        response = await dio.put(
+          url,
+          data: data,
+          queryParameters: queryParameters,
+        );
       }
 
       if (response.statusCode == 200 && response.data['message'] == 'success') {
@@ -223,21 +220,22 @@ class AlistManageAPI extends BaseManageApi {
           'queryParameters': queryParameters,
           'headers': headers,
         },
-        "AlistManageAPI",
+        "OpenListManageAPI",
         callFunction,
       );
       return ['failed'];
     } catch (e) {
       flogErr(
-          e,
-          {
-            'url': endpoint,
-            'data': data,
-            'queryParameters': queryParameters,
-            'headers': headers,
-          },
-          "AlistManageAPI",
-          callFunction);
+        e,
+        {
+          'url': endpoint,
+          'data': data,
+          'queryParameters': queryParameters,
+          'headers': headers,
+        },
+        "OpenListManageAPI",
+        callFunction,
+      );
       return [e.toString()];
     }
   }
@@ -254,9 +252,7 @@ class AlistManageAPI extends BaseManageApi {
   Future<List<String>> changeBucketState(Map element, bool enable) async {
     return await _makeRequest(
       '/api/admin/storage/${enable ? 'enable' : 'disable'}',
-      queryParameters: {
-        'id': element['id'],
-      },
+      queryParameters: {'id': element['id']},
       onSuccess: (response) => ['success'],
       callFunction: 'changeBucketState',
     );
@@ -265,9 +261,7 @@ class AlistManageAPI extends BaseManageApi {
   Future<List<String>> deleteBucket(Map element) async {
     return await _makeRequest(
       '/api/admin/storage/delete',
-      queryParameters: {
-        'id': element['id'],
-      },
+      queryParameters: {'id': element['id']},
       onSuccess: (response) => ['success'],
       callFunction: 'deleteBucket',
     );
@@ -295,10 +289,7 @@ class AlistManageAPI extends BaseManageApi {
       Dio dio = Dio(baseoptions);
       List fileList = [];
 
-      var response = await dio.post(
-        url,
-        data: dataMap,
-      );
+      var response = await dio.post(url, data: dataMap);
       if (response.statusCode == 200 && response.data['message'] == 'success') {
         if (response.data['data']['total'] == 0) {
           return ['success', fileList];
@@ -309,11 +300,9 @@ class AlistManageAPI extends BaseManageApi {
           int totalPage = (response.data['data']['total'] / 1000).ceil();
           for (int i = 2; i <= totalPage; i++) {
             dataMap['page'] = i;
-            response = await dio.post(
-              url,
-              data: dataMap,
-            );
-            if (response.statusCode == 200 && response.data['message'] == 'success') {
+            response = await dio.post(url, data: dataMap);
+            if (response.statusCode == 200 &&
+                response.data['message'] == 'success') {
               if (response.data['data']['total'] == 0) {
                 return ['success', fileList];
               }
@@ -321,11 +310,8 @@ class AlistManageAPI extends BaseManageApi {
             } else {
               flogErr(
                 response,
-                {
-                  'url': url,
-                  'data': dataMap,
-                },
-                "AlistManageAPI",
+                {'url': url, 'data': dataMap},
+                "OpenListManageAPI",
                 "listFolder",
               );
               return [response.toString()];
@@ -336,16 +322,13 @@ class AlistManageAPI extends BaseManageApi {
       }
       flogErr(
         response,
-        {
-          'url': url,
-          'data': dataMap,
-        },
-        "AlistManageAPI",
+        {'url': url, 'data': dataMap},
+        "OpenListManageAPI",
         "listFolder",
       );
       return [response.toString()];
     } catch (e) {
-      flogErr(e, {}, "AlistManageAPI", "listFolder");
+      flogErr(e, {}, "OpenListManageAPI", "listFolder");
       return [e.toString()];
     }
   }
@@ -353,12 +336,8 @@ class AlistManageAPI extends BaseManageApi {
   getFileInfo(String path) async {
     return await _makeRequest(
       '/api/fs/get',
-      data: {
-        "path": path,
-      },
-      headers: {
-        "Content-Type": "application/json",
-      },
+      data: {"path": path},
+      headers: {"Content-Type": "application/json"},
       onSuccess: (response) => ['success', response.data['data']],
       callFunction: 'getFileInfo',
     );
@@ -367,12 +346,8 @@ class AlistManageAPI extends BaseManageApi {
   mkDir(String path) async {
     return await _makeRequest(
       '/api/fs/mkdir',
-      data: {
-        "path": path,
-      },
-      headers: {
-        "Content-Type": "application/json",
-      },
+      data: {"path": path},
+      headers: {"Content-Type": "application/json"},
       onSuccess: (response) => ['success'],
       callFunction: 'mkDir',
     );
@@ -381,13 +356,8 @@ class AlistManageAPI extends BaseManageApi {
   rename(String source, String target) async {
     return await _makeRequest(
       '/api/fs/rename',
-      data: {
-        "path": source,
-        "name": target,
-      },
-      headers: {
-        "Content-Type": "application/json",
-      },
+      data: {"path": source, "name": target},
+      headers: {"Content-Type": "application/json"},
       onSuccess: (response) => ['success'],
       callFunction: 'rename',
     );
@@ -396,13 +366,8 @@ class AlistManageAPI extends BaseManageApi {
   remove(String dir, List names) async {
     return await _makeRequest(
       '/api/fs/remove',
-      data: {
-        "dir": dir,
-        "names": names,
-      },
-      headers: {
-        "Content-Type": "application/json",
-      },
+      data: {"dir": dir, "names": names},
+      headers: {"Content-Type": "application/json"},
       onSuccess: (response) => ['success'],
       callFunction: 'remove',
     );
@@ -445,8 +410,14 @@ class AlistManageAPI extends BaseManageApi {
   //从网络链接下载文件后上传
   uploadNetworkFile(String fileLink, String uploadPath) async {
     try {
-      String filename = fileLink.substring(fileLink.lastIndexOf("/") + 1, fileLink.length);
-      filename = filename.substring(0, !filename.contains("?") ? filename.length : filename.indexOf("?"));
+      String filename = fileLink.substring(
+        fileLink.lastIndexOf("/") + 1,
+        fileLink.length,
+      );
+      filename = filename.substring(
+        0,
+        !filename.contains("?") ? filename.length : filename.indexOf("?"),
+      );
       String savePath = await getTemporaryDirectory().then((value) {
         return value.path;
       });
@@ -454,17 +425,18 @@ class AlistManageAPI extends BaseManageApi {
       Dio dio = Dio();
       Response response = await dio.download(fileLink, saveFilePath);
       if (response.statusCode == 200) {
-        var uploadResult = await uploadFile(
-          filename,
-          saveFilePath,
-          uploadPath,
-        );
+        var uploadResult = await uploadFile(filename, saveFilePath, uploadPath);
         if (uploadResult[0] == "success") {
           return ['success'];
         }
       }
     } catch (e) {
-      flogErr(e, {'fileLink': fileLink, 'uploadPath': uploadPath}, "AlistManageAPI", "uploadNetworkFile");
+      flogErr(
+        e,
+        {'fileLink': fileLink, 'uploadPath': uploadPath},
+        "OpenListManageAPI",
+        "uploadNetworkFile",
+      );
     }
     return ['failed'];
   }

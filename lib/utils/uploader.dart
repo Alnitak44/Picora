@@ -2,9 +2,9 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:path_provider/path_provider.dart';
 
-import 'package:horopic/api/api.dart';
-import 'package:horopic/utils/global.dart';
-import 'package:horopic/utils/common_functions.dart';
+import 'package:picora/api/api.dart';
+import 'package:picora/utils/global.dart';
+import 'package:picora/utils/common_functions.dart';
 
 Map<String, Function> uploadFunc = {
   'lsky.pro': LskyproImageUploadUtils.uploadApi,

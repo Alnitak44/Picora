@@ -5,9 +5,9 @@ import 'package:dartssh2/dartssh2.dart';
 import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 
-import 'package:horopic/picture_host_configure/configure_page/ftp_configure.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/picture_host_manage/common/base_manage_api.dart';
+import 'package:picora/picture_host_configure/configure_page/ftp_configure.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/picture_host_manage/common/base_manage_api.dart';
 
 class FTPManageAPI extends BaseManageApi {
   static final FTPManageAPI _instance = FTPManageAPI._internal();

@@ -12,18 +12,19 @@ import 'package:intl/intl.dart';
 import 'package:path/path.dart' as my_path;
 import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 
-import 'package:horopic/picture_host_manage/common/base_file_explorer_page.dart';
-import 'package:horopic/picture_host_manage/common/build_bottom_widget.dart';
-import 'package:horopic/router/application.dart';
-import 'package:horopic/router/routers.dart';
-import 'package:horopic/picture_host_manage/manage_api/alist_manage_api.dart';
-import 'package:horopic/picture_host_manage/common/loading_state.dart' as loading_state;
-import 'package:horopic/utils/global.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/widgets/net_loading_dialog.dart';
-import 'package:horopic/utils/image_compressor.dart';
-import 'package:horopic/picture_host_manage/common/new_folder_widgets.dart';
-import 'package:horopic/picture_host_manage/common/rename_dialog_widgets.dart';
+import 'package:picora/picture_host_manage/common/base_file_explorer_page.dart';
+import 'package:picora/picture_host_manage/common/build_bottom_widget.dart';
+import 'package:picora/router/application.dart';
+import 'package:picora/router/routers.dart';
+import 'package:picora/picture_host_manage/manage_api/alist_manage_api.dart';
+import 'package:picora/picture_host_manage/common/loading_state.dart'
+    as loading_state;
+import 'package:picora/utils/global.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/widgets/net_loading_dialog.dart';
+import 'package:picora/utils/image_compressor.dart';
+import 'package:picora/picture_host_manage/common/new_folder_widgets.dart';
+import 'package:picora/picture_host_manage/common/rename_dialog_widgets.dart';
 
 class AlistFileExplorer extends BaseFileExplorer {
   /// alist图床设置
@@ -34,12 +35,13 @@ class AlistFileExplorer extends BaseFileExplorer {
   final String bucketPrefix;
   final String refresh;
 
-  const AlistFileExplorer(
-      {super.key,
-      required this.currentStorageInfoMap,
-      required this.bucketPrefix,
-      required this.refresh,
-      required this.configMap});
+  const AlistFileExplorer({
+    super.key,
+    required this.currentStorageInfoMap,
+    required this.bucketPrefix,
+    required this.refresh,
+    required this.configMap,
+  });
 
   @override
   AlistFileExplorerState createState() => AlistFileExplorerState();
@@ -82,14 +84,15 @@ class AlistFileExplorerState extends BaseFileExplorerState<AlistFileExplorer> {
     for (var item in fetchedFolderData[1]) {
       (item['is_dir'] ? dir : files).add(item);
     }
-    fileAllInfoList = files.isEmpty
-        ? []
-        : files.map((element) {
-            var file = Map.from(element);
-            file['modified'] = DateTime.parse(file['modified']);
-            return file;
-          }).toList()
-      ..sort((a, b) => b['modified'].compareTo(a['modified']));
+    fileAllInfoList =
+        files.isEmpty
+              ? []
+              : files.map((element) {
+                  var file = Map.from(element);
+                  file['modified'] = DateTime.parse(file['modified']);
+                  return file;
+                }).toList()
+          ..sort((a, b) => b['modified'].compareTo(a['modified']));
 
     dirAllInfoList = dir.isEmpty ? [] : List.from(dir);
     allInfoList = [...dirAllInfoList, ...fileAllInfoList];
@@ -99,7 +102,11 @@ class AlistFileExplorerState extends BaseFileExplorerState<AlistFileExplorer> {
         if (allInfoList.isEmpty) {
           state = loading_state.LoadState.empty;
         } else {
-          selectedFilesBool = List.filled(allInfoList.length, false, growable: true);
+          selectedFilesBool = List.filled(
+            allInfoList.length,
+            false,
+            growable: true,
+          );
           state = loading_state.LoadState.success;
         }
       });
@@ -109,10 +116,16 @@ class AlistFileExplorerState extends BaseFileExplorerState<AlistFileExplorer> {
   @override
   Future<String> getShareUrl(int index) async {
     final isDirectory = index < dirAllInfoList.length;
-    final fileName = isDirectory ? dirAllInfoList[index]['name'] : allInfoList[index]['name'];
+    final fileName = isDirectory
+        ? dirAllInfoList[index]['name']
+        : allInfoList[index]['name'];
     final baseUrl = widget.configMap['host'];
-    final path = isDirectory ? '$baseUrl${widget.bucketPrefix}$fileName' : '$baseUrl/d${widget.bucketPrefix}$fileName';
-    if (!isDirectory && allInfoList[index]['sign'] != null && allInfoList[index]['sign'].isNotEmpty) {
+    final path = isDirectory
+        ? '$baseUrl${widget.bucketPrefix}$fileName'
+        : '$baseUrl/d${widget.bucketPrefix}$fileName';
+    if (!isDirectory &&
+        allInfoList[index]['sign'] != null &&
+        allInfoList[index]['sign'].isNotEmpty) {
       return '$path?sign=${allInfoList[index]['sign']}';
     }
     return path;
@@ -120,18 +133,22 @@ class AlistFileExplorerState extends BaseFileExplorerState<AlistFileExplorer> {
 
   @override
   String getFileDate(int index) {
-    return DateFormat('yyyy-MM-dd HH:mm:ss').format(allInfoList[index]['modified'].toString() != 'null'
-        ? DateTime.parse(allInfoList[index]['modified'].toString())
-        : DateTime.now());
+    return DateFormat('yyyy-MM-dd HH:mm:ss').format(
+      allInfoList[index]['modified'].toString() != 'null'
+          ? DateTime.parse(allInfoList[index]['modified'].toString())
+          : DateTime.now(),
+    );
   }
 
   @override
   Future<void> onFileItemTap(int index) async {
     if (index < dirAllInfoList.length) {
       String prefix = '${widget.bucketPrefix}${allInfoList[index]['name']}/';
-      Application.router.navigateTo(context,
-          '${Routes.alistFileExplorer}?currentStorageInfoMap=${Uri.encodeComponent(jsonEncode(widget.currentStorageInfoMap))}&bucketPrefix=${Uri.encodeComponent(prefix)}&refresh=${Uri.encodeComponent(widget.refresh)}&configMap=${Uri.encodeComponent(jsonEncode(widget.configMap))}',
-          transition: TransitionType.cupertino);
+      Application.router.navigateTo(
+        context,
+        '${Routes.alistFileExplorer}?currentStorageInfoMap=${Uri.encodeComponent(jsonEncode(widget.currentStorageInfoMap))}&bucketPrefix=${Uri.encodeComponent(prefix)}&refresh=${Uri.encodeComponent(widget.refresh)}&configMap=${Uri.encodeComponent(jsonEncode(widget.configMap))}',
+        transition: TransitionType.cupertino,
+      );
     } else {
       String urlList = '';
       //判断是否为支持的格式
@@ -145,7 +162,9 @@ class AlistFileExplorerState extends BaseFileExplorerState<AlistFileExplorer> {
         String shareUrl = '';
         int newImageIndex = index - dirAllInfoList.length;
         for (int i = dirAllInfoList.length; i < allInfoList.length; i++) {
-          if (Global.imgExt.contains(allInfoList[i]['name'].split('.').last.toLowerCase())) {
+          if (Global.imgExt.contains(
+            allInfoList[i]['name'].split('.').last.toLowerCase(),
+          )) {
             shareUrl = await getShareUrl(i);
             urlList += '$shareUrl,';
           } else if (i < index) {
@@ -155,67 +174,101 @@ class AlistFileExplorerState extends BaseFileExplorerState<AlistFileExplorer> {
         urlList = urlList.substring(0, urlList.length - 1);
         if (context.mounted) {
           Application.router.navigateTo(
-              context, '${Routes.albumImagePreview}?index=$newImageIndex&images=${Uri.encodeComponent(urlList)}',
-              transition: TransitionType.none);
+            context,
+            '${Routes.albumImagePreview}?index=$newImageIndex&images=${Uri.encodeComponent(urlList)}',
+            transition: TransitionType.none,
+          );
         }
       } else if (fileExt == 'pdf') {
         if (context.mounted) {
-          Application.router.navigateTo(context,
-              '${Routes.pdfViewer}?url=${Uri.encodeComponent(await getShareUrl(index))}&fileName=${Uri.encodeComponent(allInfoList[index]['name'])}&headers=${Uri.encodeComponent(jsonEncode({}))}',
-              transition: TransitionType.none);
+          Application.router.navigateTo(
+            context,
+            '${Routes.pdfViewer}?url=${Uri.encodeComponent(await getShareUrl(index))}&fileName=${Uri.encodeComponent(allInfoList[index]['name'])}&headers=${Uri.encodeComponent(jsonEncode({}))}',
+            transition: TransitionType.none,
+          );
         }
       } else if (Global.textExt.contains(fileExt)) {
         String shareUrl = await getShareUrl(index);
         showToast('开始获取文件');
-        String filePath = await downloadTxtFile(shareUrl, allInfoList[index]['name'], null);
+        String filePath = await downloadTxtFile(
+          shareUrl,
+          allInfoList[index]['name'],
+          null,
+        );
         String fileName = allInfoList[index]['name'];
         if (filePath == 'error') {
           showToast('获取失败');
           return;
         }
         if (context.mounted) {
-          Application.router.navigateTo(context,
-              '${Routes.mdPreview}?filePath=${Uri.encodeComponent(filePath)}&fileName=${Uri.encodeComponent(fileName)}',
-              transition: TransitionType.none);
+          Application.router.navigateTo(
+            context,
+            '${Routes.mdPreview}?filePath=${Uri.encodeComponent(filePath)}&fileName=${Uri.encodeComponent(fileName)}',
+            transition: TransitionType.none,
+          );
         }
       }
     }
   }
 
-  Future<void> _processUploadFiles(List<File> files, bool isSkipImageCheck) async {
+  Future<void> _processUploadFiles(
+    List<File> files,
+    bool isSkipImageCheck,
+  ) async {
     Map configMap = await manageAPI.getConfigMap();
-    configMap['uploadPath'] = widget.bucketPrefix == "/" ? "None" : widget.bucketPrefix;
+    configMap['uploadPath'] = widget.bucketPrefix == "/"
+        ? "None"
+        : widget.bucketPrefix;
 
     for (int i = 0; i < files.length; i++) {
-      if (isSkipImageCheck || Global.imgExt.contains(my_path.extension(files[i].path).toLowerCase().substring(1))) {
+      if (isSkipImageCheck ||
+          Global.imgExt.contains(
+            my_path.extension(files[i].path).toLowerCase().substring(1),
+          )) {
         if (Global.isCompress == true) {
           files[i] = await compressAndGetFile(
-              files[i].path, my_path.basename(files[i].path), Global.defaultCompressFormat,
-              minHeight: Global.minHeight, minWidth: Global.minWidth, quality: Global.quality);
+            files[i].path,
+            my_path.basename(files[i].path),
+            Global.defaultCompressFormat,
+            minHeight: Global.minHeight,
+            minWidth: Global.minWidth,
+            quality: Global.quality,
+          );
         }
       }
-      List uploadList = [files[i].path, my_path.basename(files[i].path), configMap];
+      List uploadList = [
+        files[i].path,
+        my_path.basename(files[i].path),
+        configMap,
+      ];
       Global.alistUploadList.add(jsonEncode(uploadList));
     }
     Global.alistUploadList = removeDuplicates(Global.alistUploadList);
     Global.setAlistUploadList(Global.alistUploadList);
-    String downloadPath = await ExternalPath.getExternalStoragePublicDirectory(ExternalPath.DIRECTORY_DOWNLOAD);
+    String downloadPath = await ExternalPath.getExternalStoragePublicDirectory(
+      ExternalPath.DIRECTORY_DOWNLOAD,
+    );
 
     if (mounted) {
       Application.router
-          .navigateTo(context,
-              '/baseUpDownloadManagePage?bucketName=${Uri.encodeComponent('Alist_${widget.currentStorageInfoMap['mount_path'].split('/').last}')}&downloadPath=${Uri.encodeComponent(downloadPath)}&tabIndex=0&currentListIndex=0',
-              transition: TransitionType.inFromRight)
+          .navigateTo(
+            context,
+            '/baseUpDownloadManagePage?bucketName=${Uri.encodeComponent('OpenList_${widget.currentStorageInfoMap['mount_path'].split('/').last}')}&downloadPath=${Uri.encodeComponent(downloadPath)}&tabIndex=0&currentListIndex=0',
+            transition: TransitionType.inFromRight,
+          )
           .then((value) {
-        _getBucketList();
-      });
+            _getBucketList();
+          });
     }
   }
 
   @override
   String getPageTitle() => widget.bucketPrefix == '/'
       ? '根目录'
-      : widget.bucketPrefix.substring(0, widget.bucketPrefix.length - 1).split('/').last;
+      : widget.bucketPrefix
+            .substring(0, widget.bucketPrefix.length - 1)
+            .split('/')
+            .last;
 
   @override
   DateTime getFormatedFileDate(dynamic item) {
@@ -225,24 +278,28 @@ class AlistFileExplorerState extends BaseFileExplorerState<AlistFileExplorer> {
   @override
   void showUploadOptions(BuildContext context) {
     showModalBottomSheet(
-        context: context,
-        builder: (BuildContext bc) {
-          return SafeArea(
-              child: Wrap(
+      context: context,
+      builder: (BuildContext bc) {
+        return SafeArea(
+          child: Wrap(
             children: [
               ListTile(
                 minLeadingWidth: 0,
-                leading: const Icon(Icons.file_present_outlined, color: Colors.blue),
+                leading: const Icon(
+                  Icons.file_present_outlined,
+                  color: Colors.blue,
+                ),
                 title: const Text('上传文件'),
                 onTap: () async {
                   Navigator.pop(context);
-                  FilePickerResult? pickresult = await FilePicker.platform.pickFiles(
-                    allowMultiple: true,
-                  );
+                  FilePickerResult? pickresult = await FilePicker.platform
+                      .pickFiles(allowMultiple: true);
                   if (pickresult == null) {
                     return showToast('未选择文件');
                   }
-                  List<File> files = pickresult.paths.map((path) => File(path!)).toList();
+                  List<File> files = pickresult.paths
+                      .map((path) => File(path!))
+                      .toList();
                   await _processUploadFiles(files, false);
                 },
               ),
@@ -252,11 +309,14 @@ class AlistFileExplorerState extends BaseFileExplorerState<AlistFileExplorer> {
                 title: const Text('上传照片'),
                 onTap: () async {
                   Navigator.pop(context);
-                  final List<AssetEntity>? pickedImage = await AssetPicker.pickAssets(context,
-                      pickerConfig: const AssetPickerConfig(
-                        maxAssets: 100,
-                        selectedAssets: [],
-                      ));
+                  final List<AssetEntity>? pickedImage =
+                      await AssetPicker.pickAssets(
+                        context,
+                        pickerConfig: const AssetPickerConfig(
+                          maxAssets: 100,
+                          selectedAssets: [],
+                        ),
+                      );
 
                   if (pickedImage == null) {
                     return showToast('未选择照片');
@@ -277,7 +337,9 @@ class AlistFileExplorerState extends BaseFileExplorerState<AlistFileExplorer> {
                 title: const Text('上传剪贴板内链接(换行分隔多个)'),
                 onTap: () async {
                   Navigator.pop(context);
-                  var url = await flutter_services.Clipboard.getData('text/plain');
+                  var url = await flutter_services.Clipboard.getData(
+                    'text/plain',
+                  );
                   if (url == null || url.text == null || url.text!.isEmpty) {
                     if (mounted) {
                       showToastWithContext(context, "剪贴板为空");
@@ -289,27 +351,31 @@ class AlistFileExplorerState extends BaseFileExplorerState<AlistFileExplorer> {
                     List fileLinkList = urlStr.split("\n");
                     if (context.mounted) {
                       await showDialog(
-                          context: context,
-                          barrierDismissible: false,
-                          builder: (context) {
-                            return NetLoadingDialog(
-                              outsideDismiss: false,
-                              loading: true,
-                              loadingText: "上传中...",
-                              requestCallBack: manageAPI.uploadNetworkFileEntry(
-                                  fileLinkList, widget.bucketPrefix == "/" ? "None" : widget.bucketPrefix),
-                            );
-                          });
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (context) {
+                          return NetLoadingDialog(
+                            outsideDismiss: false,
+                            loading: true,
+                            loadingText: "上传中...",
+                            requestCallBack: manageAPI.uploadNetworkFileEntry(
+                              fileLinkList,
+                              widget.bucketPrefix == "/"
+                                  ? "None"
+                                  : widget.bucketPrefix,
+                            ),
+                          );
+                        },
+                      );
                     }
                     _getBucketList();
                   } catch (e) {
                     flogErr(
-                        e,
-                        {
-                          'url': url.text,
-                        },
-                        'AlistManagePage',
-                        'uploadNetworkFileEntry');
+                      e,
+                      {'url': url.text},
+                      'OpenListManagePage',
+                      'uploadNetworkFileEntry',
+                    );
                     if (mounted) {
                       showToastWithContext(context, "错误");
                     }
@@ -326,55 +392,67 @@ class AlistFileExplorerState extends BaseFileExplorerState<AlistFileExplorer> {
                 onTap: () async {
                   Navigator.pop(context);
                   showDialog(
-                      barrierDismissible: false,
-                      context: context,
-                      builder: (context) {
-                        return NewFolderDialog(
-                          contentWidget: NewFolderDialogContent(
-                            title: "新文件夹名",
-                            onConfirm: () async {
-                              String newName = newFolder.text;
-                              if (newName.isEmpty) {
-                                return showToastWithContext(context, "文件夹名不能为空");
-                              }
-                              if (newName.startsWith('/')) {
-                                newName = newName.substring(1);
-                              }
-                              if (newName.endsWith('/')) {
-                                newName = newName.substring(0, newName.length - 1);
-                              }
-                              var copyResult = await manageAPI.mkDir(widget.bucketPrefix + newName);
-                              if (copyResult[0] == 'success') {
-                                showToast('创建成功');
-                                _getBucketList();
-                              } else {
-                                showToast('创建失败');
-                              }
-                            },
-                            folderNameController: newFolder,
-                            onCancel: () {},
-                          ),
-                        );
-                      });
+                    barrierDismissible: false,
+                    context: context,
+                    builder: (context) {
+                      return NewFolderDialog(
+                        contentWidget: NewFolderDialogContent(
+                          title: "新文件夹名",
+                          onConfirm: () async {
+                            String newName = newFolder.text;
+                            if (newName.isEmpty) {
+                              return showToastWithContext(context, "文件夹名不能为空");
+                            }
+                            if (newName.startsWith('/')) {
+                              newName = newName.substring(1);
+                            }
+                            if (newName.endsWith('/')) {
+                              newName = newName.substring(
+                                0,
+                                newName.length - 1,
+                              );
+                            }
+                            var copyResult = await manageAPI.mkDir(
+                              widget.bucketPrefix + newName,
+                            );
+                            if (copyResult[0] == 'success') {
+                              showToast('创建成功');
+                              _getBucketList();
+                            } else {
+                              showToast('创建失败');
+                            }
+                          },
+                          folderNameController: newFolder,
+                          onCancel: () {},
+                        ),
+                      );
+                    },
+                  );
                 },
               ),
             ],
-          ));
-        });
+          ),
+        );
+      },
+    );
   }
 
   @override
   void navigateToDownloadManagement() async {
-    String downloadPath = await ExternalPath.getExternalStoragePublicDirectory(ExternalPath.DIRECTORY_DOWNLOAD);
+    String downloadPath = await ExternalPath.getExternalStoragePublicDirectory(
+      ExternalPath.DIRECTORY_DOWNLOAD,
+    );
     final int index = Global.alistDownloadList.isEmpty ? 0 : 1;
     if (mounted) {
       Application.router
-          .navigateTo(context,
-              '/baseUpDownloadManagePage?bucketName=${Uri.encodeComponent('Alist_${widget.currentStorageInfoMap['mount_path'].split('/').last}')}&downloadPath=${Uri.encodeComponent(downloadPath)}&tabIndex=$index&currentListIndex=0',
-              transition: TransitionType.inFromRight)
+          .navigateTo(
+            context,
+            '/baseUpDownloadManagePage?bucketName=${Uri.encodeComponent('OpenList_${widget.currentStorageInfoMap['mount_path'].split('/').last}')}&downloadPath=${Uri.encodeComponent(downloadPath)}&tabIndex=$index&currentListIndex=0',
+            transition: TransitionType.inFromRight,
+          )
           .then((value) {
-        _getBucketList();
-      });
+            _getBucketList();
+          });
     }
   }
 
@@ -400,9 +478,7 @@ class AlistFileExplorerState extends BaseFileExplorerState<AlistFileExplorer> {
     for (final fileInfo in downloadList) {
       final fileName = fileInfo['name'];
       String shareUrl;
-      var res = await manageAPI.getFileInfo(
-        widget.bucketPrefix + fileName,
-      );
+      var res = await manageAPI.getFileInfo(widget.bucketPrefix + fileName);
       if (res[0] == 'success') {
         if (res[1]['raw_url'] != "" && res[1]['raw_url'] != null) {
           shareUrl = res[1]['raw_url'];
@@ -421,22 +497,23 @@ class AlistFileExplorerState extends BaseFileExplorerState<AlistFileExplorer> {
 
       Map downloadMap = Map.from(widget.currentStorageInfoMap);
 
-      urlList.add(jsonEncode([
-        shareUrl,
-        fileName,
-        downloadMap,
-      ]));
+      urlList.add(jsonEncode([shareUrl, fileName, downloadMap]));
     }
 
     Global.alistDownloadList.addAll(urlList);
     Global.alistDownloadList = removeDuplicates(Global.alistDownloadList);
     Global.setAlistDownloadList(Global.alistDownloadList);
-    String downloadPath = await ExternalPath.getExternalStoragePublicDirectory(ExternalPath.DIRECTORY_DOWNLOAD);
-    final bucketName = 'Alist_${widget.currentStorageInfoMap['mount_path'].split('/').last}';
+    String downloadPath = await ExternalPath.getExternalStoragePublicDirectory(
+      ExternalPath.DIRECTORY_DOWNLOAD,
+    );
+    final bucketName =
+        'OpenList_${widget.currentStorageInfoMap['mount_path'].split('/').last}';
 
-    Application.router.navigateTo(context,
-        '/baseUpDownloadManagePage?bucketName=${Uri.encodeComponent(bucketName)}&downloadPath=${Uri.encodeComponent(downloadPath)}&tabIndex=1&currentListIndex=0',
-        transition: TransitionType.inFromRight);
+    Application.router.navigateTo(
+      context,
+      '/baseUpDownloadManagePage?bucketName=${Uri.encodeComponent(bucketName)}&downloadPath=${Uri.encodeComponent(downloadPath)}&tabIndex=1&currentListIndex=0',
+      transition: TransitionType.inFromRight,
+    );
   }
 
   @override
@@ -492,29 +569,32 @@ class AlistFileExplorerState extends BaseFileExplorerState<AlistFileExplorer> {
           onTap: () {
             Navigator.pop(context);
             showDialog(
-                barrierDismissible: false,
-                context: context,
-                builder: (context) {
-                  return RenameDialog(
-                    contentWidget: RenameDialogContent(
-                      title: "新文件名",
-                      onConfirm: (bool isCoverFile) async {
-                        var renameResult =
-                            await manageAPI.rename(widget.bucketPrefix + allInfoList[index]['name'], vc.text);
-                        if (renameResult[0] == 'success') {
-                          showToast('重命名成功');
-                          _getBucketList();
-                        } else {
-                          showToast('重命名失败');
-                        }
-                      },
-                      renameTextController: vc,
-                      onCancel: () {},
-                    ),
-                  );
-                });
+              barrierDismissible: false,
+              context: context,
+              builder: (context) {
+                return RenameDialog(
+                  contentWidget: RenameDialogContent(
+                    title: "新文件名",
+                    onConfirm: (bool isCoverFile) async {
+                      var renameResult = await manageAPI.rename(
+                        widget.bucketPrefix + allInfoList[index]['name'],
+                        vc.text,
+                      );
+                      if (renameResult[0] == 'success') {
+                        showToast('重命名成功');
+                        _getBucketList();
+                      } else {
+                        showToast('重命名失败');
+                      }
+                    },
+                    renameTextController: vc,
+                    onCancel: () {},
+                  ),
+                );
+              },
+            );
           },
-        )
+        ),
     ];
   }
 
@@ -522,10 +602,15 @@ class AlistFileExplorerState extends BaseFileExplorerState<AlistFileExplorer> {
   void onFileInfoTap(int index) {
     Map fileMap = allInfoList[index];
     fileMap['fullPath'] = widget.bucketPrefix + fileMap['name'];
-    fileMap['modified'] = fileMap['modified'].toString().replaceAll('T', ' ').replaceAll('Z', '');
+    fileMap['modified'] = fileMap['modified']
+        .toString()
+        .replaceAll('T', ' ')
+        .replaceAll('Z', '');
 
     Application.router.navigateTo(
-        context, '${Routes.alistFileInformation}?fileMap=${Uri.encodeComponent(jsonEncode(fileMap))}',
-        transition: TransitionType.cupertino);
+      context,
+      '${Routes.alistFileInformation}?fileMap=${Uri.encodeComponent(jsonEncode(fileMap))}',
+      transition: TransitionType.cupertino,
+    );
   }
 }

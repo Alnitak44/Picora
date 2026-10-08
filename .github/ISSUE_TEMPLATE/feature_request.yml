@@ -1,42 +1,26 @@
-name: "Feature Request"
-description: 功能请求 
+name: 功能建议
+description: 提出 Picora 的功能或使用体验建议
 title: "[Feature]: "
-labels: ["feature request"]
-assignees:
-  - Kuingsmile
-labels:
-  - enhancement
 body:
-  - type: markdown
-    attributes:
-      value: |+
-        ## PicHoro Feature 模板
-
-        请依照该模板来提交，否则将会被关闭。
-
   - type: input
     id: version
     attributes:
-      label: PicHoro的版本 
-      placeholder: 例如 V1.8.3
-    validations:
-      required: true
-  - type: input
-    id: platform
+      label: Picora 版本
+      placeholder: 例如 1.0.0-debug
+  - type: textarea
+    id: problem
     attributes:
-      label: 系统信息 
-      placeholder: 例如 ViVo X60 Pro
+      label: 使用场景与遇到的问题
     validations:
       required: true
   - type: textarea
-    id: reproduce
+    id: solution
     attributes:
-      label: 功能请求 
-      description: 详细描述你所预想的功能或者是现有功能的改进 
+      label: 希望实现的行为
     validations:
       required: true
-  - type: markdown
+  - type: textarea
+    id: alternatives
     attributes:
-      value: |
-        最后，喜欢 PicHoro 的话不妨给它点个 star~
-       
+      label: 替代方案或参考
+      description: 新图床建议请附官方接口文档地址，不要提供真实账号密钥。

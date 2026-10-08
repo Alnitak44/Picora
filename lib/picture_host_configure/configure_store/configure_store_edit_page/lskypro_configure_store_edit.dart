@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/picture_host_configure/configure_store/configure_store_file.dart';
-import 'package:horopic/picture_host_manage/manage_api/lskypro_manage_api.dart';
-import 'package:horopic/picture_host_configure/configure_store/configure_template.dart';
-import 'package:horopic/widgets/configure_widgets.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/picture_host_configure/configure_store/configure_store_file.dart';
+import 'package:picora/picture_host_manage/manage_api/lskypro_manage_api.dart';
+import 'package:picora/picture_host_configure/configure_store/configure_template.dart';
+import 'package:picora/widgets/configure_widgets.dart';
 
 class LskyproConfigureStoreEdit extends StatefulWidget {
   final String storeKey;

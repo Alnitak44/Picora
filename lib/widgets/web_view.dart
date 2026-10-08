@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:horopic/widgets/common_widgets.dart';
+import 'package:picora/widgets/common_widgets.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-import 'package:horopic/utils/common_functions.dart';
+import 'package:picora/utils/common_functions.dart';
 
 class WebViewPage extends StatefulWidget {
   final String url;

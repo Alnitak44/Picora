@@ -1,11 +1,11 @@
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:horopic/picture_host_manage/common/base_manage_api.dart';
+import 'package:picora/picture_host_manage/common/base_manage_api.dart';
 import 'package:path_provider/path_provider.dart';
 
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/picture_host_configure/configure_page/webdav_configure.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/picture_host_configure/configure_page/webdav_configure.dart';
 import 'package:webdav_client/webdav_client.dart' as webdav;
 
 class WebdavManageAPI extends BaseManageApi {

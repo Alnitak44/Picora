@@ -1,5 +1,5 @@
 import 'package:dio/dio.dart';
-import 'package:horopic/utils/common_functions.dart';
+import 'package:picora/utils/common_functions.dart';
 import 'package:path/path.dart' as my_path;
 
 class SmmsImageUploadUtils {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:horopic/pages/upload_helper/upload_status.dart';
-import 'package:horopic/pages/upload_helper/upload_task.dart';
-import 'package:horopic/utils/common_functions.dart';
+import 'package:picora/pages/upload_helper/upload_status.dart';
+import 'package:picora/pages/upload_helper/upload_task.dart';
+import 'package:picora/utils/common_functions.dart';
 import 'package:flutter/services.dart' as flutter_services;
 
 class HomePageUploadItem extends StatefulWidget {

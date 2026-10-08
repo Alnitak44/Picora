@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:horopic/utils/event_bus_utils.dart';
+import 'package:picora/utils/event_bus_utils.dart';
 
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/utils/global.dart';
-import 'package:horopic/widgets/common_widgets.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/utils/global.dart';
+import 'package:picora/widgets/common_widgets.dart';
 
 class DefaultPShostSelect extends StatefulWidget {
   const DefaultPShostSelect({super.key});
@@ -33,13 +33,14 @@ class DefaultPShostSelectState extends State<DefaultPShostSelect> {
     'webdav',
   ];
 
-  Widget _buildSettingCard({required String title, required List<Widget> children}) {
+  Widget _buildSettingCard({
+    required String title,
+    required List<Widget> children,
+  }) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -47,10 +48,7 @@ class DefaultPShostSelectState extends State<DefaultPShostSelect> {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Text(
               title,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
           ...children,
@@ -67,12 +65,16 @@ class DefaultPShostSelectState extends State<DefaultPShostSelect> {
     final bool isSelected = Global.defaultPShost == id;
 
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 2.0),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 16.0,
+        vertical: 2.0,
+      ),
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color:
-              isSelected ? Theme.of(context).primaryColor.withValues(alpha: 0.2) : Colors.grey.withValues(alpha: 0.2),
+          color: isSelected
+              ? Theme.of(context).primaryColor.withValues(alpha: 0.2)
+              : Colors.grey.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(
@@ -116,11 +118,7 @@ class DefaultPShostSelectState extends State<DefaultPShostSelect> {
                 icon: Icons.cloud_upload,
               ),
               const Divider(height: 1, indent: 56),
-              _buildHostItem(
-                title: '腾讯云',
-                id: 'tencent',
-                icon: Icons.cloud,
-              ),
+              _buildHostItem(title: '腾讯云', id: 'tencent', icon: Icons.cloud),
               const Divider(height: 1, indent: 56),
               _buildHostItem(
                 title: '阿里云',
@@ -134,11 +132,7 @@ class DefaultPShostSelectState extends State<DefaultPShostSelect> {
                 icon: Icons.cloud_queue,
               ),
               const Divider(height: 1, indent: 56),
-              _buildHostItem(
-                title: 'S3兼容平台',
-                id: 'aws',
-                icon: Icons.all_inbox,
-              ),
+              _buildHostItem(title: 'S3兼容平台', id: 'aws', icon: Icons.all_inbox),
             ],
           ),
           _buildSettingCard(
@@ -156,24 +150,16 @@ class DefaultPShostSelectState extends State<DefaultPShostSelect> {
                 icon: Icons.photo_library,
               ),
               const Divider(height: 1, indent: 56),
-              _buildHostItem(
-                title: 'Github图床',
-                id: 'github',
-                icon: Icons.code,
-              ),
+              _buildHostItem(title: 'Github图床', id: 'github', icon: Icons.code),
               const Divider(height: 1, indent: 56),
-              _buildHostItem(
-                title: 'Imgur图床',
-                id: 'imgur',
-                icon: Icons.image,
-              ),
+              _buildHostItem(title: 'Imgur图床', id: 'imgur', icon: Icons.image),
             ],
           ),
           _buildSettingCard(
             title: '自建图床/网盘',
             children: [
               _buildHostItem(
-                title: 'Alist V3',
+                title: 'OpenList',
                 id: 'alist',
                 icon: Icons.folder_shared,
               ),
@@ -184,11 +170,7 @@ class DefaultPShostSelectState extends State<DefaultPShostSelect> {
                 icon: Icons.storage,
               ),
               const Divider(height: 1, indent: 56),
-              _buildHostItem(
-                title: 'WebDAV',
-                id: 'webdav',
-                icon: Icons.web,
-              ),
+              _buildHostItem(title: 'WebDAV', id: 'webdav', icon: Icons.web),
             ],
           ),
           const SizedBox(height: 24),
@@ -224,12 +206,11 @@ setdefaultPShostRemoteAndLocal(String psHost) async {
     showToast('已设置$psHost为默认图床');
   } catch (e) {
     flogErr(
-        e,
-        {
-          'psHost': psHost,
-        },
-        'setdefaultPShostRemoteAndLocal',
-        'setdefaultPShostRemoteAndLocal');
+      e,
+      {'psHost': psHost},
+      'setdefaultPShostRemoteAndLocal',
+      'setdefaultPShostRemoteAndLocal',
+    );
     showToast('错误');
   }
 }

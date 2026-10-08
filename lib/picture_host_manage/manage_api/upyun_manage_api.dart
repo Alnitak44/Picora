@@ -3,12 +3,12 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
-import 'package:horopic/picture_host_manage/common/base_manage_api.dart';
+import 'package:picora/picture_host_manage/common/base_manage_api.dart';
 import 'package:path_provider/path_provider.dart';
 
-import 'package:horopic/utils/global.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/picture_host_configure/configure_page/upyun_configure.dart';
+import 'package:picora/utils/global.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/picture_host_configure/configure_page/upyun_configure.dart';
 
 class UpyunManageAPI extends BaseManageApi {
   static final UpyunManageAPI _instance = UpyunManageAPI._internal();

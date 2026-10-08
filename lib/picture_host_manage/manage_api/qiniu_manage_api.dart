@@ -4,10 +4,10 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 
-import 'package:horopic/picture_host_manage/common/base_manage_api.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/api/qiniu_api.dart';
-import 'package:horopic/picture_host_configure/configure_page/qiniu_configure.dart';
+import 'package:picora/picture_host_manage/common/base_manage_api.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/api/qiniu_api.dart';
+import 'package:picora/picture_host_configure/configure_page/qiniu_configure.dart';
 
 class QiniuManageAPI extends BaseManageApi {
   static final QiniuManageAPI _instance = QiniuManageAPI._internal();

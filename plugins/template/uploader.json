@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "permissions": {
+    "network": ["api.example.com"],
+    "readSelectedFile": true,
+    "allowInsecureHttp": false
+  },
+  "config": [
+    {
+      "key": "token",
+      "label": "API Token",
+      "type": "secret",
+      "required": true,
+      "hint": "填写服务提供的上传 Token"
+    }
+  ],
+  "upload": {
+    "method": "POST",
+    "url": "https://api.example.com/upload",
+    "headers": {
+      "Authorization": "Bearer ${config.token}",
+      "Accept": "application/json"
+    },
+    "body": {
+      "type": "multipart",
+      "fileField": "file"
+    },
+    "response": {
+      "url": "data.url",
+      "thumbnail": "data.thumbnail",
+      "deleteKey": "data.id",
+      "successStatuses": [200, 201]
+    },
+    "followRedirects": false,
+    "timeoutSeconds": 60,
+    "errors": {
+      "401": "Token 无效或已过期",
+      "413": "图片超出服务大小限制",
+      "429": "请求过于频繁，请稍后重试"
+    }
+  }
+}

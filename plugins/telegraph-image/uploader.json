@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "permissions": {
+    "network": [
+      "*"
+    ],
+    "readSelectedFile": true,
+    "allowInsecureHttp": true
+  },
+  "config": [
+    {
+      "key": "baseUrl",
+      "label": "图床基础 URL",
+      "type": "text",
+      "hint": "例如 https://images.example.com，不要添加 /upload",
+      "required": true
+    },
+    {
+      "key": "username",
+      "label": "上传用户名（可选）",
+      "type": "text",
+      "hint": "仅启用上传鉴权时填写"
+    },
+    {
+      "key": "password",
+      "label": "上传密码（可选）",
+      "type": "secret",
+      "hint": "需要与上传用户名同时填写"
+    }
+  ],
+  "upload": {
+    "method": "POST",
+    "url": "${normalizeBaseUrl(config.baseUrl)}/upload",
+    "headers": {
+      "User-Agent": "Picora-Telegraph-Image/1.1.0",
+      "Accept": "application/json",
+      "Authorization": "${basicAuth(config.username,config.password)}"
+    },
+    "body": {
+      "type": "multipart",
+      "fileField": "file"
+    },
+    "response": {
+      "url": "[0].src",
+      "successStatuses": [
+        200
+      ]
+    },
+    "followRedirects": false,
+    "timeoutSeconds": 60,
+    "errors": {
+      "401": "上传鉴权失败，请检查上传用户名和密码（不是后台管理账号）",
+      "403": "上传被拒绝，请检查 Cloudflare Access、WAF 或图床访问限制",
+      "404": "找不到 /upload 接口，请检查图床基础 URL",
+      "413": "文件过大，超过图床或代理允许的大小",
+      "429": "图床请求过于频繁，请稍后再试或减少批量上传"
+    }
+  }
+}

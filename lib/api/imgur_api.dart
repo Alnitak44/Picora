@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
 
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/utils/dio_proxy_adapter.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/utils/dio_proxy_adapter.dart';
 
 class ImgurImageUploadUtils {
   //上传接口

@@ -2,13 +2,13 @@ import 'dart:convert';
 
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
-import 'package:horopic/picture_host_manage/common/upload/common_service/base_upload_task.dart';
-import 'package:horopic/picture_host_manage/common/download/common_service/base_download_task.dart';
-import 'package:horopic/picture_host_manage/common/download/common_service/base_download_status.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/pages/upload_helper/upload_status.dart';
-import 'package:horopic/utils/global.dart';
-import 'package:horopic/widgets/load_state_change.dart';
+import 'package:picora/picture_host_manage/common/upload/common_service/base_upload_task.dart';
+import 'package:picora/picture_host_manage/common/download/common_service/base_download_task.dart';
+import 'package:picora/picture_host_manage/common/download/common_service/base_download_status.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/pages/upload_helper/upload_status.dart';
+import 'package:picora/utils/global.dart';
+import 'package:picora/widgets/load_state_change.dart';
 
 //上传列表
 class UploadListItem extends StatefulWidget {

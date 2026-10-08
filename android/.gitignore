@@ -12,3 +12,7 @@ key.properties
 **/*.keystore
 **/*.jks
 key.jks
+# Main project Wrapper belongs to source control
+!/gradlew
+!/gradlew.bat
+!/gradle/wrapper/gradle-wrapper.jar

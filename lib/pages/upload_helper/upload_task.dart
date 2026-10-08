@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:horopic/pages/upload_helper/upload_request.dart';
-import 'package:horopic/pages/upload_helper/upload_status.dart';
+import 'package:picora/pages/upload_helper/upload_request.dart';
+import 'package:picora/pages/upload_helper/upload_status.dart';
 
 class UploadTask {
   final UploadRequest request;

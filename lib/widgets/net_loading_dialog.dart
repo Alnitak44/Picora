@@ -1,8 +1,8 @@
 // 参考: https://blog.csdn.net/O_time/article/details/86496537
 
 import 'package:flutter/material.dart';
-import 'package:horopic/utils/global.dart';
-import 'package:horopic/utils/common_functions.dart';
+import 'package:picora/utils/global.dart';
+import 'package:picora/utils/common_functions.dart';
 
 class NetLoadingDialog extends StatefulWidget {
   final String loadingText;

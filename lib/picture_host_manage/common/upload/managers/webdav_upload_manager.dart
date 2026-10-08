@@ -2,9 +2,9 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/picture_host_manage/manage_api/webdav_manage_api.dart';
-import 'package:horopic/picture_host_manage/common/upload/common_service/base_upload_manager.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/picture_host_manage/manage_api/webdav_manage_api.dart';
+import 'package:picora/picture_host_manage/common/upload/common_service/base_upload_manager.dart';
 
 import 'package:webdav_client/webdav_client.dart' as webdav;
 

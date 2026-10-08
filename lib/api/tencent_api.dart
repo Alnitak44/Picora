@@ -4,8 +4,8 @@ import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:path/path.dart' as my_path;
 
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/utils/global.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/utils/global.dart';
 
 class TencentImageUploadUtils {
   static String _hmacSha1(String key, String data) {

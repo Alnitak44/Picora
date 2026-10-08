@@ -3,9 +3,9 @@ import 'dart:convert';
 
 import 'package:path_provider/path_provider.dart';
 
-import 'package:horopic/album/album_sql.dart';
-import 'package:horopic/utils/global.dart';
-import 'package:horopic/picture_host_configure/configure_store/configure_template.dart';
+import 'package:picora/album/album_sql.dart';
+import 'package:picora/utils/global.dart';
+import 'package:picora/picture_host_configure/configure_store/configure_template.dart';
 
 class ConfigureStoreFile {
   static final ConfigureStoreFile _instance = ConfigureStoreFile._internal();

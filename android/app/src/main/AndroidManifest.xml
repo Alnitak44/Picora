@@ -1,4 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.example.horopic">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="io.github.alnitak44.picora">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
@@ -14,7 +14,7 @@
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
 
-    <application android:label="PicHoro" android:name="${applicationName}" android:icon="@mipmap/app_icon">
+    <application android:label="Picora" android:name="${applicationName}" android:icon="@mipmap/picora_launcher" android:roundIcon="@mipmap/picora_launcher">
 
         <activity android:name=".MainActivity" android:exported="true" android:launchMode="singleTop" android:theme="@style/LaunchTheme" android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode" android:hardwareAccelerated="true" android:windowSoftInputMode="adjustResize">
             <!-- Specifies an Android theme to apply to this Activity as soon as
@@ -38,7 +38,7 @@
                 <data android:mimeType="image/*"/>
             </intent-filter>
         </activity>
-        
+
         <!-- OTA Update Provider -->
         <provider
             android:name="sk.fourq.otaupdate.OtaUpdateFileProvider"
@@ -58,7 +58,7 @@
                 <action android:name="${applicationId}.ACTION_INSTALL_COMPLETE"/>
             </intent-filter>
         </receiver>
-        
+
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data android:name="flutterEmbedding" android:value="2" />

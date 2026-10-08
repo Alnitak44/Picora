@@ -4,13 +4,13 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:fluro/fluro.dart';
 
-import 'package:horopic/router/application.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/widgets/net_loading_dialog.dart';
-import 'package:horopic/utils/global.dart';
-import 'package:horopic/utils/event_bus_utils.dart';
-import 'package:horopic/picture_host_manage/manage_api/alist_manage_api.dart';
-import 'package:horopic/widgets/configure_widgets.dart';
+import 'package:picora/router/application.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/widgets/net_loading_dialog.dart';
+import 'package:picora/utils/global.dart';
+import 'package:picora/utils/event_bus_utils.dart';
+import 'package:picora/picture_host_manage/manage_api/alist_manage_api.dart';
+import 'package:picora/widgets/configure_widgets.dart';
 
 class AlistConfig extends StatefulWidget {
   const AlistConfig({super.key});
@@ -70,7 +70,10 @@ class AlistConfigState extends State<AlistConfig> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: ConfigureWidgets.buildConfigAppBar(title: 'Alist参数配置', context: context),
+      appBar: ConfigureWidgets.buildConfigAppBar(
+        title: 'OpenList 参数配置',
+        context: context,
+      ),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -82,13 +85,16 @@ class AlistConfigState extends State<AlistConfig> {
                 ConfigureWidgets.buildFormField(
                   controller: _hostController,
                   labelText: '域名',
-                  hintText: '例如: https://alist.test.com',
+                  hintText: '例如: https://openlist.example.com',
                   prefixIcon: Icons.link,
                   validator: (value) {
-                    if (value == null || value.isEmpty || value.toString().trim().isEmpty) {
+                    if (value == null ||
+                        value.isEmpty ||
+                        value.toString().trim().isEmpty) {
                       return '请输入域名';
                     }
-                    if (!value.startsWith('http://') && !value.startsWith('https://')) {
+                    if (!value.startsWith('http://') &&
+                        !value.startsWith('https://')) {
                       return '以http://或https://开头';
                     }
                     return null;
@@ -144,7 +150,10 @@ class AlistConfigState extends State<AlistConfig> {
                       color: Theme.of(context).primaryColor.withAlpha(51),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(Icons.public, color: Theme.of(context).primaryColor),
+                    child: Icon(
+                      Icons.public,
+                      color: Theme.of(context).primaryColor,
+                    ),
                   ),
                   title: const Text('匿名访问'),
                   trailing: Switch(
@@ -170,16 +179,17 @@ class AlistConfigState extends State<AlistConfig> {
                     final isValid = _formKey.currentState!.validate();
                     if (isValid) {
                       showDialog(
-                          context: context,
-                          barrierDismissible: false,
-                          builder: (context) {
-                            return NetLoadingDialog(
-                              outsideDismiss: false,
-                              loading: true,
-                              loadingText: "配置中...",
-                              requestCallBack: _saveAlistConfig(),
-                            );
-                          });
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (context) {
+                          return NetLoadingDialog(
+                            outsideDismiss: false,
+                            loading: true,
+                            loadingText: "配置中...",
+                            requestCallBack: _saveAlistConfig(),
+                          );
+                        },
+                      );
                     }
                   },
                 ),
@@ -209,8 +219,11 @@ class AlistConfigState extends State<AlistConfig> {
                   title: '设置备用配置',
                   icon: Icons.settings_backup_restore,
                   onTap: () async {
-                    await Application.router
-                        .navigateTo(context, '/configureStorePage?psHost=alist', transition: TransitionType.cupertino);
+                    await Application.router.navigateTo(
+                      context,
+                      '/configureStorePage?psHost=alist',
+                      transition: TransitionType.cupertino,
+                    );
                     await _initConfig();
                     setState(() {});
                   },
@@ -247,10 +260,26 @@ class AlistConfigState extends State<AlistConfig> {
     );
   }
 
-  Future<void> saveConfigHelper(String host, String adminToken, String alistusername, String password, String token,
-      String uploadPath, String webPath, String customUrl) async {
-    final alistConfig =
-        AlistConfigModel(host, adminToken, alistusername, password, token, uploadPath, webPath, customUrl);
+  Future<void> saveConfigHelper(
+    String host,
+    String adminToken,
+    String alistusername,
+    String password,
+    String token,
+    String uploadPath,
+    String webPath,
+    String customUrl,
+  ) async {
+    final alistConfig = AlistConfigModel(
+      host,
+      adminToken,
+      alistusername,
+      password,
+      token,
+      uploadPath,
+      webPath,
+      customUrl,
+    );
     final alistConfigJson = jsonEncode(alistConfig);
     final alistConfigFile = await AlistManageAPI().localFile();
     await alistConfigFile.writeAsString(alistConfigJson);
@@ -270,7 +299,16 @@ class AlistConfigState extends State<AlistConfig> {
 
       // Handle anonymous mode
       if (_isAnonymous) {
-        await saveConfigHelper(host, 'None', 'None', 'None', '', uploadPath, webPath, customUrl);
+        await saveConfigHelper(
+          host,
+          'None',
+          'None',
+          'None',
+          '',
+          uploadPath,
+          webPath,
+          customUrl,
+        );
         if (!mounted) return;
         setState(() {});
         showToast('保存成功');
@@ -280,15 +318,25 @@ class AlistConfigState extends State<AlistConfig> {
       // Try using admin token if available
       if (adminToken != 'None') {
         _currentJWT = adminToken;
-        await saveConfigHelper(host, adminToken, alistusername, password, adminToken, uploadPath, webPath, customUrl);
+        await saveConfigHelper(
+          host,
+          adminToken,
+          alistusername,
+          password,
+          adminToken,
+          uploadPath,
+          webPath,
+          customUrl,
+        );
         if (!mounted) return;
         setState(() {});
         if (context.mounted) {
           return showCupertinoAlertDialog(
-              context: context,
-              barrierDismissible: false,
-              title: '配置成功',
-              content: '您的密钥为：\n$adminToken,\n请妥善保管，不要泄露给他人');
+            context: context,
+            barrierDismissible: false,
+            title: '配置成功',
+            content: '您的密钥为：\n$adminToken,\n请妥善保管，不要泄露给他人',
+          );
         }
         return;
       }
@@ -296,19 +344,33 @@ class AlistConfigState extends State<AlistConfig> {
       try {
         // Try username/password authentication
         if (alistusername.isNotEmpty && password.isNotEmpty) {
-          var res = await AlistManageAPI().getToken(host, alistusername, password);
+          var res = await AlistManageAPI().getToken(
+            host,
+            alistusername,
+            password,
+          );
           if (res[0] == 'success') {
             token = res[1];
             _currentJWT = token;
-            await saveConfigHelper(host, 'None', alistusername, password, token, uploadPath, webPath, customUrl);
+            await saveConfigHelper(
+              host,
+              'None',
+              alistusername,
+              password,
+              token,
+              uploadPath,
+              webPath,
+              customUrl,
+            );
             if (!mounted) return;
             setState(() {});
             if (context.mounted) {
               return showCupertinoAlertDialog(
-                  context: context,
-                  barrierDismissible: false,
-                  title: '配置成功',
-                  content: '您的密钥为：\n$token,\n请妥善保管，不要泄露给他人');
+                context: context,
+                barrierDismissible: false,
+                title: '配置成功',
+                content: '您的密钥为：\n$token,\n请妥善保管，不要泄露给他人',
+              );
             }
             return;
           }
@@ -318,15 +380,24 @@ class AlistConfigState extends State<AlistConfig> {
 
         // Try using existing token
         if (_currentJWT.isNotEmpty) {
-          await _validateAndSaveExistingToken(host, uploadPath, webPath, customUrl);
+          await _validateAndSaveExistingToken(
+            host,
+            uploadPath,
+            webPath,
+            customUrl,
+          );
           return;
         }
 
         showToast('请提供有效的身份验证信息');
       } catch (e) {
-        flogErr(e, {}, 'AlistConfigPage', '_saveAlistConfig');
+        flogErr(e, {}, 'OpenListConfigPage', '_saveOpenListConfig');
         if (context.mounted) {
-          showCupertinoAlertDialog(context: context, title: '错误', content: e.toString());
+          showCupertinoAlertDialog(
+            context: context,
+            title: '错误',
+            content: e.toString(),
+          );
         }
       }
     });
@@ -342,7 +413,9 @@ class AlistConfigState extends State<AlistConfig> {
 
   String _formatPath(String value, String defaultValue) {
     String path = value.trim();
-    return (path.isEmpty || path == '/') ? defaultValue : path.replaceAll(RegExp(r'/+$'), '');
+    return (path.isEmpty || path == '/')
+        ? defaultValue
+        : path.replaceAll(RegExp(r'/+$'), '');
   }
 
   String _formatWebPath(String value) {
@@ -357,7 +430,12 @@ class AlistConfigState extends State<AlistConfig> {
     return value.trim().isEmpty ? 'None' : value.trim();
   }
 
-  Future<void> _validateAndSaveExistingToken(String host, String uploadPath, String webPath, String customUrl) async {
+  Future<void> _validateAndSaveExistingToken(
+    String host,
+    String uploadPath,
+    String webPath,
+    String customUrl,
+  ) async {
     BaseOptions options = setBaseOptions();
     options.headers = {
       "Content-type": "application/json",
@@ -365,22 +443,34 @@ class AlistConfigState extends State<AlistConfig> {
     };
 
     Dio dio = Dio(options);
-    var response = await dio.get('$host/api/admin/setting/list', queryParameters: {'group': 0});
+    var response = await dio.get(
+      '$host/api/admin/setting/list',
+      queryParameters: {'group': 0},
+    );
 
     if (response.statusCode == 200 && response.data['message'] == 'success') {
       Map configMap = await AlistManageAPI().getConfigMap();
       await saveConfigHelper(
-          host, 'None', configMap['alistusername'], configMap['password'], _currentJWT, uploadPath, webPath, customUrl);
+        host,
+        'None',
+        configMap['alistusername'],
+        configMap['password'],
+        _currentJWT,
+        uploadPath,
+        webPath,
+        customUrl,
+      );
 
       if (!mounted) return;
       setState(() {});
 
       if (context.mounted) {
         showCupertinoAlertDialog(
-            context: context,
-            barrierDismissible: false,
-            title: '配置成功',
-            content: '您的密钥为：\n$_currentJWT,\n请妥善保管，不要泄露给他人');
+          context: context,
+          barrierDismissible: false,
+          title: '配置成功',
+          content: '您的密钥为：\n$_currentJWT,\n请妥善保管，不要泄露给他人',
+        );
       }
     } else {
       showToast('配置失败');
@@ -392,7 +482,11 @@ class AlistConfigState extends State<AlistConfig> {
       Map configMap = await AlistManageAPI().getConfigMap();
       if (configMap.isEmpty) {
         if (context.mounted) {
-          return showCupertinoAlertDialog(context: context, title: "检查失败!", content: "请先配置上传参数.");
+          return showCupertinoAlertDialog(
+            context: context,
+            title: "检查失败!",
+            content: "请先配置上传参数.",
+          );
         }
         return;
       }
@@ -415,54 +509,70 @@ class AlistConfigState extends State<AlistConfig> {
         String profileUrl = configMap["host"] + "/api/fs/list";
         Dio dio = Dio(options);
         var response = await dio.post(profileUrl, data: dataMap);
-        if (response.statusCode == 200 && response.data['message'] == 'success') {
+        if (response.statusCode == 200 &&
+            response.data['message'] == 'success') {
           if (context.mounted) {
             return showCupertinoAlertDialog(
-                context: context,
-                title: '通知',
-                content:
-                    '检测通过，您的配置信息为：\nhost:\n${configMap["host"]}\n管理员token:\n${configMap["adminToken"]}\n用户名:\n${configMap["alistusername"]}\n密码:\n${configMap["password"]}\ntoken:\n${configMap["token"]}\nuploadPath:\n${configMap["uploadPath"]}\nwebPath:\n${configMap["webPath"]}\n自定义网址:\n${configMap["customUrl"]}');
+              context: context,
+              title: '通知',
+              content:
+                  '检测通过，您的配置信息为：\nhost:\n${configMap["host"]}\n管理员token:\n${configMap["adminToken"]}\n用户名:\n${configMap["alistusername"]}\n密码:\n${configMap["password"]}\ntoken:\n${configMap["token"]}\nuploadPath:\n${configMap["uploadPath"]}\nwebPath:\n${configMap["webPath"]}\n自定义网址:\n${configMap["customUrl"]}',
+            );
           }
           return;
         } else {
           if (context.mounted) {
-            return showCupertinoAlertDialog(context: context, title: '通知', content: '检测失败，请检查配置信息');
+            return showCupertinoAlertDialog(
+              context: context,
+              title: '通知',
+              content: '检测失败，请检查配置信息',
+            );
           }
           return;
         }
       }
-      Map<String, dynamic> query = {
-        'group': 0,
-      };
+      Map<String, dynamic> query = {'group': 0};
       options.headers = {
         "Authorization": configMap["token"],
         "Content-type": "application/json",
       };
       String profileUrl = configMap["host"] + "/api/admin/setting/list";
       Dio dio = Dio(options);
-      var response = await dio.get(
-        profileUrl,
-        queryParameters: query,
-      );
+      var response = await dio.get(profileUrl, queryParameters: query);
       if (response.statusCode == 200 && response.data['message'] == 'success') {
         if (context.mounted) {
           return showCupertinoAlertDialog(
-              context: context,
-              title: '通知',
-              content:
-                  '检测通过，您的配置信息为：\nhost:\n${configMap["host"]}\n管理员token:\n${configMap["adminToken"]}\n用户名:\n${configMap["alistusername"]}\n密码:\n${configMap["password"]}\ntoken:\n${configMap["token"]}\nuploadPath:\n${configMap["uploadPath"]}\nwebPath:\n${configMap["webPath"]}\n自定义网址:\n${configMap["customUrl"]}');
+            context: context,
+            title: '通知',
+            content:
+                '检测通过，您的配置信息为：\nhost:\n${configMap["host"]}\n管理员token:\n${configMap["adminToken"]}\n用户名:\n${configMap["alistusername"]}\n密码:\n${configMap["password"]}\ntoken:\n${configMap["token"]}\nuploadPath:\n${configMap["uploadPath"]}\nwebPath:\n${configMap["webPath"]}\n自定义网址:\n${configMap["customUrl"]}',
+          );
         }
         return;
       } else {
         if (context.mounted) {
-          return showCupertinoAlertDialog(context: context, title: '通知', content: '检测失败，请检查配置信息');
+          return showCupertinoAlertDialog(
+            context: context,
+            title: '通知',
+            content: '检测失败，请检查配置信息',
+          );
         }
         return;
       }
     } catch (e) {
-      flogErr(e, {}, 'ConfigPage', 'checkAlistConfig' 'checkAlistConfig');
+      flogErr(
+        e,
+        {},
+        'ConfigPage',
+        'checkAlistConfig'
+            'checkAlistConfig',
+      );
       if (context.mounted) {
-        return showCupertinoAlertDialog(context: context, title: "检查失败!", content: e.toString());
+        return showCupertinoAlertDialog(
+          context: context,
+          title: "检查失败!",
+          content: e.toString(),
+        );
       }
       return;
     }
@@ -473,7 +583,7 @@ class AlistConfigState extends State<AlistConfig> {
     Global.setShowedPBhost('PBhostExtend3');
     eventBus.fire(AlbumRefreshEvent(albumKeepAlive: false));
     eventBus.fire(HomePhotoRefreshEvent(homePhotoKeepAlive: false));
-    showToast('已设置Alist为默认图床');
+    showToast('已设置 OpenList 为默认图床');
   }
 }
 
@@ -487,19 +597,27 @@ class AlistConfigModel {
   final String webPath;
   final String customUrl;
 
-  AlistConfigModel(this.host, this.adminToken, this.alistusername, this.password, this.token, this.uploadPath,
-      this.webPath, this.customUrl);
+  AlistConfigModel(
+    this.host,
+    this.adminToken,
+    this.alistusername,
+    this.password,
+    this.token,
+    this.uploadPath,
+    this.webPath,
+    this.customUrl,
+  );
 
   Map<String, dynamic> toJson() => {
-        'host': host,
-        'adminToken': adminToken,
-        'alistusername': alistusername,
-        'password': password,
-        'token': token,
-        'uploadPath': uploadPath,
-        'webPath': webPath,
-        'customUrl': customUrl,
-      };
+    'host': host,
+    'adminToken': adminToken,
+    'alistusername': alistusername,
+    'password': password,
+    'token': token,
+    'uploadPath': uploadPath,
+    'webPath': webPath,
+    'customUrl': customUrl,
+  };
 
   static List keysList = [
     'remarkName',
@@ -510,6 +628,6 @@ class AlistConfigModel {
     'token',
     'uploadPath',
     'webPath',
-    'customUrl'
+    'customUrl',
   ];
 }

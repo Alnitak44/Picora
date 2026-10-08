@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:horopic/utils/common_functions.dart';
+import 'package:picora/utils/common_functions.dart';
 
 class GithubImageUploadUtils {
   static Dio _getDio(Map configMap) {
@@ -32,7 +32,7 @@ class GithubImageUploadUtils {
       String base64Image = base64Encode(File(path).readAsBytesSync());
 
       Map<String, dynamic> queryBody = {
-        'message': 'uploaded by PicHoro app',
+        'message': 'uploaded by Picora app',
         'content': base64Image,
         'branch': configMap["branch"], //分支
       };
@@ -84,7 +84,7 @@ class GithubImageUploadUtils {
     try {
       Map configMapFromPictureKey = jsonDecode(deleteMap['pictureKey']);
       Map<String, dynamic> formdata = {
-        "message": "deleted by PicHoro app",
+        "message": "deleted by Picora app",
         "sha": configMapFromPictureKey['sha'],
         "branch": configMapFromPictureKey["branch"],
       };

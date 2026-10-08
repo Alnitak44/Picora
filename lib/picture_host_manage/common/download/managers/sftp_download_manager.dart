@@ -4,9 +4,9 @@ import 'dart:io';
 import 'package:dartssh2/dartssh2.dart';
 import 'package:dio/dio.dart';
 
-import 'package:horopic/picture_host_manage/common/download/common_service/base_download_manager.dart';
-import 'package:horopic/picture_host_manage/common/download/common_service/base_download_status.dart';
-import 'package:horopic/picture_host_manage/manage_api/ftp_manage_api.dart';
+import 'package:picora/picture_host_manage/common/download/common_service/base_download_manager.dart';
+import 'package:picora/picture_host_manage/common/download/common_service/base_download_status.dart';
+import 'package:picora/picture_host_manage/manage_api/ftp_manage_api.dart';
 
 class DownloadManager extends BaseDownloadManager {
   static final DownloadManager _dm = DownloadManager._internal();

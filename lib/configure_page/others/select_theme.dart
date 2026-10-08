@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:horopic/widgets/common_widgets.dart';
+import 'package:picora/widgets/common_widgets.dart';
 import 'package:provider/provider.dart';
-import 'package:horopic/utils/theme_provider.dart';
-import 'package:horopic/utils/common_functions.dart';
+import 'package:picora/utils/theme_provider.dart';
+import 'package:picora/utils/common_functions.dart';
 
 class ChangeTheme extends StatefulWidget {
   const ChangeTheme({super.key});

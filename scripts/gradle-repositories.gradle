@@ -1,0 +1,33 @@
+// Project-local repository policy: mirror first, pinned versions unchanged.
+beforeSettings { settings ->
+    settings.pluginManagement.repositories {
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        maven { url 'https://maven.aliyun.com/repository/google' }
+        mavenCentral()
+        google()
+        gradlePluginPortal()
+    }
+    settings.dependencyResolutionManagement.repositories {
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        maven { url 'https://maven.aliyun.com/repository/google' }
+    }
+    settings.gradle.beforeProject { project ->
+        // Flutter's included Gradle build forbids project repositories.
+        if (settings.dependencyResolutionManagement.repositoriesMode.get().toString() == 'PREFER_PROJECT') {
+            def googleMirror = project.repositories.maven { url 'https://maven.aliyun.com/repository/google' }
+            project.repositories.remove(googleMirror)
+            project.repositories.addFirst(googleMirror)
+            def publicMirror = project.repositories.maven { url 'https://maven.aliyun.com/repository/public' }
+            project.repositories.remove(publicMirror)
+            project.repositories.addFirst(publicMirror)
+        }
+    }
+}
+beforeProject { project ->
+    project.buildscript.repositories {
+        maven { url 'https://maven.aliyun.com/repository/public' }
+        maven { url 'https://maven.aliyun.com/repository/google' }
+        mavenCentral()
+        google()
+    }
+}

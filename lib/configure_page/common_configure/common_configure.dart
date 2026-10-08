@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:fluro/fluro.dart';
 
-import 'package:horopic/utils/global.dart';
-import 'package:horopic/utils/clear_cache.dart';
-import 'package:horopic/router/application.dart';
-import 'package:horopic/router/routers.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/widgets/common_widgets.dart';
+import 'package:picora/utils/global.dart';
+import 'package:picora/utils/clear_cache.dart';
+import 'package:picora/router/application.dart';
+import 'package:picora/router/routers.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/widgets/common_widgets.dart';
 
 class CommonConfig extends StatefulWidget {
   const CommonConfig({super.key});

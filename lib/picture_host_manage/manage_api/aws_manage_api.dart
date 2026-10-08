@@ -8,9 +8,9 @@ import 'package:sqflite/utils/utils.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:minio/minio.dart';
 
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/picture_host_configure/configure_page/aws_configure.dart';
-import 'package:horopic/picture_host_manage/common/base_manage_api.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/picture_host_configure/configure_page/aws_configure.dart';
+import 'package:picora/picture_host_manage/common/base_manage_api.dart';
 
 class AwsManageAPI extends BaseManageApi {
   static final AwsManageAPI _instance = AwsManageAPI._internal();

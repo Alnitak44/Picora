@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-import 'package:horopic/album/album_sql.dart';
-import 'package:horopic/utils/global.dart';
-import 'package:horopic/utils/event_bus_utils.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/widgets/common_widgets.dart';
+import 'package:picora/album/album_sql.dart';
+import 'package:picora/utils/global.dart';
+import 'package:picora/utils/event_bus_utils.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/widgets/common_widgets.dart';
 
 class EmptyDatabase extends StatefulWidget {
   const EmptyDatabase({super.key});
@@ -34,9 +34,21 @@ class EmptyDatabaseState extends State<EmptyDatabase> {
       'title': '扩展存储',
       'options': [
         {'name': 'FTP', 'table': 'PBhostExtend1', 'icon': Icons.storage},
-        {'name': 'S3兼容平台', 'table': 'PBhostExtend2', 'icon': Icons.cloud_outlined},
-        {'name': 'AList V3', 'table': 'PBhostExtend3', 'icon': Icons.view_list_outlined},
-        {'name': 'WebDAV', 'table': 'PBhostExtend4', 'icon': Icons.web_outlined},
+        {
+          'name': 'S3兼容平台',
+          'table': 'PBhostExtend2',
+          'icon': Icons.cloud_outlined,
+        },
+        {
+          'name': 'OpenList',
+          'table': 'PBhostExtend3',
+          'icon': Icons.view_list_outlined,
+        },
+        {
+          'name': 'WebDAV',
+          'table': 'PBhostExtend4',
+          'icon': Icons.web_outlined,
+        },
       ],
       'isExtended': true,
     },
@@ -55,7 +67,10 @@ class EmptyDatabaseState extends State<EmptyDatabase> {
       await AlbumSQL.emptyAllTable(Global.imageDB!);
       await AlbumSQL.emptyAllTableExtend(Global.imageDBExtend!);
     } else {
-      await AlbumSQL.deleteTable(isExtended ? Global.imageDBExtend! : Global.imageDB!, table);
+      await AlbumSQL.deleteTable(
+        isExtended ? Global.imageDBExtend! : Global.imageDB!,
+        table,
+      );
     }
     showToast('已清空${name == '清空所有数据库' ? '所有' : name}数据库');
     eventBus.fire(AlbumRefreshEvent(albumKeepAlive: false));
@@ -111,11 +126,16 @@ class EmptyDatabaseState extends State<EmptyDatabase> {
                   final option = options[optionIndex];
 
                   return ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 2.0),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: 2.0,
+                    ),
                     leading: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).primaryColor.withValues(alpha: 0.2),
+                        color: Theme.of(
+                          context,
+                        ).primaryColor.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(
@@ -129,7 +149,11 @@ class EmptyDatabaseState extends State<EmptyDatabase> {
                         title: '通知',
                         content: '是否确定清空${option['name']}数据库？',
                         context: context,
-                        onConfirm: () => _clearTable(option['table'], option['name'], isExtended),
+                        onConfirm: () => _clearTable(
+                          option['table'],
+                          option['name'],
+                          isExtended,
+                        ),
                       );
                     },
                   );

@@ -1,14 +1,14 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:horopic/widgets/common_widgets.dart';
+import 'package:picora/widgets/common_widgets.dart';
 
 import 'package:url_launcher/url_launcher.dart';
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter_text_viewer/flutter_text_viewer.dart';
 
-import 'package:horopic/widgets/load_state_change.dart';
-import 'package:horopic/utils/common_functions.dart';
+import 'package:picora/widgets/load_state_change.dart';
+import 'package:picora/utils/common_functions.dart';
 
 class MarkDownPreview extends StatefulWidget {
   final String filePath;

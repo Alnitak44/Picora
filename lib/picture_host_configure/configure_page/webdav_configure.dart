@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:fluro/fluro.dart';
 import 'package:webdav_client/webdav_client.dart' as webdav;
 
-import 'package:horopic/router/application.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/widgets/net_loading_dialog.dart';
-import 'package:horopic/utils/global.dart';
-import 'package:horopic/utils/event_bus_utils.dart';
-import 'package:horopic/picture_host_manage/manage_api/webdav_manage_api.dart';
-import 'package:horopic/widgets/configure_widgets.dart';
+import 'package:picora/router/application.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/widgets/net_loading_dialog.dart';
+import 'package:picora/utils/global.dart';
+import 'package:picora/utils/event_bus_utils.dart';
+import 'package:picora/picture_host_manage/manage_api/webdav_manage_api.dart';
+import 'package:picora/widgets/configure_widgets.dart';
 
 class WebdavConfig extends StatefulWidget {
   const WebdavConfig({super.key});

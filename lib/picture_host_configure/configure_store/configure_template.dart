@@ -1,4 +1,4 @@
-import 'package:horopic/picture_host_configure/configure_page/configure_export.dart';
+import 'package:picora/picture_host_configure/configure_page/configure_export.dart';
 
 class ConfigureTemplate {
   static String placeholder = 'undetermined';

@@ -1,9 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/picture_host_manage/manage_api/imgur_manage_api.dart';
-import 'package:horopic/widgets/common_widgets.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/picture_host_manage/manage_api/imgur_manage_api.dart';
+import 'package:picora/widgets/common_widgets.dart';
 
 class ImgurTokenManage extends StatefulWidget {
   const ImgurTokenManage({super.key});

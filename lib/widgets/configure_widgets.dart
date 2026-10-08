@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/widgets/common_widgets.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/widgets/common_widgets.dart';
 
 class ConfigureWidgets {
   static Widget buildSettingCard({required String title, required List<Widget> children}) {

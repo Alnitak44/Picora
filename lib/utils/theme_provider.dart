@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flustars_flutter3/flustars_flutter3.dart';
-import 'package:horopic/configure_page/others/theme_data.dart';
+import 'package:picora/configure_page/others/theme_data.dart';
 
 Map themeDataMap = {
   'light': lightThemeData,

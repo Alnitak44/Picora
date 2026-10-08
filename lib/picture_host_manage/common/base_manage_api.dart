@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/utils/global.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/utils/global.dart';
 import 'package:path_provider/path_provider.dart';
 
 class BaseManageApi {

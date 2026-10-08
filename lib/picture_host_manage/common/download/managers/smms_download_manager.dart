@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 
-import 'package:horopic/picture_host_manage/common/download/common_service/base_download_manager.dart';
+import 'package:picora/picture_host_manage/common/download/common_service/base_download_manager.dart';
 
 class DownloadManager extends BaseDownloadManager {
   static final DownloadManager _dm = DownloadManager._internal();

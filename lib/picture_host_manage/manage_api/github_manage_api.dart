@@ -3,11 +3,11 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
-import 'package:horopic/picture_host_manage/common/base_manage_api.dart';
+import 'package:picora/picture_host_manage/common/base_manage_api.dart';
 import 'package:path_provider/path_provider.dart';
 
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/picture_host_configure/configure_page/github_configure.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/picture_host_configure/configure_page/github_configure.dart';
 
 class GithubManageAPI extends BaseManageApi {
   static final GithubManageAPI _instance = GithubManageAPI._internal();
@@ -320,7 +320,7 @@ class GithubManageAPI extends BaseManageApi {
           'Accept': 'application/vnd.github+json',
         },
         data: {
-          'message': 'deleted by PicHoro app',
+          'message': 'deleted by Picora app',
           'sha': sha,
           'branch': branch,
         },
@@ -417,11 +417,11 @@ class GithubManageAPI extends BaseManageApi {
     try {
       Map configMap = await getConfigMap();
       String token = configMap['token'];
-      String assetPath = 'assets/validateImage/PicHoroValidate.jpeg';
+      String assetPath = 'assets/validateImage/PicoraValidate.jpeg';
       String appDir = await getApplicationDocumentsDirectory().then((value) {
         return value.path;
       });
-      String assetFilePath = '$appDir/PicHoroValidate.jpeg';
+      String assetFilePath = '$appDir/PicoraValidate.jpeg';
       File assetFile = File(assetFilePath);
 
       if (!assetFile.existsSync()) {
@@ -432,7 +432,7 @@ class GithubManageAPI extends BaseManageApi {
       String base64Image = base64Encode(File(assetFilePath).readAsBytesSync());
 
       Map<String, dynamic> queryBody = {
-        'message': 'uploaded by PicHoro app',
+        'message': 'uploaded by Picora app',
         'content': base64Image,
         'branch': element['default_branch'],
       };
@@ -455,7 +455,7 @@ class GithubManageAPI extends BaseManageApi {
       Dio dio = Dio(baseoptions);
       String uploadUrl = '';
       uploadUrl =
-          "https://api.github.com/repos/${configMap["githubusername"]}/${element["name"]}/contents/$trimedPath/PicHoroValidate.jpeg";
+          "https://api.github.com/repos/${configMap["githubusername"]}/${element["name"]}/contents/$trimedPath/PicoraValidate.jpeg";
 
       var response = await dio.put(uploadUrl, data: queryBody);
       if (response.statusCode == 200 || response.statusCode == 201) {
@@ -484,7 +484,7 @@ class GithubManageAPI extends BaseManageApi {
       String base64Image = base64Encode(File(filePath).readAsBytesSync());
 
       Map<String, dynamic> queryBody = {
-        'message': 'uploaded by PicHoro app',
+        'message': 'uploaded by Picora app',
         'content': base64Image,
         'branch': element['default_branch'],
       };

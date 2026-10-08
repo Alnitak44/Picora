@@ -1,4 +1,4 @@
-name: horopic
+name: picora
 description: mobile PicGo
 
 # The following line prevents the package from being accidentally published to
@@ -17,10 +17,11 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 3.0.1+1
+version: 1.0.0+2
 
 environment:
-  sdk: ^3.0.0
+  sdk: ^3.9.0
+  flutter: '>=3.35.0'
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -29,6 +30,7 @@ environment:
 # the latest version available on pub.dev. To see which dependencies have newer
 # versions available, run `flutter pub outdated`.
 dependencies:
+  archive: 4.0.4
   flutter:
     sdk: flutter
   auto_orientation: ^2.3.1
@@ -52,6 +54,7 @@ dependencies:
   flutter_image_compress: ^2.0.4
   flutter_draggable_gridview: ^0.0.8
   flutter_markdown: ^0.7.6+2
+  flutter_svg: ^2.2.1
   flutter_speed_dial: ^7.0.0
   flutter_slidable: ^4.0.3
   flutter_text_viewer: ^0.0.6
@@ -91,19 +94,25 @@ dependencies:
     git:
       url: https://github.com/Kuingsmile/flutterdep.git
       path: f_logs-2.0.1
+      ref: 2fe741b4849e4e2699ac1e2a5e4dee93c3f0a786
   syncfusion_flutter_pdfviewer:
     git:
       url: https://github.com/Kuingsmile/flutterdep.git
       path: syncfusion_flutter_pdfviewer-22.2.10
+      ref: 2fe741b4849e4e2699ac1e2a5e4dee93c3f0a786
   syncfusion_flutter_pdf:
     git:
       url: https://github.com/Kuingsmile/flutterdep.git
       path: syncfusion_flutter_pdf-22.2.10
+      ref: 2fe741b4849e4e2699ac1e2a5e4dee93c3f0a786
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
 dev_dependencies:
+  sqflite_common_ffi: 2.3.6
+  shared_preferences: ^2.5.2
+  path_provider_platform_interface: ^2.1.2
   flutter_test:
     sdk: flutter
 
@@ -131,6 +140,8 @@ flutter:
      - assets/fonts/
      - assets/files/
      - assets/images/
+     - assets/images/providers/
+     - assets/plugins/
      - assets/validateImage/
      - assets/icons/
   #   - images/a_dot_ham.jpeg

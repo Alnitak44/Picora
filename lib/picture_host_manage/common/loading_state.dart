@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:picora/hero/hero_theme.dart';
 
 enum LoadState { loading, empty, error, success }
 
 abstract class BaseLoadingPageState<T extends StatefulWidget> extends State<T> {
   LoadState? state;
-
   @override
   void initState() {
     super.initState();
@@ -12,106 +12,68 @@ abstract class BaseLoadingPageState<T extends StatefulWidget> extends State<T> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: appBar,
-      body: buildStateWidget,
-    );
-  }
-
-  Widget get buildStateWidget {
-    switch (state) {
-      case LoadState.empty:
-        return buildEmpty();
-      case LoadState.error:
-        return buildError();
-      case LoadState.loading:
-        return buildLoading();
-      case LoadState.success:
-        return buildSuccess();
-      default:
-        return buildError();
-    }
-  }
-
-  String get emptyText => '没有数据哦，点击右上角添加吧';
+  Widget build(BuildContext context) =>
+      Scaffold(appBar: appBar, body: buildStateWidget);
+  Widget get buildStateWidget => switch (state) {
+    LoadState.empty => buildEmpty(),
+    LoadState.loading => buildLoading(),
+    LoadState.success => buildSuccess(),
+    _ => buildError(),
+  };
+  String get emptyText => '这里还没有文件，可以添加一个。';
   List<Widget> get extraEmptyWidgets => [];
-
-  Widget buildEmpty() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Image.asset(
-            'assets/images/empty.png',
-            width: 120,
-            height: 120,
-          ),
-          const SizedBox(height: 20),
-          Text(emptyText,
-              style: TextStyle(fontSize: 18, color: Color.fromARGB(136, 121, 118, 118), fontWeight: FontWeight.w500)),
-          ...extraEmptyWidgets,
-        ],
-      ),
-    );
-  }
-
-  String get errorText => '加载失败';
+  String get errorText => '云端数据加载失败';
   String get errorButtonText => '重新加载';
-  void onErrorRetry() {
-    setState(() {
-      state = LoadState.loading;
-    });
-    // Implement your retry logic here
-  }
-
-  Widget buildError() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.error_outline, size: 60, color: Colors.red),
-          const SizedBox(height: 16),
-          Text(errorText,
-              style: TextStyle(fontSize: 18, color: Color.fromARGB(136, 121, 118, 118), fontWeight: FontWeight.w500)),
-          const SizedBox(height: 16),
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+  void onErrorRetry() => setState(() => state = LoadState.loading);
+  Widget buildEmpty() => Center(
+    child: SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            HeroEmpty(
+              icon: Icons.cloud_queue_rounded,
+              title: '一片新的空间',
+              message: emptyText,
             ),
+            ...extraEmptyWidgets,
+          ],
+        ),
+      ),
+    ),
+  );
+  Widget buildError() => Center(
+    child: SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: HeroEmpty(
+          icon: Icons.wifi_off_rounded,
+          title: errorText,
+          message: '请检查网络和仓库配置，诊断日志可查看错误详情。',
+          action: FilledButton.icon(
             onPressed: onErrorRetry,
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh_rounded),
             label: Text(errorButtonText),
-          )
-        ],
-      ),
-    );
-  }
-
-  Widget buildLoading() {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          SizedBox(
-            width: 40,
-            height: 40,
-            child: CircularProgressIndicator(
-              strokeWidth: 3,
-              backgroundColor: Colors.transparent,
-              valueColor: AlwaysStoppedAnimation(Colors.blue),
-            ),
           ),
-          SizedBox(height: 16),
-          Text('加载中...', style: TextStyle(fontSize: 16, color: Colors.blue, fontWeight: FontWeight.w500)),
-        ],
+        ),
       ),
-    );
-  }
-
+    ),
+  );
+  Widget buildLoading() => const Center(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(strokeWidth: 2.5),
+        ),
+        SizedBox(height: 18),
+        Text('正在连接云端…', style: TextStyle(fontSize: 12, color: heroMuted)),
+      ],
+    ),
+  );
   Widget buildSuccess();
   AppBar get appBar;
 }

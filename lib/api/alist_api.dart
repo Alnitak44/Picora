@@ -2,17 +2,21 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:dio/dio.dart';
 
-import 'package:horopic/picture_host_manage/manage_api/alist_manage_api.dart';
-import 'package:horopic/picture_host_configure/configure_page/alist_configure.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/utils/global.dart';
+import 'package:picora/picture_host_manage/manage_api/alist_manage_api.dart';
+import 'package:picora/picture_host_configure/configure_page/alist_configure.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/utils/global.dart';
 
 class AlistImageUploadUtils {
   static refreshToken({required Map configMap}) async {
     String today = getToday('yyyyMMdd');
     String alistToday = Global.getTodayAlistUpdate();
     if (alistToday != today && configMap['token'] != '') {
-      var res = await AlistManageAPI().getToken(configMap['host'], configMap['alistusername'], configMap['password']);
+      var res = await AlistManageAPI().getToken(
+        configMap['host'],
+        configMap['alistusername'],
+        configMap['password'],
+      );
       if (res[0] != 'success') {
         return ['failed'];
       }
@@ -95,8 +99,13 @@ class AlistImageUploadUtils {
       String infoGetUrl = "$host/api/fs/get";
       String refreshUrl = "$host/api/fs/list";
 
-      var uploadResponse = await dio.put(uploadUrl, data: formdata, onSendProgress: onSendProgress);
-      if (uploadResponse.statusCode != 200 || uploadResponse.data!['message'] != 'success') {
+      var uploadResponse = await dio.put(
+        uploadUrl,
+        data: formdata,
+        onSendProgress: onSendProgress,
+      );
+      if (uploadResponse.statusCode != 200 ||
+          uploadResponse.data!['message'] != 'success') {
         return ['failed'];
       }
 
@@ -107,21 +116,32 @@ class AlistImageUploadUtils {
       };
       Dio dioGet = Dio(getOptions);
       Dio dioRefresh = Dio(getOptions);
-      Map getformData = {
-        "path": filePath,
+      Map getformData = {"path": filePath};
+      Map refreshListFormData = {
+        "password": "",
+        "page": 1,
+        "per_page": 1,
+        "path": uploadPath,
+        "refresh": true,
       };
-      Map refreshListFormData = {"password": "", "page": 1, "per_page": 1, "path": uploadPath, "refresh": true};
-      var refreshResponse = await dioRefresh.post(refreshUrl, data: refreshListFormData);
-      if (refreshResponse.statusCode != 200 || refreshResponse.data!['message'] != 'success') {
+      var refreshResponse = await dioRefresh.post(
+        refreshUrl,
+        data: refreshListFormData,
+      );
+      if (refreshResponse.statusCode != 200 ||
+          refreshResponse.data!['message'] != 'success') {
         return ['failed'];
       }
       var responseGet = await dioGet.post(infoGetUrl, data: getformData);
-      if (responseGet.statusCode != 200 || responseGet.data['message'] != 'success') {
+      if (responseGet.statusCode != 200 ||
+          responseGet.data['message'] != 'success') {
         return ['failed'];
       }
       String returnUrl = responseGet.data!['data']['raw_url'];
       //返回缩略图地址用来在相册显示
-      String displayUrl = responseGet.data!['data']['thumb'] == "" || responseGet.data!['data']['thumb'] == null
+      String displayUrl =
+          responseGet.data!['data']['thumb'] == "" ||
+              responseGet.data!['data']['thumb'] == null
           ? returnUrl
           : responseGet.data!['data']['thumb'];
       Map pictureKeyMap = Map.from(configMap);
@@ -131,28 +151,35 @@ class AlistImageUploadUtils {
       String pictureKey = jsonEncode(pictureKeyMap);
 
       if (webPath != 'None') {
-        webPath = '/${webPath.replaceAll(RegExp(r'^/*'), '').replaceAll(RegExp(r'/*$'), '')}/$name';
+        webPath =
+            '/${webPath.replaceAll(RegExp(r'^/*'), '').replaceAll(RegExp(r'/*$'), '')}/$name';
       }
       String hostPicUrl = '';
       if (customUrl != 'None') {
         hostPicUrl = '$customUrl${webPath != 'None' ? webPath : filePath}';
       } else {
         hostPicUrl = '$host/d${webPath != 'None' ? webPath : filePath}';
-        if (responseGet.data!['data']['sign'] != "" && responseGet.data!['data']['sign'] != null) {
+        if (responseGet.data!['data']['sign'] != "" &&
+            responseGet.data!['data']['sign'] != null) {
           hostPicUrl = '$hostPicUrl?sign=${responseGet.data!['data']['sign']}';
         }
       }
       String formatedURL = getFormatedUrl(hostPicUrl, name);
-      return ["success", formatedURL, returnUrl, pictureKey, displayUrl, hostPicUrl];
+      return [
+        "success",
+        formatedURL,
+        returnUrl,
+        pictureKey,
+        displayUrl,
+        hostPicUrl,
+      ];
     } catch (e) {
       flogErr(
-          e,
-          {
-            'path': path,
-            'name': name,
-          },
-          "AlistImageUploadUtils",
-          "uploadApi");
+        e,
+        {'path': path, 'name': name},
+        "OpenListImageUploadUtils",
+        "uploadApi",
+      );
       return ['failed'];
     }
   }
@@ -161,11 +188,13 @@ class AlistImageUploadUtils {
     Map configMapFromPictureKey = jsonDecode(deleteMap['pictureKey']);
     Map<String, dynamic> formdata = {
       "dir": configMapFromPictureKey['uploadPath'],
-      "names": [configMapFromPictureKey['filenames']]
+      "names": [configMapFromPictureKey['filenames']],
     };
     String token = configMap['token'];
     String? adminToken = configMap['adminToken'];
-    if (adminToken != null && adminToken != 'None' && adminToken.trim().isNotEmpty) {
+    if (adminToken != null &&
+        adminToken != 'None' &&
+        adminToken.trim().isNotEmpty) {
       token = adminToken;
     } else {
       AlistImageUploadUtils.refreshToken(configMap: configMap);
@@ -179,27 +208,24 @@ class AlistImageUploadUtils {
     String deleteUrl = configMapFromPictureKey["host"] + "/api/fs/remove";
     try {
       var response = await dio.post(deleteUrl, data: formdata);
-      if (response.statusCode != 200 || response.data!['message'] != "success") {
+      if (response.statusCode != 200 ||
+          response.data!['message'] != "success") {
         return ['failed'];
       }
       flogErr(
-          response,
-          {
-            'deleteMap': deleteMap,
-            'configMap': configMap,
-          },
-          "AlistImageUploadUtils",
-          "deleteApi");
+        response,
+        {'deleteMap': deleteMap, 'configMap': configMap},
+        "OpenListImageUploadUtils",
+        "deleteApi",
+      );
       return ["success"];
     } catch (e) {
       flogErr(
-          e,
-          {
-            'deleteMap': deleteMap,
-            'configMap': configMap,
-          },
-          "AlistImageUploadUtils",
-          "deleteApi");
+        e,
+        {'deleteMap': deleteMap, 'configMap': configMap},
+        "OpenListImageUploadUtils",
+        "deleteApi",
+      );
       return ['failed'];
     }
   }

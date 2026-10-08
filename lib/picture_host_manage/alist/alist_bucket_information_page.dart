@@ -2,11 +2,11 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
-import 'package:horopic/picture_host_manage/common/info_page_utils.dart';
-import 'package:horopic/picture_host_manage/manage_api/alist_manage_api.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/widgets/common_widgets.dart';
-import 'package:horopic/widgets/custom_speed_dial.dart';
+import 'package:picora/picture_host_manage/common/info_page_utils.dart';
+import 'package:picora/picture_host_manage/manage_api/alist_manage_api.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/widgets/common_widgets.dart';
+import 'package:picora/widgets/custom_speed_dial.dart';
 
 class AlistBucketInformation extends StatefulWidget {
   final Map bucketMap;

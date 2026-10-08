@@ -15,7 +15,9 @@ Future<void> _configureSmms(Map<String, dynamic> jsonResult) async {
 
 Future<void> _configureAws(Map<String, dynamic> jsonResult) async {
   try {
-    String awsKeyName = jsonResult['aws-s3'] == null ? 'aws-s3-plist' : 'aws-s3';
+    String awsKeyName = jsonResult['aws-s3'] == null
+        ? 'aws-s3-plist'
+        : 'aws-s3';
     Map<String, dynamic> awsData = jsonResult[awsKeyName];
 
     // Extract and normalize AWS data
@@ -42,8 +44,17 @@ Future<void> _configureAws(Map<String, dynamic> jsonResult) async {
       usePathStyle = false;
     }
 
-    final awsConfig = AwsConfigModel(accessKeyId, secretKey, bucket, endpoint, region.isEmpty ? 'None' : region,
-        uploadPath, customUrl, usePathStyle, isEnableSSL);
+    final awsConfig = AwsConfigModel(
+      accessKeyId,
+      secretKey,
+      bucket,
+      endpoint,
+      region.isEmpty ? 'None' : region,
+      uploadPath,
+      customUrl,
+      usePathStyle,
+      isEnableSSL,
+    );
 
     await _saveConfig(AwsManageAPI().localFile(), awsConfig);
     showToast("AWS S3配置成功");
@@ -56,19 +67,31 @@ Future<void> _configureAws(Map<String, dynamic> jsonResult) async {
 // Similar helper methods for other services
 Future<void> _configureAlist(Map<String, dynamic> jsonResult) async {
   try {
-    String alistKeyName = jsonResult['alist'] == null ? 'alistplist' : 'alist';
-    String alistVersion = jsonResult['alist']?['version'] ?? '';
+    final alistKeyName = [
+      'openlist',
+      'openlistplist',
+      'alist',
+      'alistplist',
+    ].firstWhere((key) => jsonResult[key] != null);
+    String alistVersion = jsonResult[alistKeyName]?['version'] ?? '';
     if (alistVersion == '2') {
-      showToast("不支持Alist V2");
+      showToast("不支持 OpenList V2");
     } else {
       String alistUrl = (jsonResult[alistKeyName]['url'] ?? '').trim();
       String alistToken = (jsonResult[alistKeyName]['token'] ?? '').trim();
-      String alistUsername = (jsonResult[alistKeyName]['username'] ?? '').trim();
-      String alistPassword = (jsonResult[alistKeyName]['password'] ?? '').trim();
-      String alistUploadPath = (jsonResult[alistKeyName]['uploadPath'] ?? '').trim();
+      String alistUsername = (jsonResult[alistKeyName]['username'] ?? '')
+          .trim();
+      String alistPassword = (jsonResult[alistKeyName]['password'] ?? '')
+          .trim();
+      String alistUploadPath = (jsonResult[alistKeyName]['uploadPath'] ?? '')
+          .trim();
       String alistWebPath =
-          (jsonResult[alistKeyName]['webPath'] ?? jsonResult[alistKeyName]['accessPath'] ?? '').trim();
-      String alistCustomUrl = (jsonResult[alistKeyName]['customUrl'] ?? '').trim();
+          (jsonResult[alistKeyName]['webPath'] ??
+                  jsonResult[alistKeyName]['accessPath'] ??
+                  '')
+              .trim();
+      String alistCustomUrl = (jsonResult[alistKeyName]['customUrl'] ?? '')
+          .trim();
       alistUrl = alistUrl.replaceAll(RegExp(r'/+$'), '');
       if (!alistUrl.startsWith('http') && !alistUrl.startsWith('https')) {
         alistUrl = 'http://$alistUrl';
@@ -94,30 +117,50 @@ Future<void> _configureAlist(Map<String, dynamic> jsonResult) async {
         }
       }
       if (alistToken != 'None') {
-        final alistConfig = AlistConfigModel(alistUrl, alistToken, alistUsername, alistPassword, alistToken,
-            alistUploadPath, alistWebPath, alistCustomUrl);
+        final alistConfig = AlistConfigModel(
+          alistUrl,
+          alistToken,
+          alistUsername,
+          alistPassword,
+          alistToken,
+          alistUploadPath,
+          alistWebPath,
+          alistCustomUrl,
+        );
         final alistConfigJson = jsonEncode(alistConfig);
         final alistConfigFile = await AlistManageAPI().localFile();
         await alistConfigFile.writeAsString(alistConfigJson);
-        showToast("Alist配置成功");
+        showToast("OpenList 配置成功");
       } else {
         if (alistUsername.isNotEmpty && alistPassword.isNotEmpty) {
-          var res = await AlistManageAPI().getToken(alistUrl, alistUsername, alistPassword);
+          var res = await AlistManageAPI().getToken(
+            alistUrl,
+            alistUsername,
+            alistPassword,
+          );
           if (res[0] != 'success') {
             throw Exception('获取Token失败');
           }
           final alistConfig = AlistConfigModel(
-              alistUrl, 'None', alistUsername, alistPassword, res[1], alistUploadPath, alistWebPath, alistCustomUrl);
+            alistUrl,
+            'None',
+            alistUsername,
+            alistPassword,
+            res[1],
+            alistUploadPath,
+            alistWebPath,
+            alistCustomUrl,
+          );
           final alistConfigJson = jsonEncode(alistConfig);
           final alistConfigFile = await AlistManageAPI().localFile();
           await alistConfigFile.writeAsString(alistConfigJson);
-          showToast("Alist配置成功");
+          showToast("OpenList 配置成功");
         }
       }
     }
   } catch (e) {
-    _logError('_configureAlist', {}, e);
-    showToast("Alist配置错误");
+    _logError('_configureOpenList', {}, e);
+    showToast("OpenList 配置错误");
   }
 }
 
@@ -125,7 +168,10 @@ Future<void> _configureGithub(Map<String, dynamic> jsonResult) async {
   try {
     String token = jsonResult['github']['token'] ?? '';
     String usernameRepo = jsonResult['github']['repo'] ?? '';
-    String githubusername = usernameRepo.substring(0, usernameRepo.indexOf('/'));
+    String githubusername = usernameRepo.substring(
+      0,
+      usernameRepo.indexOf('/'),
+    );
     String repo = usernameRepo.substring(usernameRepo.indexOf('/') + 1);
     String storePath = jsonResult['github']['path'] ?? '';
     String branch = jsonResult['github']['branch'] ?? '';
@@ -144,7 +190,8 @@ Future<void> _configureGithub(Map<String, dynamic> jsonResult) async {
       customDomain = 'None';
     }
     if (customDomain != 'None') {
-      if (!customDomain.startsWith('http') && !customDomain.startsWith('https')) {
+      if (!customDomain.startsWith('http') &&
+          !customDomain.startsWith('https')) {
         customDomain = 'http://$customDomain';
       }
       if (customDomain.endsWith('/')) {
@@ -153,7 +200,14 @@ Future<void> _configureGithub(Map<String, dynamic> jsonResult) async {
     }
     token = token.startsWith('Bearer ') ? token : 'Bearer $token';
 
-    final githubConfig = GithubConfigModel(githubusername, repo, token, storePath, branch, customDomain);
+    final githubConfig = GithubConfigModel(
+      githubusername,
+      repo,
+      token,
+      storePath,
+      branch,
+      customDomain,
+    );
     final githubConfigJson = jsonEncode(githubConfig);
     final githubConfigFile = await GithubManageAPI().localFile();
     await githubConfigFile.writeAsString(githubConfigJson);
@@ -166,12 +220,20 @@ Future<void> _configureGithub(Map<String, dynamic> jsonResult) async {
 
 Future<void> _configureLankong(Map<String, dynamic> jsonResult) async {
   try {
-    String lankongKeyName = jsonResult['lankong'] == null ? 'lskyplist' : 'lankong';
-    String lankongVersion = jsonResult['lankong']?['lskyProVersion'] ?? jsonResult['lskyplist']['version'] ?? '';
+    String lankongKeyName = jsonResult['lankong'] == null
+        ? 'lskyplist'
+        : 'lankong';
+    String lankongVersion =
+        jsonResult['lankong']?['lskyProVersion'] ??
+        jsonResult['lskyplist']['version'] ??
+        '';
     if (lankongVersion == 'V1') {
       showToast("不支持兰空V1");
     } else {
-      String lankongHost = jsonResult[lankongKeyName]['server'] ?? jsonResult[lankongKeyName]['host'] ?? '';
+      String lankongHost =
+          jsonResult[lankongKeyName]['server'] ??
+          jsonResult[lankongKeyName]['host'] ??
+          '';
       if (lankongHost.endsWith('/')) {
         lankongHost = lankongHost.substring(0, lankongHost.length - 1);
       }
@@ -188,7 +250,12 @@ Future<void> _configureLankong(Map<String, dynamic> jsonResult) async {
         lanKongalbumId = 'None';
       }
 
-      HostConfigModel hostConfig = HostConfigModel(lankongHost, lankongToken, lanKongstrategyId, lanKongalbumId);
+      HostConfigModel hostConfig = HostConfigModel(
+        lankongHost,
+        lankongToken,
+        lanKongstrategyId,
+        lanKongalbumId,
+      );
       final hostConfigJson = jsonEncode(hostConfig);
       final hostConfigFile = await LskyproManageAPI().localFile();
       hostConfigFile.writeAsString(hostConfigJson);
@@ -250,8 +317,15 @@ Future<void> _configureQiniu(Map<String, dynamic> jsonResult) async {
       qiniuOptions = 'None';
     }
 
-    final qiniuConfig =
-        QiniuConfigModel(qiniuAccessKey, qiniuSecretKey, qiniuBucket, qiniuUrl, qiniuArea, qiniuOptions, qiniuPath);
+    final qiniuConfig = QiniuConfigModel(
+      qiniuAccessKey,
+      qiniuSecretKey,
+      qiniuBucket,
+      qiniuUrl,
+      qiniuArea,
+      qiniuOptions,
+      qiniuPath,
+    );
     final qiniuConfigJson = jsonEncode(qiniuConfig);
     final qiniuConfigFile = await QiniuManageAPI().localFile();
     await qiniuConfigFile.writeAsString(qiniuConfigJson);
@@ -278,11 +352,15 @@ Future<void> _configureTencent(Map<String, dynamic> jsonResult) async {
       String tencentOptions = jsonResult['tcyun']['options'] ?? '';
 
       if (tencentCustomUrl.isNotEmpty) {
-        if (!tencentCustomUrl.startsWith('http') && !tencentCustomUrl.startsWith('https')) {
+        if (!tencentCustomUrl.startsWith('http') &&
+            !tencentCustomUrl.startsWith('https')) {
           tencentCustomUrl = 'http://$tencentCustomUrl';
         }
         if (tencentCustomUrl.endsWith('/')) {
-          tencentCustomUrl = tencentCustomUrl.substring(0, tencentCustomUrl.length - 1);
+          tencentCustomUrl = tencentCustomUrl.substring(
+            0,
+            tencentCustomUrl.length - 1,
+          );
         }
       } else {
         tencentCustomUrl = 'None';
@@ -335,11 +413,15 @@ Future<void> _configureAliyun(Map<String, dynamic> jsonResult) async {
     String aliyunOptions = jsonResult['aliyun']['options'] ?? '';
 
     if (aliyunCustomUrl.isNotEmpty) {
-      if (!aliyunCustomUrl.startsWith('http') && !aliyunCustomUrl.startsWith('https')) {
+      if (!aliyunCustomUrl.startsWith('http') &&
+          !aliyunCustomUrl.startsWith('https')) {
         aliyunCustomUrl = 'http://$aliyunCustomUrl';
       }
       if (aliyunCustomUrl.endsWith('/')) {
-        aliyunCustomUrl = aliyunCustomUrl.substring(0, aliyunCustomUrl.length - 1);
+        aliyunCustomUrl = aliyunCustomUrl.substring(
+          0,
+          aliyunCustomUrl.length - 1,
+        );
       }
     } else {
       aliyunCustomUrl = 'None';
@@ -388,7 +470,8 @@ Future<void> _configureUpyun(Map<String, dynamic> jsonResult) async {
     String upyunOptions = jsonResult['upyun']['options'] ?? '';
     String upyunPath = jsonResult['upyun']['path'] ?? '';
     String upyunAntiLeechToken = jsonResult['upyun']['antiLeechToken'] ?? '';
-    String upyunAntiLeechExpiration = jsonResult['upyun']['antiLeechExpiration'] ?? '';
+    String upyunAntiLeechExpiration =
+        jsonResult['upyun']['antiLeechExpiration'] ?? '';
 
     if (!upyunUrl.startsWith('http') && !upyunUrl.startsWith('https')) {
       upyunUrl = 'http://$upyunUrl';

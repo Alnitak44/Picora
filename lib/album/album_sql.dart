@@ -1,8 +1,8 @@
-import 'package:horopic/utils/global.dart';
+import 'package:picora/utils/global.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'dart:io';
-import 'package:external_path/external_path.dart';
+import 'package:path_provider/path_provider.dart';
 
 /// 所有的数据库的图床表名
 List<String> allPBhost = [
@@ -23,6 +23,9 @@ List<String> allPBhost = [
 
 /// 扩展数据库的图床表名
 List<String> allPBhostExtend = [for (int i = 1; i <= 50; i++) 'PBhostExtend$i'];
+
+/// Runtime plugins share one extended table; PBhost stores the plugin host ID.
+const String pluginAlbumTable = 'PBhostExtend50';
 
 /// 重要，默认上传图床名和数据库表名对应关系
 Map<String, String> hostToTableNameMap = {
@@ -50,14 +53,21 @@ List<String> tableKeysList = [
 ];
 
 class AlbumSQL {
+  static Future<String> _databaseDirectory() async {
+    // Picora uses its own database, without sharing another app's public files.
+    final directory = Directory(
+        '${(await getApplicationDocumentsDirectory()).path}/Database');
+    await directory.create(recursive: true);
+    return directory.path;
+  }
+
   static Future<Database> getDatabase() async {
     String currentUserName = Global.getUser();
     return await initDB(currentUserName);
   }
 
   static initDB(String username) async {
-    var externalDirectoryPath = await ExternalPath.getExternalStoragePublicDirectory(ExternalPath.DIRECTORY_DOWNLOAD);
-    var persistPath = '$externalDirectoryPath/PicHoro/Database';
+    var persistPath = await _databaseDirectory();
     if (!await Directory(persistPath).exists()) {
       await Directory(persistPath).create(recursive: true);
     }
@@ -97,8 +107,7 @@ class AlbumSQL {
   }
 
   static initExtendDB(String username) async {
-    var externalDirectoryPath = await ExternalPath.getExternalStoragePublicDirectory(ExternalPath.DIRECTORY_DOWNLOAD);
-    var persistPath = '$externalDirectoryPath/PicHoro/Database';
+    var persistPath = await _databaseDirectory();
     if (!await Directory(persistPath).exists()) {
       await Directory(persistPath).create(recursive: true);
     }
@@ -154,7 +163,8 @@ class AlbumSQL {
   }
 
   static isTableExist(Database db, String tableName) async {
-    var res = await db.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='$tableName'");
+    var res = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='$tableName'");
     return res.isNotEmpty;
   }
 
@@ -163,19 +173,23 @@ class AlbumSQL {
         "CREATE TABLE $tableName (id INTEGER PRIMARY KEY AUTOINCREMENT,path TEXT,name TEXT,url TEXT,PBhost TEXT,pictureKey TEXT,hostSpecificArgA TEXT,hostSpecificArgB TEXT,hostSpecificArgC TEXT,hostSpecificArgD TEXT,hostSpecificArgE TEXT)");
   }
 
-  static insertData(Database db, String tableName, Map<String, dynamic> data) async {
-    return await db.insert(tableName, data, conflictAlgorithm: ConflictAlgorithm.replace);
+  static insertData(
+      Database db, String tableName, Map<String, dynamic> data) async {
+    return await db.insert(tableName, data,
+        conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   static deleteData(Database db, String tableName, int id) async {
     return await db.delete(tableName, where: 'id = ?', whereArgs: [id]);
   }
 
-  static Future<List<Map<String, dynamic>>> queryData(Database db, String tableName, int id) async {
+  static Future<List<Map<String, dynamic>>> queryData(
+      Database db, String tableName, int id) async {
     return await db.query(tableName, where: 'id = ?', whereArgs: [id]);
   }
 
-  static Future<List<Map<String, dynamic>>> queryTableData(Database db, String tableName) async {
+  static Future<List<Map<String, dynamic>>> queryTableData(
+      Database db, String tableName) async {
     return await db.query(tableName);
   }
 
@@ -188,8 +202,12 @@ class AlbumSQL {
     int? limit,
     int? offset,
   }) async {
-    List<Map<String, dynamic>> maps =
-        await db.query(tableName, where: where, whereArgs: whereargs, orderBy: orderBy, limit: limit, offset: offset);
+    List<Map<String, dynamic>> maps = await db.query(tableName,
+        where: where,
+        whereArgs: whereargs,
+        orderBy: orderBy,
+        limit: limit,
+        offset: offset);
     return maps;
   }
 

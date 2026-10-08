@@ -3,14 +3,14 @@ import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
-import 'package:horopic/picture_host_manage/common/base_manage_api.dart';
+import 'package:picora/picture_host_manage/common/base_manage_api.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as my_path;
 import 'package:xml2json/xml2json.dart';
 
-import 'package:horopic/utils/global.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/picture_host_configure/configure_page/aliyun_configure.dart';
+import 'package:picora/utils/global.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/picture_host_configure/configure_page/aliyun_configure.dart';
 
 class AliyunManageAPI extends BaseManageApi {
   static final AliyunManageAPI _instance = AliyunManageAPI._internal();

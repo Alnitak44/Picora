@@ -2,18 +2,18 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:fluro/fluro.dart';
 import 'package:flutter_draggable_gridview/flutter_draggable_gridview.dart';
-import 'package:horopic/picture_host_manage/manage_api/webdav_manage_api.dart';
+import 'package:picora/picture_host_manage/manage_api/webdav_manage_api.dart';
 
-import 'package:horopic/utils/global.dart';
+import 'package:picora/utils/global.dart';
 
-import 'package:horopic/router/application.dart';
-import 'package:horopic/router/routers.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/picture_host_manage/manage_api/upyun_manage_api.dart';
-import 'package:horopic/picture_host_manage/manage_api/imgur_manage_api.dart';
-import 'package:horopic/picture_host_manage/manage_api/ftp_manage_api.dart';
-import 'package:horopic/picture_host_manage/manage_api/alist_manage_api.dart';
-import 'package:horopic/widgets/common_widgets.dart';
+import 'package:picora/router/application.dart';
+import 'package:picora/router/routers.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/picture_host_manage/manage_api/upyun_manage_api.dart';
+import 'package:picora/picture_host_manage/manage_api/imgur_manage_api.dart';
+import 'package:picora/picture_host_manage/manage_api/ftp_manage_api.dart';
+import 'package:picora/picture_host_manage/manage_api/alist_manage_api.dart';
+import 'package:picora/widgets/common_widgets.dart';
 
 class PsHostHomePage extends StatefulWidget {
   const PsHostHomePage({super.key});
@@ -22,7 +22,8 @@ class PsHostHomePage extends StatefulWidget {
   PsHostHomePageState createState() => PsHostHomePageState();
 }
 
-class PsHostHomePageState extends State<PsHostHomePage> with AutomaticKeepAliveClientMixin<PsHostHomePage> {
+class PsHostHomePageState extends State<PsHostHomePage>
+    with AutomaticKeepAliveClientMixin<PsHostHomePage> {
   List psHostHomePageOrder = [];
 
   @override
@@ -49,127 +50,112 @@ class PsHostHomePageState extends State<PsHostHomePage> with AutomaticKeepAliveC
     super.build(context);
     List<DraggableGridItem> listOfDraggableGridItem = [
       DraggableGridItem(
-        child: _buildCard(
-          'assets/icons/tcyun.png',
-          '腾讯云',
-          () async {
-            Application.router.navigateTo(
-              context,
-              Routes.tencentBucketList,
-              transition: TransitionType.inFromRight,
-            );
-          },
-        ),
+        child: _buildCard('assets/icons/tcyun.png', '腾讯云', () async {
+          Application.router.navigateTo(
+            context,
+            Routes.tencentBucketList,
+            transition: TransitionType.inFromRight,
+          );
+        }),
         isDraggable: true,
       ),
       DraggableGridItem(
-        child: _buildCard(
-          'assets/icons/smms.png',
-          'SM.MS',
-          () {
-            Application.router.navigateTo(
-              context,
-              Routes.smmsManageHomePage,
-              transition: TransitionType.inFromRight,
-            );
-          },
-        ),
+        child: _buildCard('assets/icons/smms.png', 'SM.MS', () {
+          Application.router.navigateTo(
+            context,
+            Routes.smmsManageHomePage,
+            transition: TransitionType.inFromRight,
+          );
+        }),
         isDraggable: true,
       ),
       DraggableGridItem(
-        child: _buildCard(
-          'assets/icons/aliyun.png',
-          '阿里云',
-          () {
-            Application.router.navigateTo(
-              context,
-              Routes.aliyunBucketList,
-              transition: TransitionType.inFromRight,
-            );
-          },
-        ),
+        child: _buildCard('assets/icons/aliyun.png', '阿里云', () {
+          Application.router.navigateTo(
+            context,
+            Routes.aliyunBucketList,
+            transition: TransitionType.inFromRight,
+          );
+        }),
         isDraggable: true,
       ),
       DraggableGridItem(
-        child: _buildCard(
-          'assets/icons/qiniu.png',
-          '七牛云',
-          () async {
-            Application.router.navigateTo(
-              context,
-              Routes.qiniuBucketList,
-              transition: TransitionType.inFromRight,
-            );
-          },
-        ),
+        child: _buildCard('assets/icons/qiniu.png', '七牛云', () async {
+          Application.router.navigateTo(
+            context,
+            Routes.qiniuBucketList,
+            transition: TransitionType.inFromRight,
+          );
+        }),
         isDraggable: true,
       ),
       DraggableGridItem(
-        child: _buildCard(
-          'assets/icons/upyun.png',
-          '又拍云',
-          () async {
-            var queryUpyunManage = await UpyunManageAPI().readUpyunManageConfig();
-            if (queryUpyunManage == 'Error' || queryUpyunManage == '') {
-              if (mounted) {
-                Application.router.navigateTo(
-                  context,
-                  Routes.upyunLogIn,
-                  transition: TransitionType.inFromRight,
-                );
-              }
-            } else {
-              showToast('开始校验');
-              var jsonResult = jsonDecode(queryUpyunManage);
-              String token = jsonResult['token'];
-              var checkTokenResult = await UpyunManageAPI().checkToken(token);
-              if (mounted) {
-                Application.router.navigateTo(
-                  context,
-                  checkTokenResult[0] == 'success' ? Routes.upyunBucketList : Routes.upyunLogIn,
-                  transition: TransitionType.inFromRight,
-                );
-              }
+        child: _buildCard('assets/icons/upyun.png', '又拍云', () async {
+          var queryUpyunManage = await UpyunManageAPI().readUpyunManageConfig();
+          if (queryUpyunManage == 'Error' || queryUpyunManage == '') {
+            if (mounted) {
+              Application.router.navigateTo(
+                context,
+                Routes.upyunLogIn,
+                transition: TransitionType.inFromRight,
+              );
             }
-          },
-        ),
+          } else {
+            showToast('开始校验');
+            var jsonResult = jsonDecode(queryUpyunManage);
+            String token = jsonResult['token'];
+            var checkTokenResult = await UpyunManageAPI().checkToken(token);
+            if (mounted) {
+              Application.router.navigateTo(
+                context,
+                checkTokenResult[0] == 'success'
+                    ? Routes.upyunBucketList
+                    : Routes.upyunLogIn,
+                transition: TransitionType.inFromRight,
+              );
+            }
+          }
+        }),
         isDraggable: true,
       ),
       DraggableGridItem(
-        child: _buildCard(
-          'assets/icons/lskypro.png',
-          '兰空图床',
-          () async {
-            Application.router.navigateTo(
-              context,
-              Routes.lskyproManageHomePage,
-              transition: TransitionType.inFromRight,
-            );
-          },
-        ),
+        child: _buildCard('assets/icons/lskypro.png', '兰空图床', () async {
+          Application.router.navigateTo(
+            context,
+            Routes.lskyproManageHomePage,
+            transition: TransitionType.inFromRight,
+          );
+        }),
         isDraggable: true,
       ),
       DraggableGridItem(
-        child: _buildCard(
-          'assets/icons/github.png',
-          'Github',
-          () async {
-            Application.router.navigateTo(
-              context,
-              Routes.githubManageHomePage,
-              transition: TransitionType.inFromRight,
-            );
-          },
-        ),
+        child: _buildCard('assets/icons/github.png', 'Github', () async {
+          Application.router.navigateTo(
+            context,
+            Routes.githubManageHomePage,
+            transition: TransitionType.inFromRight,
+          );
+        }),
         isDraggable: true,
       ),
       DraggableGridItem(
-        child: _buildCard(
-          'assets/icons/fakesmms.png',
-          'Imgur',
-          () async {
-            var queryImgurManage = await ImgurManageAPI().readImgurManageConfig();
-            if (queryImgurManage == 'Error') {
+        child: _buildCard('assets/icons/fakesmms.png', 'Imgur', () async {
+          var queryImgurManage = await ImgurManageAPI().readImgurManageConfig();
+          if (queryImgurManage == 'Error') {
+            if (mounted) {
+              Application.router.navigateTo(
+                context,
+                Routes.imgurLogIn,
+                transition: TransitionType.inFromRight,
+              );
+            }
+          } else {
+            showToast('开始校验');
+            var jsonResult = jsonDecode(queryImgurManage);
+            String imguruser = jsonResult['imguruser'];
+            String token = jsonResult['accesstoken'];
+            String proxy = jsonResult['proxy'];
+            if (token == 'None') {
               if (mounted) {
                 Application.router.navigateTo(
                   context,
@@ -177,169 +163,76 @@ class PsHostHomePageState extends State<PsHostHomePage> with AutomaticKeepAliveC
                   transition: TransitionType.inFromRight,
                 );
               }
-            } else {
-              showToast('开始校验');
-              var jsonResult = jsonDecode(queryImgurManage);
-              String imguruser = jsonResult['imguruser'];
-              String token = jsonResult['accesstoken'];
-              String proxy = jsonResult['proxy'];
-              if (token == 'None') {
-                if (mounted) {
-                  Application.router.navigateTo(
-                    context,
-                    Routes.imgurLogIn,
-                    transition: TransitionType.inFromRight,
-                  );
-                }
-                return;
+              return;
+            }
+            var checkTokenResult = await ImgurManageAPI().checkToken(
+              imguruser,
+              token,
+              proxy,
+            );
+            if (checkTokenResult[0] == 'success') {
+              if (mounted) {
+                Application.router.navigateTo(
+                  context,
+                  '${Routes.imgurFileExplorer}?userProfile=${Uri.encodeComponent(jsonEncode(jsonResult))}&albumInfo=${Uri.encodeComponent(jsonEncode({}))}&allImages=${Uri.encodeComponent(jsonEncode([]))}',
+                  transition: TransitionType.inFromRight,
+                );
               }
-              var checkTokenResult = await ImgurManageAPI().checkToken(imguruser, token, proxy);
-              if (checkTokenResult[0] == 'success') {
-                if (mounted) {
-                  Application.router.navigateTo(
-                    context,
-                    '${Routes.imgurFileExplorer}?userProfile=${Uri.encodeComponent(jsonEncode(jsonResult))}&albumInfo=${Uri.encodeComponent(jsonEncode({}))}&allImages=${Uri.encodeComponent(jsonEncode([]))}',
-                    transition: TransitionType.inFromRight,
-                  );
-                }
-              } else {
-                if (mounted) {
-                  Application.router.navigateTo(
-                    context,
-                    Routes.imgurLogIn,
-                    transition: TransitionType.inFromRight,
-                  );
-                }
+            } else {
+              if (mounted) {
+                Application.router.navigateTo(
+                  context,
+                  Routes.imgurLogIn,
+                  transition: TransitionType.inFromRight,
+                );
               }
             }
-          },
-        ),
+          }
+        }),
         isDraggable: true,
       ),
       DraggableGridItem(
-        child: _buildCard(
-          'assets/images/ftp.png',
-          'SSH/SFTP',
-          () async {
-            Map configMap = await FTPManageAPI().getConfigMap();
-            if (mounted && configMap['ftpType'] == 'SFTP') {
-              String startDir = configMap['ftpHomeDir'];
-              if (startDir == 'None') {
-                startDir = '/';
-              } else {
-                if (!startDir.endsWith('/')) {
-                  startDir = '$startDir/';
-                }
-                if (!startDir.startsWith('/')) {
-                  startDir = '/$startDir';
-                }
-              }
-              Application.router.navigateTo(context,
-                  '${Routes.sftpFileExplorer}?element=${Uri.encodeComponent(jsonEncode(configMap))}&bucketPrefix=${Uri.encodeComponent(startDir)}',
-                  transition: TransitionType.cupertino);
+        child: _buildCard('assets/images/ftp.png', 'SSH/SFTP', () async {
+          Map configMap = await FTPManageAPI().getConfigMap();
+          if (mounted && configMap['ftpType'] == 'SFTP') {
+            String startDir = configMap['ftpHomeDir'];
+            if (startDir == 'None') {
+              startDir = '/';
             } else {
-              showToast('仅支持管理SFTP');
+              if (!startDir.endsWith('/')) {
+                startDir = '$startDir/';
+              }
+              if (!startDir.startsWith('/')) {
+                startDir = '/$startDir';
+              }
             }
-          },
-        ),
-        isDraggable: true,
-      ),
-      DraggableGridItem(
-        child: _buildCard(
-          'assets/images/aws_s3.png',
-          'S3兼容平台',
-          () async {
             Application.router.navigateTo(
               context,
-              Routes.awsBucketList,
-              transition: TransitionType.inFromRight,
+              '${Routes.sftpFileExplorer}?element=${Uri.encodeComponent(jsonEncode(configMap))}&bucketPrefix=${Uri.encodeComponent(startDir)}',
+              transition: TransitionType.cupertino,
             );
-          },
-        ),
+          } else {
+            showToast('仅支持管理SFTP');
+          }
+        }),
         isDraggable: true,
       ),
       DraggableGridItem(
-        child: _buildCard(
-          'assets/images/alist.png',
-          'Alist',
-          () async {
-            showToast('开始校验');
-            try {
-              Map configMap = await AlistManageAPI().getConfigMap();
-              if (configMap['token'] == '') {
-                String prefix = configMap['uploadPath'];
-                if (prefix == 'None') {
-                  prefix = '/';
-                }
-                if (!prefix.endsWith('/')) {
-                  prefix += '/';
-                }
-                Map element = {
-                  'mount_path': prefix == '/' ? '/' : prefix.substring(0, prefix.length - 1),
-                  'driver': 'BaiduNetdisk',
-                  'addition': jsonEncode({'download_api': 'offical'})
-                };
-                if (mounted) {
-                  Application.router.navigateTo(context,
-                      '${Routes.alistFileExplorer}?currentStorageInfoMap=${Uri.encodeComponent(jsonEncode(element))}&bucketPrefix=${Uri.encodeComponent(prefix)}&refresh=${Uri.encodeComponent('doNotRefresh')}&configMap=${Uri.encodeComponent(jsonEncode(configMap))}',
-                      transition: TransitionType.cupertino);
-                  return;
-                }
-              }
-              String? adminToken = configMap['adminToken'];
-              if (adminToken == null || adminToken == 'None' || adminToken.trim().isEmpty) {
-                String today = getToday('yyyyMMdd');
-                var refreshToken = await AlistManageAPI().refreshToken();
-                if (refreshToken[0] != 'success') {
-                  showToast('刷新Token失败');
-                  return;
-                }
-                Global.setTodayAlistUpdate(today);
-              }
-
-              var bucketListResponse = await AlistManageAPI().getBucketList();
-              if (bucketListResponse[0] != 'success') {
-                Map configMap = await AlistManageAPI().getConfigMap();
-                String prefix = configMap['uploadPath'];
-                if (prefix == 'None') {
-                  prefix = '/';
-                }
-                if (!prefix.endsWith('/')) {
-                  prefix += '/';
-                }
-                Map element = {
-                  'mount_path': prefix == '/' ? '/' : prefix.substring(0, prefix.length - 1),
-                  'driver': 'BaiduNetdisk',
-                  'addition': jsonEncode({'download_api': 'offical'})
-                };
-                if (mounted) {
-                  Application.router.navigateTo(context,
-                      '${Routes.alistFileExplorer}?currentStorageInfoMap=${Uri.encodeComponent(jsonEncode(element))}&bucketPrefix=${Uri.encodeComponent(prefix)}&refresh=${Uri.encodeComponent('doNotRefresh')}&configMap=${Uri.encodeComponent(jsonEncode(configMap))}',
-                      transition: TransitionType.cupertino);
-                }
-              } else {
-                if (mounted) {
-                  Application.router.navigateTo(
-                    context,
-                    Routes.alistBucketList,
-                    transition: TransitionType.inFromRight,
-                  );
-                }
-              }
-            } catch (e) {
-              showToast('校验失败');
-            }
-          },
-        ),
+        child: _buildCard('assets/images/aws_s3.png', 'S3兼容平台', () async {
+          Application.router.navigateTo(
+            context,
+            Routes.awsBucketList,
+            transition: TransitionType.inFromRight,
+          );
+        }),
         isDraggable: true,
       ),
       DraggableGridItem(
-        child: _buildCard(
-          'assets/images/webdav.png',
-          'Webdav',
-          () async {
-            try {
-              Map configMap = await WebdavManageAPI().getConfigMap();
+        child: _buildCard('assets/images/openlist.png', 'OpenList', () async {
+          showToast('开始校验');
+          try {
+            Map configMap = await AlistManageAPI().getConfigMap();
+            if (configMap['token'] == '') {
               String prefix = configMap['uploadPath'];
               if (prefix == 'None') {
                 prefix = '/';
@@ -347,17 +240,97 @@ class PsHostHomePageState extends State<PsHostHomePage> with AutomaticKeepAliveC
               if (!prefix.endsWith('/')) {
                 prefix += '/';
               }
-              Map element = configMap;
+              Map element = {
+                'mount_path': prefix == '/'
+                    ? '/'
+                    : prefix.substring(0, prefix.length - 1),
+                'driver': 'BaiduNetdisk',
+                'addition': jsonEncode({'download_api': 'offical'}),
+              };
               if (mounted) {
-                Application.router.navigateTo(context,
-                    '${Routes.webdavFileExplorer}?element=${Uri.encodeComponent(jsonEncode(element))}&bucketPrefix=${Uri.encodeComponent(prefix)}',
-                    transition: TransitionType.cupertino);
+                Application.router.navigateTo(
+                  context,
+                  '${Routes.alistFileExplorer}?currentStorageInfoMap=${Uri.encodeComponent(jsonEncode(element))}&bucketPrefix=${Uri.encodeComponent(prefix)}&refresh=${Uri.encodeComponent('doNotRefresh')}&configMap=${Uri.encodeComponent(jsonEncode(configMap))}',
+                  transition: TransitionType.cupertino,
+                );
+                return;
               }
-            } catch (e) {
-              showToast('请先配置Webdav');
             }
-          },
-        ),
+            String? adminToken = configMap['adminToken'];
+            if (adminToken == null ||
+                adminToken == 'None' ||
+                adminToken.trim().isEmpty) {
+              String today = getToday('yyyyMMdd');
+              var refreshToken = await AlistManageAPI().refreshToken();
+              if (refreshToken[0] != 'success') {
+                showToast('刷新Token失败');
+                return;
+              }
+              Global.setTodayAlistUpdate(today);
+            }
+
+            var bucketListResponse = await AlistManageAPI().getBucketList();
+            if (bucketListResponse[0] != 'success') {
+              Map configMap = await AlistManageAPI().getConfigMap();
+              String prefix = configMap['uploadPath'];
+              if (prefix == 'None') {
+                prefix = '/';
+              }
+              if (!prefix.endsWith('/')) {
+                prefix += '/';
+              }
+              Map element = {
+                'mount_path': prefix == '/'
+                    ? '/'
+                    : prefix.substring(0, prefix.length - 1),
+                'driver': 'BaiduNetdisk',
+                'addition': jsonEncode({'download_api': 'offical'}),
+              };
+              if (mounted) {
+                Application.router.navigateTo(
+                  context,
+                  '${Routes.alistFileExplorer}?currentStorageInfoMap=${Uri.encodeComponent(jsonEncode(element))}&bucketPrefix=${Uri.encodeComponent(prefix)}&refresh=${Uri.encodeComponent('doNotRefresh')}&configMap=${Uri.encodeComponent(jsonEncode(configMap))}',
+                  transition: TransitionType.cupertino,
+                );
+              }
+            } else {
+              if (mounted) {
+                Application.router.navigateTo(
+                  context,
+                  Routes.alistBucketList,
+                  transition: TransitionType.inFromRight,
+                );
+              }
+            }
+          } catch (e) {
+            showToast('校验失败');
+          }
+        }),
+        isDraggable: true,
+      ),
+      DraggableGridItem(
+        child: _buildCard('assets/images/webdav.png', 'Webdav', () async {
+          try {
+            Map configMap = await WebdavManageAPI().getConfigMap();
+            String prefix = configMap['uploadPath'];
+            if (prefix == 'None') {
+              prefix = '/';
+            }
+            if (!prefix.endsWith('/')) {
+              prefix += '/';
+            }
+            Map element = configMap;
+            if (mounted) {
+              Application.router.navigateTo(
+                context,
+                '${Routes.webdavFileExplorer}?element=${Uri.encodeComponent(jsonEncode(element))}&bucketPrefix=${Uri.encodeComponent(prefix)}',
+                transition: TransitionType.cupertino,
+              );
+            }
+          } catch (e) {
+            showToast('请先配置Webdav');
+          }
+        }),
         isDraggable: true,
       ),
     ];
@@ -369,9 +342,7 @@ class PsHostHomePageState extends State<PsHostHomePage> with AutomaticKeepAliveC
       appBar: AppBar(
         centerTitle: true,
         elevation: 0,
-        title: titleText(
-          '图床管理-长按拖动',
-        ),
+        title: titleText('图床管理-长按拖动'),
         flexibleSpace: getFlexibleSpace(context),
         actions: [
           Container(
@@ -381,7 +352,11 @@ class PsHostHomePageState extends State<PsHostHomePage> with AutomaticKeepAliveC
               borderRadius: BorderRadius.circular(15),
             ),
             child: IconButton(
-              icon: const Icon(Icons.restart_alt_rounded, color: Colors.white, size: 28),
+              icon: const Icon(
+                Icons.restart_alt_rounded,
+                color: Colors.white,
+                size: 28,
+              ),
               onPressed: () async {
                 List<String> order = [];
                 for (int i = 0; i < 22; i++) {
@@ -419,13 +394,20 @@ class PsHostHomePageState extends State<PsHostHomePage> with AutomaticKeepAliveC
               childAspectRatio: 1.5,
             ),
             children: newItems,
-            dragCompletion: (List<DraggableGridItem> list, int beforeIndex, int afterIndex) async {
-              List<String> newOrder = [];
-              for (int i = 0; i < list.length; i++) {
-                newOrder.add(listOfDraggableGridItem.indexOf(list[i]).toString());
-              }
-              Global.setpsHostHomePageOrder(newOrder);
-            },
+            dragCompletion:
+                (
+                  List<DraggableGridItem> list,
+                  int beforeIndex,
+                  int afterIndex,
+                ) async {
+                  List<String> newOrder = [];
+                  for (int i = 0; i < list.length; i++) {
+                    newOrder.add(
+                      listOfDraggableGridItem.indexOf(list[i]).toString(),
+                    );
+                  }
+                  Global.setpsHostHomePageOrder(newOrder);
+                },
             dragFeedback: (List<DraggableGridItem> list, int index) {
               return SizedBox(
                 width: 200,
@@ -439,7 +421,9 @@ class PsHostHomePageState extends State<PsHostHomePage> with AutomaticKeepAliveC
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(15),
                     border: Border.all(
-                      color: Theme.of(context).primaryColor.withValues(alpha: 0.5),
+                      color: Theme.of(
+                        context,
+                      ).primaryColor.withValues(alpha: 0.5),
                       width: 2,
                       style: BorderStyle.solid,
                     ),
@@ -472,34 +456,31 @@ class PsHostHomePageState extends State<PsHostHomePage> with AutomaticKeepAliveC
             onTap: onTap,
             borderRadius: BorderRadius.circular(15),
             splashColor: Theme.of(context).primaryColor.withValues(alpha: 0.3),
-            highlightColor: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+            highlightColor: Theme.of(
+              context,
+            ).primaryColor.withValues(alpha: 0.1),
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(15),
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
-                  colors: [
-                    Colors.white,
-                    Theme.of(context).cardColor,
-                  ],
+                  colors: [Colors.white, Theme.of(context).cardColor],
                 ),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: <Widget>[
-                  Image.asset(
-                    imagePath,
-                    width: 70,
-                    height: 65,
-                  ),
+                  Image.asset(imagePath, width: 70, height: 65),
                   const SizedBox(height: 8),
                   Text(
                     title,
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
-                      color: Theme.of(context).primaryColor.withValues(alpha: 0.8),
+                      color: Theme.of(
+                        context,
+                      ).primaryColor.withValues(alpha: 0.8),
                     ),
                   ),
                 ],

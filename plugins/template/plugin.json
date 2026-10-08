@@ -1,0 +1,15 @@
+{
+  "packageVersion": 1,
+  "runtime": "http-v1",
+  "entry": "uploader.json",
+  "id": "com.example.image-host",
+  "name": "Example Host",
+  "version": "1.0.0",
+  "description": "图床插件开发模板，需要修改为实际接口",
+  "author": "Picora contributors",
+  "homepage": "https://example.com",
+  "repository": "https://github.com/YourName/YourPlugin",
+  "icon": "assets/icon.svg",
+  "mark": "EX",
+  "color": "#6377E8"
+}

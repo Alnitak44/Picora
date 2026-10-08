@@ -1,17 +1,20 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:picora/hero/hero_theme.dart';
 import 'package:flutter/services.dart' as flutter_services;
-import 'package:horopic/picture_host_manage/common/build_bottom_widget.dart';
+import 'package:picora/picture_host_manage/common/build_bottom_widget.dart';
 
-import 'package:horopic/picture_host_manage/common/file_list_widget.dart';
-import 'package:horopic/widgets/common_widgets.dart';
+import 'package:picora/picture_host_manage/common/file_list_widget.dart';
+import 'package:picora/widgets/common_widgets.dart';
 import 'package:pull_to_refresh/pull_to_refresh.dart';
 import 'package:path/path.dart' as my_path;
 import 'package:share_plus/share_plus.dart';
 import 'package:msh_checkbox/msh_checkbox.dart';
 
-import 'package:horopic/picture_host_manage/common/common_widget.dart';
-import 'package:horopic/picture_host_manage/common/loading_state.dart' as loading_state;
-import 'package:horopic/utils/common_functions.dart';
+import 'package:picora/picture_host_manage/common/common_widget.dart';
+import 'package:picora/picture_host_manage/common/loading_state.dart'
+    as loading_state;
+import 'package:picora/utils/common_functions.dart';
 
 abstract class BaseFileExplorer extends StatefulWidget {
   const BaseFileExplorer({super.key});
@@ -20,13 +23,16 @@ abstract class BaseFileExplorer extends StatefulWidget {
   BaseFileExplorerState createState();
 }
 
-abstract class BaseFileExplorerState<T extends BaseFileExplorer> extends loading_state.BaseLoadingPageState<T> {
+abstract class BaseFileExplorerState<T extends BaseFileExplorer>
+    extends loading_state.BaseLoadingPageState<T> {
   List allInfoList = [];
   List fileAllInfoList = [];
   List dirAllInfoList = [];
   List selectedFilesBool = [];
   bool sorted = true;
-  RefreshController refreshController = RefreshController(initialRefresh: false);
+  RefreshController refreshController = RefreshController(
+    initialRefresh: false,
+  );
 
   @override
   void initState() {
@@ -56,17 +62,19 @@ abstract class BaseFileExplorerState<T extends BaseFileExplorer> extends loading
     Map<String, String> headers = getHeaders(index);
 
     return index < dirAllInfoList.length
-        ? Image.asset(
-            'assets/icons/folder.png',
-            width: 50,
-            height: 50,
-          )
-        : iconImageLoad(await getShareUrl(index), getFileName(index), headers: headers);
+        ? const Icon(Icons.folder_rounded, color: heroBlue, size: 40)
+        : iconImageLoad(
+            await getShareUrl(index),
+            getFileName(index),
+            headers: headers,
+          );
   }
 
   String getFileDate(int index);
   String? getFileSizeForList(int index) {
-    int size = int.parse((allInfoList[index]['size'] ?? 0).toString().split('.')[0]);
+    int size = int.parse(
+      (allInfoList[index]['size'] ?? 0).toString().split('.')[0],
+    );
     return size > 0 ? getFileSize(size) : null;
   }
 
@@ -101,17 +109,18 @@ abstract class BaseFileExplorerState<T extends BaseFileExplorer> extends loading
       getSlidableAction(
         onPressed: (BuildContext context) async {
           showCupertinoAlertDialogWithConfirmFunc(
-              context: context,
-              content: '确定要删除${getFileName(index)}吗？',
-              onConfirm: () async {
-                try {
-                  await deleteFiles([index]);
-                  showToast('删除完成');
-                } catch (e) {
-                  flogErr(e, {}, runtimeType.toString(), "delete_button");
-                  showToast('删除失败');
-                }
-              });
+            context: context,
+            content: '确定要删除${getFileName(index)}吗？',
+            onConfirm: () async {
+              try {
+                await deleteFiles([index]);
+                showToast('删除完成');
+              } catch (e) {
+                flogErr(e, {}, runtimeType.toString(), "delete_button");
+                showToast('删除失败');
+              }
+            },
+          );
         },
         backgroundColor: const Color(0xFFFE4A49),
         icon: Icons.delete,
@@ -122,55 +131,51 @@ abstract class BaseFileExplorerState<T extends BaseFileExplorer> extends loading
   }
 
   Widget buildFloatingActionButton() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        SizedBox(
-            height: 40,
-            width: 40,
-            child: FloatingActionButton(
-              heroTag: 'download',
-              backgroundColor:
-                  selectedFilesBool.contains(true) ? const Color.fromARGB(255, 180, 236, 182) : Colors.transparent,
-              onPressed: () => onDownloadButtonPressed(),
-              child: const Icon(
-                Icons.download,
-                color: Colors.white,
-                size: 25,
+    final selected = selectedFilesBool.where((item) => item == true).length;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 340),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface.withValues(alpha: .88),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: heroMuted.withValues(alpha: .12)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                tooltip: selected > 0 ? '取消全选' : '全选',
+                onPressed: onSelectAllButtonPressed,
+                icon: Icon(
+                  selected > 0
+                      ? Icons.check_circle_rounded
+                      : Icons.check_circle_outline_rounded,
+                  color: heroBlue,
+                ),
               ),
-            )),
-        const SizedBox(width: 20),
-        SizedBox(
-            height: 40,
-            width: 40,
-            child: FloatingActionButton(
-              heroTag: 'copy',
-              backgroundColor:
-                  selectedFilesBool.contains(true) ? const Color.fromARGB(255, 232, 177, 241) : Colors.transparent,
-              elevation: 5,
-              onPressed: () => onCopyButtonPressed(),
-              child: const Icon(
-                Icons.copy,
-                color: Colors.white,
-                size: 20,
+              Text(
+                selected > 0 ? '已选 $selected' : '选择文件',
+                style: const TextStyle(fontSize: 11, color: heroMuted),
               ),
-            )),
-        const SizedBox(width: 20),
-        SizedBox(
-            height: 40,
-            width: 40,
-            child: FloatingActionButton(
-              heroTag: 'select',
-              backgroundColor: const Color.fromARGB(255, 248, 196, 237),
-              elevation: 50,
-              onPressed: () => onSelectAllButtonPressed(),
-              child: const Icon(
-                Icons.check_circle_outline,
-                color: Colors.white,
-                size: 25,
+              const SizedBox(width: 16),
+              IconButton(
+                tooltip: '下载所选文件',
+                onPressed: selected > 0 ? onDownloadButtonPressed : null,
+                icon: const Icon(Icons.download_rounded),
               ),
-            )),
-      ],
+              IconButton(
+                tooltip: '复制所选链接',
+                onPressed: selected > 0 ? onCopyButtonPressed : null,
+                icon: const Icon(Icons.copy_rounded, size: 21),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -207,11 +212,14 @@ abstract class BaseFileExplorerState<T extends BaseFileExplorer> extends loading
           multiUrls.add(getFormatedUrl(rawurl, fileName));
         }
       }
+      if (!mounted) return;
       if (multiUrls.isEmpty) {
         showToastWithContext(context, '没有可复制的链接');
         return;
       }
-      await flutter_services.Clipboard.setData(flutter_services.ClipboardData(text: multiUrls.join('\n')));
+      await flutter_services.Clipboard.setData(
+        flutter_services.ClipboardData(text: multiUrls.join('\n')),
+      );
       if (mounted) {
         showToastWithContext(context, '已复制全部链接');
       }
@@ -240,8 +248,12 @@ abstract class BaseFileExplorerState<T extends BaseFileExplorer> extends loading
     return Scaffold(
       appBar: buildAppBar(),
       body: buildStateWidget,
-      floatingActionButtonLocation: isAbnormalState() ? null : FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: isAbnormalState() ? null : buildFloatingActionButton(),
+      floatingActionButtonLocation: isAbnormalState()
+          ? null
+          : FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: isAbnormalState()
+          ? null
+          : buildFloatingActionButton(),
     );
   }
 
@@ -249,23 +261,14 @@ abstract class BaseFileExplorerState<T extends BaseFileExplorer> extends loading
     return AppBar(
       elevation: 0,
       flexibleSpace: getFlexibleSpace(context),
-      leading: IconButton(
-        icon: const Icon(
-          Icons.arrow_back_ios,
-          size: 20,
-          color: Colors.white,
-        ),
-        onPressed: () {
-          Navigator.pop(context);
-        },
-      ),
+      leading: getLeadingIcon(context),
       titleSpacing: 0,
       title: titleText(getPageTitle()),
       actions: buildAppBarActions(),
     );
   }
 
-// Default sort options, can be overridden by subclasses
+  // Default sort options, can be overridden by subclasses
   List<PopupMenuItem> getSortMenuItems() {
     return [
       if (isShowSortByDate())
@@ -281,37 +284,26 @@ abstract class BaseFileExplorerState<T extends BaseFileExplorer> extends loading
             ? getFormatedFileName(a).compareTo(getFormatedFileName(b))
             : getFormatedFileName(b).compareTo(getFormatedFileName(a)),
       ),
-      buildSortMenuItem(
-        '文件大小排序',
-        (a, b, ascending) {
-          return ascending
-              ? getFormatedSize(a).compareTo(getFormatedSize(b))
-              : getFormatedSize(b).compareTo(getFormatedSize(a));
-        },
-      ),
-      buildSortMenuItem(
-        '文件类型排序',
-        (a, b, ascending) {
-          return ascending
-              ? getFormatedExtension(a).compareTo(getFormatedExtension(b))
-              : getFormatedExtension(b).compareTo(getFormatedExtension(a));
-        },
-      ),
+      buildSortMenuItem('文件大小排序', (a, b, ascending) {
+        return ascending
+            ? getFormatedSize(a).compareTo(getFormatedSize(b))
+            : getFormatedSize(b).compareTo(getFormatedSize(a));
+      }),
+      buildSortMenuItem('文件类型排序', (a, b, ascending) {
+        return ascending
+            ? getFormatedExtension(a).compareTo(getFormatedExtension(b))
+            : getFormatedExtension(b).compareTo(getFormatedExtension(a));
+      }),
     ];
   }
 
-// Helper for building sort menu items
-  PopupMenuItem buildSortMenuItem(String title, int Function(dynamic a, dynamic b, bool ascending) comparator) {
+  // Helper for building sort menu items
+  PopupMenuItem buildSortMenuItem(
+    String title,
+    int Function(dynamic a, dynamic b, bool ascending) comparator,
+  ) {
     return PopupMenuItem(
-      child: Center(
-        child: Text(
-          title,
-          style: const TextStyle(
-            color: Colors.black,
-            fontSize: 15,
-          ),
-        ),
-      ),
+      child: Center(child: Text(title, style: const TextStyle(fontSize: 15))),
       onTap: () {
         setState(() {
           bool ascending = !sorted;
@@ -322,23 +314,30 @@ abstract class BaseFileExplorerState<T extends BaseFileExplorer> extends loading
     );
   }
 
-// Default implementation for sorting with directories preserved
-  void sortListWithDirectories(int Function(dynamic a, dynamic b, bool ascending) comparator, bool ascending) {
+  // Default implementation for sorting with directories preserved
+  void sortListWithDirectories(
+    int Function(dynamic a, dynamic b, bool ascending) comparator,
+    bool ascending,
+  ) {
+    selectedFilesBool = List.filled(allInfoList.length, false);
     if (dirAllInfoList.isEmpty) {
       allInfoList.sort((a, b) => comparator(a, b, ascending));
     } else {
-      List temp = allInfoList.sublist(dirAllInfoList.length, allInfoList.length);
+      List temp = allInfoList.sublist(
+        dirAllInfoList.length,
+        allInfoList.length,
+      );
       temp.sort((a, b) => comparator(a, b, ascending));
       allInfoList = [...dirAllInfoList, ...temp];
     }
   }
 
-// Helper method to extract DateTime from an item (override as needed)
+  // Helper method to extract DateTime from an item (override as needed)
   DateTime getFormatedFileDate(dynamic item) {
     return DateTime.parse(item['created_at']);
   }
 
-// Helper method to format URL (override as needed)
+  // Helper method to format URL (override as needed)
   String getFormatedFileName(dynamic item) => item['name'] ?? '';
 
   int getFormatedSize(dynamic item) {
@@ -353,51 +352,46 @@ abstract class BaseFileExplorerState<T extends BaseFileExplorer> extends loading
     return [];
   }
 
-// Build the app bar actions
+  // Build the app bar actions
   List<Widget> buildAppBarActions() {
     return [
       ...getExtraAppBarActions(),
       PopupMenuButton(
-        icon: const Icon(
-          Icons.sort,
-          color: Colors.white,
-          size: 25,
-        ),
+        icon: const Icon(Icons.sort_rounded, size: 25),
         position: PopupMenuPosition.under,
         itemBuilder: (BuildContext context) => getSortMenuItems(),
       ),
       // Add/upload button
       IconButton(
         onPressed: () => showUploadOptions(context),
-        icon: const Icon(
-          Icons.add,
-          color: Colors.white,
-          size: 30,
-        ),
+        icon: const Icon(Icons.add, size: 30),
       ),
       // Download management button
       IconButton(
         onPressed: () => navigateToDownloadManagement(),
-        icon: const Icon(
-          Icons.import_export,
-          color: Colors.white,
-          size: 25,
-        ),
+        icon: const Icon(Icons.sync_alt_rounded, size: 25),
       ),
       // Delete button
       IconButton(
         icon: selectedFilesBool.contains(true)
-            ? const Icon(Icons.delete, color: Color.fromARGB(255, 236, 127, 120), size: 30.0)
-            : const Icon(Icons.delete_outline, color: Colors.white, size: 30.0),
+            ? const Icon(
+                Icons.delete,
+                color: Color.fromARGB(255, 236, 127, 120),
+                size: 30.0,
+              )
+            : const Icon(Icons.delete_outline, size: 30.0),
         onPressed: () => onDeleteButtonPressed(),
       ),
     ];
   }
 
-// Methods to override in subclasses
+  // Methods to override in subclasses
   void showUploadOptions(BuildContext context) {
     // Default implementation
-    showToastWithContext(context, 'Override this method to implement upload options');
+    showToastWithContext(
+      context,
+      'Override this method to implement upload options',
+    );
   }
 
   void navigateToDownloadManagement() async {
@@ -460,6 +454,7 @@ abstract class BaseFileExplorerState<T extends BaseFileExplorer> extends loading
       ),
       onRefresh: onRefresh,
       child: ListView.builder(
+        padding: const EdgeInsets.only(top: 12, bottom: 120),
         itemCount: allInfoList.length,
         itemBuilder: (context, index) {
           return getFileListWidget(
@@ -540,9 +535,15 @@ abstract class BaseFileExplorerState<T extends BaseFileExplorer> extends loading
             iconColor: const Color.fromARGB(255, 97, 141, 236),
             title: '复制链接(设置中的默认格式)',
             onTap: () async {
-              await flutter_services.Clipboard.setData(flutter_services.ClipboardData(
-                  text: getFormatedUrl(await getShareUrl(index), my_path.basename(getFileName(index)))));
-              if (mounted) {
+              await flutter_services.Clipboard.setData(
+                flutter_services.ClipboardData(
+                  text: getFormatedUrl(
+                    await getShareUrl(index),
+                    my_path.basename(getFileName(index)),
+                  ),
+                ),
+              );
+              if (context.mounted) {
                 Navigator.pop(context);
               }
               showToast('复制完毕');

@@ -2,46 +2,47 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:picora/hero/hero_theme.dart';
 import 'package:external_path/external_path.dart';
 import 'package:fluro/fluro.dart';
 
-import 'package:horopic/picture_host_manage/common/download/common_service/base_download_manager.dart';
-import 'package:horopic/picture_host_manage/common/download/common_service/base_download_status.dart';
-import 'package:horopic/picture_host_manage/common/common_widget.dart';
-import 'package:horopic/pages/upload_helper/upload_status.dart';
-import 'package:horopic/picture_host_manage/common/upload/common_service/base_upload_manager.dart';
-import 'package:horopic/router/application.dart';
-import 'package:horopic/router/routers.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/utils/global.dart';
-import 'package:horopic/picture_host_manage/common/upload/managers/alist_upload_manager.dart' as alist_upload_utils;
-import 'package:horopic/picture_host_manage/common/upload/managers/aliyun_upload_manager.dart' as aliyun_upload_utils;
-import 'package:horopic/picture_host_manage/common/upload/managers/aws_upload_manager.dart' as aws_upload_utils;
-import 'package:horopic/picture_host_manage/common/upload/managers/sftp_upload_manager.dart' as ftp_upload_utils;
-import 'package:horopic/picture_host_manage/common/upload/managers/github_upload_manager.dart' as github_upload_utils;
-import 'package:horopic/picture_host_manage/common/upload/managers/imgur_upload_manager.dart' as imgur_upload_utils;
-import 'package:horopic/picture_host_manage/common/upload/managers/lskypro_upload_manager.dart' as lskypro_upload_utils;
-import 'package:horopic/picture_host_manage/common/upload/managers/qiniu_upload_manager.dart' as qiniu_upload_utils;
-import 'package:horopic/picture_host_manage/common/upload/managers/smms_upload_manager.dart' as smms_upload_utils;
-import 'package:horopic/picture_host_manage/common/upload/managers/tencent_upload_manager.dart' as tencent_upload_utils;
-import 'package:horopic/picture_host_manage/common/upload/managers/upyun_upload_manager.dart' as upyun_upload_utils;
-import 'package:horopic/picture_host_manage/common/upload/managers/webdav_upload_manager.dart' as webdav_upload_utils;
+import 'package:picora/picture_host_manage/common/download/common_service/base_download_manager.dart';
+import 'package:picora/picture_host_manage/common/download/common_service/base_download_status.dart';
+import 'package:picora/picture_host_manage/common/common_widget.dart';
+import 'package:picora/pages/upload_helper/upload_status.dart';
+import 'package:picora/picture_host_manage/common/upload/common_service/base_upload_manager.dart';
+import 'package:picora/router/application.dart';
+import 'package:picora/router/routers.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/utils/global.dart';
+import 'package:picora/picture_host_manage/common/upload/managers/alist_upload_manager.dart' as alist_upload_utils;
+import 'package:picora/picture_host_manage/common/upload/managers/aliyun_upload_manager.dart' as aliyun_upload_utils;
+import 'package:picora/picture_host_manage/common/upload/managers/aws_upload_manager.dart' as aws_upload_utils;
+import 'package:picora/picture_host_manage/common/upload/managers/sftp_upload_manager.dart' as ftp_upload_utils;
+import 'package:picora/picture_host_manage/common/upload/managers/github_upload_manager.dart' as github_upload_utils;
+import 'package:picora/picture_host_manage/common/upload/managers/imgur_upload_manager.dart' as imgur_upload_utils;
+import 'package:picora/picture_host_manage/common/upload/managers/lskypro_upload_manager.dart' as lskypro_upload_utils;
+import 'package:picora/picture_host_manage/common/upload/managers/qiniu_upload_manager.dart' as qiniu_upload_utils;
+import 'package:picora/picture_host_manage/common/upload/managers/smms_upload_manager.dart' as smms_upload_utils;
+import 'package:picora/picture_host_manage/common/upload/managers/tencent_upload_manager.dart' as tencent_upload_utils;
+import 'package:picora/picture_host_manage/common/upload/managers/upyun_upload_manager.dart' as upyun_upload_utils;
+import 'package:picora/picture_host_manage/common/upload/managers/webdav_upload_manager.dart' as webdav_upload_utils;
 
-import 'package:horopic/picture_host_manage/common/download/managers/alist_download_manager.dart' as alist_downloader;
-import 'package:horopic/picture_host_manage/common/download/managers/aliyun_download_manager.dart' as aliyun_downloader;
-import 'package:horopic/picture_host_manage/common/download/managers/aws_download_manager.dart' as aws_downloader;
-import 'package:horopic/picture_host_manage/common/download/managers/sftp_download_manager.dart' as ftp_downloader;
-import 'package:horopic/picture_host_manage/common/download/managers/github_download_manager.dart' as github_downloader;
-import 'package:horopic/picture_host_manage/common/download/managers/imgur_download_manager.dart' as imgur_downloader;
-import 'package:horopic/picture_host_manage/common/download/managers/lskypro_download_manager.dart'
+import 'package:picora/picture_host_manage/common/download/managers/alist_download_manager.dart' as alist_downloader;
+import 'package:picora/picture_host_manage/common/download/managers/aliyun_download_manager.dart' as aliyun_downloader;
+import 'package:picora/picture_host_manage/common/download/managers/aws_download_manager.dart' as aws_downloader;
+import 'package:picora/picture_host_manage/common/download/managers/sftp_download_manager.dart' as ftp_downloader;
+import 'package:picora/picture_host_manage/common/download/managers/github_download_manager.dart' as github_downloader;
+import 'package:picora/picture_host_manage/common/download/managers/imgur_download_manager.dart' as imgur_downloader;
+import 'package:picora/picture_host_manage/common/download/managers/lskypro_download_manager.dart'
     as lskypro_downloader;
-import 'package:horopic/picture_host_manage/common/download/managers/qiniu_download_manager.dart' as qiniu_downloader;
-import 'package:horopic/picture_host_manage/common/download/managers/smms_download_manager.dart' as smms_downloader;
-import 'package:horopic/picture_host_manage/common/download/managers/tencent_downloade_manager.dart'
+import 'package:picora/picture_host_manage/common/download/managers/qiniu_download_manager.dart' as qiniu_downloader;
+import 'package:picora/picture_host_manage/common/download/managers/smms_download_manager.dart' as smms_downloader;
+import 'package:picora/picture_host_manage/common/download/managers/tencent_downloade_manager.dart'
     as tencent_downloader;
-import 'package:horopic/picture_host_manage/common/download/managers/upyun_download_manager.dart' as upyun_downloader;
-import 'package:horopic/picture_host_manage/common/download/managers/webdav_download_manager.dart' as webdav_downloader;
-import 'package:horopic/widgets/common_widgets.dart';
+import 'package:picora/picture_host_manage/common/download/managers/upyun_download_manager.dart' as upyun_downloader;
+import 'package:picora/picture_host_manage/common/download/managers/webdav_download_manager.dart' as webdav_downloader;
+import 'package:picora/widgets/common_widgets.dart';
 
 class BaseUpDownloadManagePage extends StatefulWidget {
   final String userName;
@@ -212,7 +213,7 @@ class BaseUpDownloadManagePageState extends State<BaseUpDownloadManagePage> {
     currentDownloadList = downloadLists[widget.currentListIndex];
     currentSetUploadList = setUploadLists[widget.currentListIndex];
     currentSetDownloadList = setDownloadLists[widget.currentListIndex];
-    String picHoroDownloadPath = '${widget.downloadPath}/PicHoro/Download/';
+    String picHoroDownloadPath = '${widget.downloadPath}/Picora/Download/';
 
     savedDir = switch (currentPShost) {
       'lsky.pro' => '${picHoroDownloadPath}lskypro/${widget.albumName}/',
@@ -470,12 +471,13 @@ class BaseUpDownloadManagePageState extends State<BaseUpDownloadManagePage> {
                       await ExternalPath.getExternalStoragePublicDirectory(ExternalPath.DIRECTORY_DOWNLOAD);
                   switch (currentPShost) {
                     case 'lsky.pro':
-                      externalStorageDirectory = '$externalStorageDirectory/PicHoro/Download/lskypro';
+                      externalStorageDirectory = '$externalStorageDirectory/Picora/Download/lskypro';
                     case 'sm.ms':
-                      externalStorageDirectory = '$externalStorageDirectory/PicHoro/Download/smms';
+                      externalStorageDirectory = '$externalStorageDirectory/Picora/Download/smms';
                     default:
-                      externalStorageDirectory = '$externalStorageDirectory/PicHoro/Download/$currentPShost';
+                      externalStorageDirectory = '$externalStorageDirectory/Picora/Download/$currentPShost';
                   }
+                  if (!mounted) return;
                   Application.router.navigateTo(context,
                       '${Routes.fileExplorer}?currentDirPath=${Uri.encodeComponent(externalStorageDirectory)}&rootPath=${Uri.encodeComponent(externalStorageDirectory)}',
                       transition: TransitionType.cupertino);
@@ -539,7 +541,7 @@ class BaseUpDownloadManagePageState extends State<BaseUpDownloadManagePage> {
                     if (currentPShost == 'sm.ms') {
                       String externalStorageDirectory =
                           await ExternalPath.getExternalStoragePublicDirectory(ExternalPath.DIRECTORY_DOWNLOAD);
-                      externalStorageDirectory = '$externalStorageDirectory/PicHoro/Download/smms';
+                      externalStorageDirectory = '$externalStorageDirectory/Picora/Download/smms';
                       List<String> savedDirList = [];
                       for (var i = 0; i < Global.smmsSavedNameList.length; i++) {
                         savedDirList.add('$externalStorageDirectory/${Global.smmsSavedNameList[i]}');
@@ -652,11 +654,11 @@ class BaseUpDownloadManagePageState extends State<BaseUpDownloadManagePage> {
                 labelStyle: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 unselectedLabelStyle: TextStyle(fontSize: 14),
                 padding: EdgeInsets.symmetric(horizontal: 16),
-                indicatorColor: Colors.amber,
+                indicatorColor: heroBlue,
                 indicatorWeight: 3,
                 indicatorSize: TabBarIndicatorSize.label,
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white70,
+                labelColor: heroBlue,
+                unselectedLabelColor: heroMuted,
                 tabs: <Widget>[
                   Tab(child: Text('上传')),
                   Tab(child: Text('下载')),

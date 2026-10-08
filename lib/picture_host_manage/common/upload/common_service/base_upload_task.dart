@@ -2,8 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
-import 'package:horopic/picture_host_manage/common/upload/common_service/base_upload_request.dart';
-import 'package:horopic/pages/upload_helper/upload_status.dart';
+import 'package:picora/picture_host_manage/common/upload/common_service/base_upload_request.dart';
+import 'package:picora/pages/upload_helper/upload_status.dart';
 
 class UploadTask {
   final UploadRequest request;

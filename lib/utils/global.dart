@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flustars_flutter3/flustars_flutter3.dart';
 import 'package:sqflite/sqflite.dart';
 
-import 'package:horopic/album/album_sql.dart';
+import 'package:picora/album/album_sql.dart';
 
 class Global {
   /// 上传图片的文件名
@@ -72,7 +72,7 @@ class Global {
   /// 是否操作完成
   static bool operateDone = false;
 
-  /// AList更新token时间
+  /// OpenList 更新 token 时间（字段名为兼容旧版本而保留）
   static String todayAlistUpdate = '19700101';
 
   /// 是否压缩图片
@@ -94,7 +94,8 @@ class Global {
   static int defaultOutTime = 30000;
 
   /// 默认multipart/form-data
-  static String multipartString = "multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW";
+  static String multipartString =
+      "multipart/form-data; boundary=----WebKitFormBoundary7MA4YWxkTrZu0gW";
   static Map<String, String> bucketCustomUrl = {};
   static List psHostHomePageOrder = [
     0,
@@ -540,7 +541,11 @@ class Global {
   }
 
   static Map<String, String> getBucketCustomUrl() {
-    return SpUtil.getObj('key_bucketCustomUrl', (v) => Map<String, String>.from(v), defValue: {})!;
+    return SpUtil.getObj(
+      'key_bucketCustomUrl',
+      (v) => Map<String, String>.from(v),
+      defValue: {},
+    )!;
   }
 
   static void setBucketCustomUrl(Map<String, String> bucketCustomUrl) {
@@ -549,7 +554,10 @@ class Global {
   }
 
   static String getCustomLinkFormat() {
-    return SpUtil.getString('key_customLinkFormat', defValue: r'[$fileName]($url)')!;
+    return SpUtil.getString(
+      'key_customLinkFormat',
+      defValue: r'[$fileName]($url)',
+    )!;
   }
 
   static void setCustomLinkFormat(String customLinkFormat) {
@@ -635,30 +643,33 @@ class Global {
   }
 
   static List<String> getpsHostHomePageOrder() {
-    return SpUtil.getStringList('key_psHostHomePageOrder', defValue: [
-      '0',
-      '1',
-      '2',
-      '3',
-      '4',
-      '5',
-      '6',
-      '7',
-      '8',
-      '9',
-      '10',
-      '11',
-      '12',
-      '13',
-      '14',
-      '15',
-      '16',
-      '17',
-      '18',
-      '19',
-      '20',
-      '21',
-    ])!;
+    return SpUtil.getStringList(
+      'key_psHostHomePageOrder',
+      defValue: [
+        '0',
+        '1',
+        '2',
+        '3',
+        '4',
+        '5',
+        '6',
+        '7',
+        '8',
+        '9',
+        '10',
+        '11',
+        '12',
+        '13',
+        '14',
+        '15',
+        '16',
+        '17',
+        '18',
+        '19',
+        '20',
+        '21',
+      ],
+    )!;
   }
 
   static void setTencentUploadList(List<String> tencentUploadList) {

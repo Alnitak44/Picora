@@ -1,9 +1,10 @@
+import 'package:picora/hero/compatibility_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
 import 'package:fluro/fluro.dart';
 
-import 'package:horopic/router/router_handler.dart';
+import 'package:picora/router/router_handler.dart';
 
 class Routes {
   static String webviewPage = '/webview';
@@ -41,7 +42,8 @@ class Routes {
   static String lskyproConfigureStoreEditPage = "/lskyConfigureStoreEditPage";
   static String qiniuConfigureStoreEditPage = "/qiniuConfigureStoreEditPage";
   static String smmsConfigureStoreEditPage = "/smmsConfigureStoreEditPage";
-  static String tencentConfigureStoreEditPage = "/tencentConfigureStoreEditPage";
+  static String tencentConfigureStoreEditPage =
+      "/tencentConfigureStoreEditPage";
   static String upyunConfigureStoreEditPage = "/upyunConfigureStoreEditPage";
   static String webdavConfigureStoreEditPage = "/webdavConfigureStoreEditPage";
   static String commonConfig = "/commonConfig";
@@ -109,7 +111,8 @@ class Routes {
   static String baseUpDownloadManagePage = "/baseUpDownloadManagePage";
 
   static void configureRoutes(FluroRouter router) {
-    router.notFoundHandler = Handler(handlerFunc: (BuildContext? context, Map<String, List<String>> params) {
+    router.notFoundHandler = Handler(
+        handlerFunc: (BuildContext? context, Map<String, List<String>> params) {
       if (kDebugMode) {
         print("ROUTE WAS NOT FOUND !!!");
       }
@@ -117,49 +120,66 @@ class Routes {
     });
     router.define(webviewPage, handler: webviewHandler);
     router.define(root, handler: rootHandler);
-    router.define(homePage, handler: homePageHandler);
-    router.define(albumUploadedImages, handler: albumUploadedImagesHandler);
+    router.define(homePage, handler: modernPageHandler(0));
+    router.define(albumUploadedImages, handler: modernPageHandler(1));
     router.define(albumImagePreview, handler: albumImagePreviewHandler);
     router.define(webdavImagePreview, handler: webdavImagePreviewHandler);
     router.define(localImagePreview, handler: localImagePreviewHandler);
-    router.define(configurePage, handler: configurePageHandler);
-    router.define(compressConfigurePage, handler: compressConfigureHandler);
-    router.define(allPShost, handler: allPShostHandler);
-    router.define(defaultPShostSelect, handler: defaultPShostSelectHandler);
-    router.define(lskyproPShostSelect, handler: lskyproPShostSelectHandler);
-    router.define(smmsPShostSelect, handler: smmsPShostSelectHandler);
-    router.define(githubPShostSelect, handler: githubPShostSelectHandler);
-    router.define(imgurPShostSelect, handler: imgurPShostSelectHandler);
-    router.define(aliyunPShostSelect, handler: aliyunPShostSelectHandler);
-    router.define(tencentPShostSelect, handler: tencentPShostSelectHandler);
-    router.define(qiniuPShostSelect, handler: qiniuPShostSelectHandler);
-    router.define(upyunPShostSelect, handler: upyunPShostSelectHandler);
-    router.define(ftpPShostSelect, handler: ftpPShostSelectHandler);
-    router.define(awsPShostSelect, handler: awsPShostSelectHandler);
-    router.define(alistPShostSelect, handler: alistPShostSelectHandler);
-    router.define(webdavPShostSelect, handler: webdavPShostSelectHandler);
-    router.define(alistConfigureStoreEditPage, handler: alistConfigureStoreEditPageHandler);
-    router.define(aliyunConfigureStoreEditPage, handler: aliyunConfigureStoreEditPageHandler);
-    router.define(awsConfigureStoreEditPage, handler: awsConfigureStoreEditPageHandler);
-    router.define(ftpConfigureStoreEditPage, handler: ftpConfigureStoreEditPageHandler);
-    router.define(githubConfigureStoreEditPage, handler: githubConfigureStoreEditPageHandler);
-    router.define(imgurConfigureStoreEditPage, handler: imgurConfigureStoreEditPageHandler);
-    router.define(lskyproConfigureStoreEditPage, handler: lskyproConfigureStoreEditPageHandler);
-    router.define(qiniuConfigureStoreEditPage, handler: qiniuConfigureStoreEditPageHandler);
-    router.define(smmsConfigureStoreEditPage, handler: smmsConfigureStoreEditPageHandler);
-    router.define(tencentConfigureStoreEditPage, handler: tencentConfigureStoreEditPageHandler);
-    router.define(upyunConfigureStoreEditPage, handler: upyunConfigureStoreEditPageHandler);
-    router.define(webdavConfigureStoreEditPage, handler: webdavConfigureStoreEditPageHandler);
-    router.define(commonConfig, handler: commonConfigHandler);
-    router.define(renameFile, handler: renameFileHandler);
-    router.define(linkFormatSelect, handler: linkFormatSelectHandler);
-    router.define(changeTheme, handler: changeThemeHandler);
-    router.define(emptyDatabase, handler: emptyDatabaseHandler);
+    router.define(configurePage, handler: modernPageHandler(3));
+    router.define(compressConfigurePage, handler: modernPageHandler(3));
+    router.define(allPShost, handler: modernPageHandler(2));
+    router.define(defaultPShostSelect, handler: modernPageHandler(2));
+    router.define(lskyproPShostSelect,
+        handler: modernRepositoryHandler('lsky.pro'));
+    router.define(smmsPShostSelect, handler: modernRepositoryHandler('sm.ms'));
+    router.define(githubPShostSelect,
+        handler: modernRepositoryHandler('github'));
+    router.define(imgurPShostSelect, handler: modernRepositoryHandler('imgur'));
+    router.define(aliyunPShostSelect,
+        handler: modernRepositoryHandler('aliyun'));
+    router.define(tencentPShostSelect,
+        handler: modernRepositoryHandler('tencent'));
+    router.define(qiniuPShostSelect, handler: modernRepositoryHandler('qiniu'));
+    router.define(upyunPShostSelect, handler: modernRepositoryHandler('upyun'));
+    router.define(ftpPShostSelect, handler: modernRepositoryHandler('ftp'));
+    router.define(awsPShostSelect, handler: modernRepositoryHandler('aws'));
+    router.define(alistPShostSelect, handler: modernRepositoryHandler('alist'));
+    router.define(webdavPShostSelect,
+        handler: modernRepositoryHandler('webdav'));
+    router.define(alistConfigureStoreEditPage,
+        handler: modernSlotHandler('alist'));
+    router.define(aliyunConfigureStoreEditPage,
+        handler: modernSlotHandler('aliyun'));
+    router.define(awsConfigureStoreEditPage, handler: modernSlotHandler('aws'));
+    router.define(ftpConfigureStoreEditPage, handler: modernSlotHandler('ftp'));
+    router.define(githubConfigureStoreEditPage,
+        handler: modernSlotHandler('github'));
+    router.define(imgurConfigureStoreEditPage,
+        handler: modernSlotHandler('imgur'));
+    router.define(lskyproConfigureStoreEditPage,
+        handler: modernSlotHandler('lsky.pro'));
+    router.define(qiniuConfigureStoreEditPage,
+        handler: modernSlotHandler('qiniu'));
+    router.define(smmsConfigureStoreEditPage,
+        handler: modernSlotHandler('sm.ms'));
+    router.define(tencentConfigureStoreEditPage,
+        handler: modernSlotHandler('tencent'));
+    router.define(upyunConfigureStoreEditPage,
+        handler: modernSlotHandler('upyun'));
+    router.define(webdavConfigureStoreEditPage,
+        handler: modernSlotHandler('webdav'));
+    router.define(commonConfig, handler: modernPageHandler(3));
+    router.define(renameFile, handler: modernPageHandler(3));
+    router.define(linkFormatSelect, handler: modernPageHandler(3));
+    router.define(changeTheme, handler: modernPageHandler(3));
+    router.define(emptyDatabase, handler: modernPageHandler(3));
     router.define(updateLog, handler: updateLogHandler);
-    router.define(tencentBucketInformation, handler: tencentBucketInformationHandler);
+    router.define(tencentBucketInformation,
+        handler: tencentBucketInformationHandler);
     router.define(tencentNewBucketConfig, handler: newTencentBucketHandler);
     router.define(tencentFileExplorer, handler: tencentFileExplorerHandler);
-    router.define(tencentFileInformation, handler: tencentFileInformationHandler);
+    router.define(tencentFileInformation,
+        handler: tencentFileInformationHandler);
     router.define(tencentBucketList, handler: tencentBucketListHandler);
     router.define(fileExplorer, handler: fileExplorerHandler);
     router.define(smmsManageHomePage, handler: smmsManageHomePageHandler);
@@ -167,25 +187,30 @@ class Routes {
     router.define(smmsFileInformation, handler: smmsFileInformationHandler);
     router.define(aliyunBucketList, handler: aliyunBucketListHandler);
     router.define(aliyunNewBucketConfig, handler: newAliyunBucketHandler);
-    router.define(aliyunBucketInformation, handler: aliyunBucketInformationHandler);
+    router.define(aliyunBucketInformation,
+        handler: aliyunBucketInformationHandler);
     router.define(aliyunFileExplorer, handler: aliyunFileExplorerHandler);
     router.define(aliyunFileInformation, handler: aliyunFileInformationHandler);
-    router.define(configurePageLogger, handler: logsHandler);
+    router.define(configurePageLogger, handler: modernPageHandler(3));
     router.define(upyunFileExplorer, handler: upyunFileExplorerHandler);
     router.define(upyunLogIn, handler: upyunLogInHandler);
     router.define(upyunBucketList, handler: upyunBucketListHandler);
-    router.define(upyunBucketInformation, handler: upyunBucketInformationHandler);
+    router.define(upyunBucketInformation,
+        handler: upyunBucketInformationHandler);
     router.define(upyunTokenManagePage, handler: upyunTokenManageHandler);
     router.define(upyunNewBucketConfig, handler: newUpyunBucketHandler);
-    router.define(upyunFileInformationPage, handler: upyunFileInformationHandler);
+    router.define(upyunFileInformationPage,
+        handler: upyunFileInformationHandler);
     router.define(qiniuBucketList, handler: qiniuBucketListHandler);
     router.define(qiniuNewBucketConfig, handler: newQiniuBucketHandler);
-    router.define(qiniuBucketDomainAreaConfig, handler: qiniuBucketDomainAreaConfigHandler);
+    router.define(qiniuBucketDomainAreaConfig,
+        handler: qiniuBucketDomainAreaConfigHandler);
     router.define(qiniuFileExplorer, handler: qiniuFileExplorerHandler);
     router.define(qiniuFileInformation, handler: qiniuFileInformationHandler);
     router.define(lskyproManageHomePage, handler: lskyproManageHomePageHandler);
     router.define(lskyproFileExplorer, handler: lskyproFileExplorerHandler);
-    router.define(lskyproFileInformation, handler: lskyproFileInformationHandler);
+    router.define(lskyproFileInformation,
+        handler: lskyproFileInformationHandler);
     router.define(githubManageHomePage, handler: githubManageHomePageHandler);
     router.define(githubReposList, handler: githubReposListHandler);
     router.define(githubRepoInformation, handler: githubRepoInformationHandler);
@@ -204,9 +229,10 @@ class Routes {
     router.define(awsNewBucketConfig, handler: newAwsBucketHandler);
     router.define(awsFileExplorer, handler: awsFileExplorerHandler);
     router.define(awsFileInformation, handler: awsFileInformationHandler);
-    router.define(configureStorePage, handler: configureStorePageHandler);
+    router.define(configureStorePage, handler: modernPageHandler(2));
     router.define(alistBucketList, handler: alistBucketListHandler);
-    router.define(alistBucketInformation, handler: alistBucketInformationHandler);
+    router.define(alistBucketInformation,
+        handler: alistBucketInformationHandler);
     router.define(alistFileExplorer, handler: alistFileExplorerHandler);
     router.define(alistFileInformation, handler: alistFileInformationHandler);
     router.define(pdfViewer, handler: pdfViewerHandler);

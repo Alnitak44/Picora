@@ -3,14 +3,14 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:crypto/crypto.dart';
-import 'package:horopic/picture_host_manage/common/base_manage_api.dart';
+import 'package:picora/picture_host_manage/common/base_manage_api.dart';
 import 'package:xml2json/xml2json.dart';
 import 'package:path_provider/path_provider.dart';
 
-import 'package:horopic/utils/global.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/picture_host_configure/configure_page/tencent_configure.dart';
-import 'package:horopic/api/tencent_api.dart';
+import 'package:picora/utils/global.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/picture_host_configure/configure_page/tencent_configure.dart';
+import 'package:picora/api/tencent_api.dart';
 
 class TencentManageAPI extends BaseManageApi {
   static final TencentManageAPI _instance = TencentManageAPI._internal();

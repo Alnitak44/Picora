@@ -5,16 +5,16 @@ import 'dart:convert';
 import 'package:collection/collection.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:horopic/api/api.dart';
+import 'package:picora/api/api.dart';
 
-import 'package:horopic/pages/upload_helper/upload_request.dart';
-import 'package:horopic/pages/upload_helper/upload_status.dart';
-import 'package:horopic/pages/upload_helper/upload_task.dart';
-import 'package:horopic/utils/event_bus_utils.dart';
-import 'package:horopic/utils/uploader.dart';
-import 'package:horopic/utils/global.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/album/album_sql.dart';
+import 'package:picora/pages/upload_helper/upload_request.dart';
+import 'package:picora/pages/upload_helper/upload_status.dart';
+import 'package:picora/pages/upload_helper/upload_task.dart';
+import 'package:picora/utils/event_bus_utils.dart';
+import 'package:picora/utils/uploader.dart';
+import 'package:picora/utils/global.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/album/album_sql.dart';
 
 class UploadManager {
   final Map<String, UploadTask> _cache = <String, UploadTask>{};

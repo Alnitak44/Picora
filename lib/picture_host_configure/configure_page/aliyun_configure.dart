@@ -10,13 +10,13 @@ import 'package:fluro/fluro.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as my_path;
 
-import 'package:horopic/router/application.dart';
-import 'package:horopic/utils/event_bus_utils.dart';
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/utils/global.dart';
-import 'package:horopic/picture_host_manage/manage_api/aliyun_manage_api.dart';
-import 'package:horopic/widgets/net_loading_dialog.dart';
-import 'package:horopic/widgets/configure_widgets.dart';
+import 'package:picora/router/application.dart';
+import 'package:picora/utils/event_bus_utils.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/utils/global.dart';
+import 'package:picora/picture_host_manage/manage_api/aliyun_manage_api.dart';
+import 'package:picora/widgets/net_loading_dialog.dart';
+import 'package:picora/widgets/configure_widgets.dart';
 
 class AliyunConfig extends StatefulWidget {
   const AliyunConfig({super.key});
@@ -288,11 +288,11 @@ class AliyunConfigState extends State<AliyunConfig> {
       }
 
       //save asset image to app dir
-      String assetPath = 'assets/validateImage/PicHoroValidate.jpeg';
+      String assetPath = 'assets/validateImage/PicoraValidate.jpeg';
       String appDir = await getApplicationDocumentsDirectory().then((value) {
         return value.path;
       });
-      String assetFilePath = '$appDir/PicHoroValidate.jpeg';
+      String assetFilePath = '$appDir/PicoraValidate.jpeg';
       File assetFile = File(assetFilePath);
 
       if (!assetFile.existsSync()) {
@@ -300,7 +300,7 @@ class AliyunConfigState extends State<AliyunConfig> {
         List<int> bytes = data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes);
         await assetFile.writeAsBytes(bytes);
       }
-      String key = 'PicHoroValidate.jpeg';
+      String key = 'PicoraValidate.jpeg';
       String host = '${configMap['bucket']}.${configMap['area']}.aliyuncs.com';
       String urlpath = '';
       if (configMap['path'] != 'None') {

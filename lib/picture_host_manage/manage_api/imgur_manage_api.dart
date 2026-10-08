@@ -2,11 +2,11 @@ import 'dart:io';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
-import 'package:horopic/picture_host_manage/common/base_manage_api.dart';
+import 'package:picora/picture_host_manage/common/base_manage_api.dart';
 import 'package:path_provider/path_provider.dart';
 
-import 'package:horopic/utils/common_functions.dart';
-import 'package:horopic/utils/dio_proxy_adapter.dart';
+import 'package:picora/utils/common_functions.dart';
+import 'package:picora/utils/dio_proxy_adapter.dart';
 
 class ImgurManageAPI extends BaseManageApi {
   static final ImgurManageAPI _instance = ImgurManageAPI._internal();
@@ -311,7 +311,7 @@ class ImgurManageAPI extends BaseManageApi {
       proxy,
       data: jsonEncode({
         "title": title,
-        "description": "Created by PicHoro",
+        "description": "Created by Picora",
       }),
       headers: {
         "Authorization": "Bearer $accesstoken",
@@ -361,7 +361,7 @@ class ImgurManageAPI extends BaseManageApi {
       "type": "file",
       "name": filename,
       if (albumHash != 'None') "album": albumHash,
-      "description": "Uploaded by PicHoro",
+      "description": "Uploaded by Picora",
     });
     return await _makeRequest(
       "https://api.imgur.com/3/image",

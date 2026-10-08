@@ -8,28 +8,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluro/fluro.dart';
 
-import 'package:horopic/picture_host_manage/manage_api/alist_manage_api.dart';
-import 'package:horopic/picture_host_manage/manage_api/aliyun_manage_api.dart';
-import 'package:horopic/picture_host_manage/manage_api/aws_manage_api.dart';
-import 'package:horopic/picture_host_manage/manage_api/github_manage_api.dart';
-import 'package:horopic/picture_host_manage/manage_api/imgur_manage_api.dart';
-import 'package:horopic/picture_host_manage/manage_api/lskypro_manage_api.dart';
-import 'package:horopic/picture_host_manage/manage_api/qiniu_manage_api.dart';
-import 'package:horopic/picture_host_manage/manage_api/smms_manage_api.dart';
-import 'package:horopic/picture_host_manage/manage_api/tencent_manage_api.dart';
-import 'package:horopic/picture_host_manage/manage_api/upyun_manage_api.dart';
-import 'package:horopic/widgets/common_widgets.dart';
+import 'package:picora/picture_host_manage/manage_api/alist_manage_api.dart';
+import 'package:picora/picture_host_manage/manage_api/aliyun_manage_api.dart';
+import 'package:picora/picture_host_manage/manage_api/aws_manage_api.dart';
+import 'package:picora/picture_host_manage/manage_api/github_manage_api.dart';
+import 'package:picora/picture_host_manage/manage_api/imgur_manage_api.dart';
+import 'package:picora/picture_host_manage/manage_api/lskypro_manage_api.dart';
+import 'package:picora/picture_host_manage/manage_api/qiniu_manage_api.dart';
+import 'package:picora/picture_host_manage/manage_api/smms_manage_api.dart';
+import 'package:picora/picture_host_manage/manage_api/tencent_manage_api.dart';
+import 'package:picora/picture_host_manage/manage_api/upyun_manage_api.dart';
+import 'package:picora/widgets/common_widgets.dart';
 import 'package:path_provider/path_provider.dart';
 
-import 'package:horopic/utils/global.dart';
-import 'package:horopic/utils/common_functions.dart';
+import 'package:picora/utils/global.dart';
+import 'package:picora/utils/common_functions.dart';
 
-import 'package:horopic/picture_host_configure/configure_page/configure_export.dart';
+import 'package:picora/picture_host_configure/configure_page/configure_export.dart';
 
-import 'package:horopic/widgets/net_loading_dialog.dart';
+import 'package:picora/widgets/net_loading_dialog.dart';
 
-import 'package:horopic/router/application.dart';
-import 'package:horopic/router/routers.dart';
+import 'package:picora/router/application.dart';
+import 'package:picora/router/routers.dart';
 
 part 'picture_host_import_qr.dart';
 
@@ -46,9 +46,7 @@ class AllPShostState extends State<AllPShost> {
     try {
       final result = await Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => const QRScannerPage(),
-        ),
+        MaterialPageRoute(builder: (context) => const QRScannerPage()),
       );
 
       if (result != null) {
@@ -122,8 +120,11 @@ class AllPShostState extends State<AllPShost> {
       await Clipboard.setData(ClipboardData(text: configJson));
       showToast(pshost != null ? "$pshost配置已复制到剪贴板" : "配置已复制到剪贴板");
     } catch (e) {
-      _logError(pshost != null ? 'exportConfiguration' : 'exportAllConfiguration',
-          pshost != null ? {"pshost": pshost} : {}, e);
+      _logError(
+        pshost != null ? 'exportConfiguration' : 'exportAllConfiguration',
+        pshost != null ? {"pshost": pshost} : {},
+        e,
+      );
       showToast("导出失败");
     }
   }
@@ -137,6 +138,8 @@ class AllPShostState extends State<AllPShost> {
       // Check if any supported services exist in the JSON
       List<String> supportedServices = [
         'smms',
+        'openlist',
+        'openlistplist',
         'alist',
         'alistplist',
         'aws-s3-plist',
@@ -148,19 +151,30 @@ class AllPShostState extends State<AllPShost> {
         'qiniu',
         'tcyun',
         'aliyun',
-        'upyun'
+        'upyun',
       ];
 
-      if (!supportedServices.any((service) => jsonResult.containsKey(service))) {
+      if (!supportedServices.any(
+        (service) => jsonResult.containsKey(service),
+      )) {
         return showToast("不包含支持的图床配置信息");
       }
 
       // Handle each service configuration
       if (jsonResult['smms'] != null) _configureSmms(jsonResult);
-      if (jsonResult['aws-s3-plist'] != null || jsonResult['aws-s3'] != null) _configureAws(jsonResult);
-      if (jsonResult['alist'] != null || jsonResult['alistplist'] != null) _configureAlist(jsonResult);
+      if (jsonResult['aws-s3-plist'] != null || jsonResult['aws-s3'] != null) {
+        _configureAws(jsonResult);
+      }
+      if (jsonResult['openlist'] != null ||
+          jsonResult['openlistplist'] != null ||
+          jsonResult['alist'] != null ||
+          jsonResult['alistplist'] != null) {
+        _configureAlist(jsonResult);
+      }
       if (jsonResult['github'] != null) _configureGithub(jsonResult);
-      if (jsonResult['lankong'] != null || jsonResult['lskyplist'] != null) _configureLankong(jsonResult);
+      if (jsonResult['lankong'] != null || jsonResult['lskyplist'] != null) {
+        _configureLankong(jsonResult);
+      }
       if (jsonResult['imgur'] != null) _configureImgur(jsonResult);
       if (jsonResult['qiniu'] != null) _configureQiniu(jsonResult);
       if (jsonResult['tcyun'] != null) _configureTencent(jsonResult);
@@ -175,7 +189,10 @@ class AllPShostState extends State<AllPShost> {
   }
 
   // UI Building Methods
-  Widget _buildSettingCard({required String title, required List<Widget> children}) {
+  Widget _buildSettingCard({
+    required String title,
+    required List<Widget> children,
+  }) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       elevation: 2,
@@ -185,7 +202,10 @@ class AllPShostState extends State<AllPShost> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            child: Text(
+              title,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
           ),
           ...children,
         ],
@@ -201,11 +221,16 @@ class AllPShostState extends State<AllPShost> {
     Color? iconColor,
   }) {
     return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 2.0),
+      contentPadding: const EdgeInsets.symmetric(
+        horizontal: 16.0,
+        vertical: 2.0,
+      ),
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: iconColor ?? Theme.of(context).primaryColor.withValues(alpha: 0.2),
+          color:
+              iconColor ??
+              Theme.of(context).primaryColor.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(icon, color: iconColor ?? Theme.of(context).primaryColor),
@@ -220,7 +245,7 @@ class AllPShostState extends State<AllPShost> {
     // Define service mappings once
     final serviceMap = {
       "全部导出": null,
-      "AList V3": 'alist',
+      "OpenList": 'alist',
       '阿里云': 'aliyun',
       'FTP-SSH/SFTP': 'ftp',
       'Github': 'github',
@@ -238,7 +263,9 @@ class AllPShostState extends State<AllPShost> {
       return SimpleDialogOption(
         child: Text(entry.key, textAlign: TextAlign.center),
         onPressed: () {
-          entry.value == null ? exportConfiguration() : exportConfiguration(entry.value!);
+          entry.value == null
+              ? exportConfiguration()
+              : exportConfiguration(entry.value!);
           Navigator.pop(context);
         },
       );
@@ -247,26 +274,82 @@ class AllPShostState extends State<AllPShost> {
 
   // Service navigation helper
   void _navigateToService(String route) {
-    Application.router.navigateTo(context, route, transition: TransitionType.cupertino);
+    Application.router.navigateTo(
+      context,
+      route,
+      transition: TransitionType.cupertino,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     // Define service items
     final serviceItems = [
-      {'title': '默认图床选择', 'icon': Icons.photo_library, 'route': Routes.defaultPShostSelect},
-      {'title': 'AList V3', 'icon': Icons.folder_shared, 'route': Routes.alistPShostSelect},
-      {'title': '阿里云OSS', 'icon': Icons.cloud_upload, 'route': Routes.aliyunPShostSelect},
-      {'title': 'FTP-SSH/SFTP', 'icon': Icons.storage, 'route': Routes.ftpPShostSelect},
-      {'title': 'Github图床', 'icon': Icons.code, 'route': Routes.githubPShostSelect},
-      {'title': 'Imgur图床', 'icon': Icons.image, 'route': Routes.imgurPShostSelect},
-      {'title': '兰空图床V2', 'icon': Icons.cloud, 'route': Routes.lskyproPShostSelect},
-      {'title': '七牛云存储', 'icon': Icons.cloud_circle, 'route': Routes.qiniuPShostSelect},
-      {'title': 'S3兼容平台', 'icon': Icons.storage_rounded, 'route': Routes.awsPShostSelect},
-      {'title': 'SM.MS图床', 'icon': Icons.camera, 'route': Routes.smmsPShostSelect},
-      {'title': '腾讯云COS V5', 'icon': Icons.cloud_queue, 'route': Routes.tencentPShostSelect},
-      {'title': '又拍云存储', 'icon': Icons.cloud_done, 'route': Routes.upyunPShostSelect},
-      {'title': 'WebDAV', 'icon': Icons.web, 'route': Routes.webdavPShostSelect},
+      {
+        'title': '默认图床选择',
+        'icon': Icons.photo_library,
+        'route': Routes.defaultPShostSelect,
+      },
+      {
+        'title': 'OpenList',
+        'icon': Icons.folder_shared,
+        'route': Routes.alistPShostSelect,
+      },
+      {
+        'title': '阿里云OSS',
+        'icon': Icons.cloud_upload,
+        'route': Routes.aliyunPShostSelect,
+      },
+      {
+        'title': 'FTP-SSH/SFTP',
+        'icon': Icons.storage,
+        'route': Routes.ftpPShostSelect,
+      },
+      {
+        'title': 'Github图床',
+        'icon': Icons.code,
+        'route': Routes.githubPShostSelect,
+      },
+      {
+        'title': 'Imgur图床',
+        'icon': Icons.image,
+        'route': Routes.imgurPShostSelect,
+      },
+      {
+        'title': '兰空图床V2',
+        'icon': Icons.cloud,
+        'route': Routes.lskyproPShostSelect,
+      },
+      {
+        'title': '七牛云存储',
+        'icon': Icons.cloud_circle,
+        'route': Routes.qiniuPShostSelect,
+      },
+      {
+        'title': 'S3兼容平台',
+        'icon': Icons.storage_rounded,
+        'route': Routes.awsPShostSelect,
+      },
+      {
+        'title': 'SM.MS图床',
+        'icon': Icons.camera,
+        'route': Routes.smmsPShostSelect,
+      },
+      {
+        'title': '腾讯云COS V5',
+        'icon': Icons.cloud_queue,
+        'route': Routes.tencentPShostSelect,
+      },
+      {
+        'title': '又拍云存储',
+        'icon': Icons.cloud_done,
+        'route': Routes.upyunPShostSelect,
+      },
+      {
+        'title': 'WebDAV',
+        'icon': Icons.web,
+        'route': Routes.webdavPShostSelect,
+      },
     ];
 
     return Scaffold(
@@ -313,7 +396,8 @@ class AllPShostState extends State<AllPShost> {
                 _buildSettingItem(
                   title: serviceItems[i]['title'] as String,
                   icon: serviceItems[i]['icon'] as IconData,
-                  onTap: () => _navigateToService(serviceItems[i]['route'] as String),
+                  onTap: () =>
+                      _navigateToService(serviceItems[i]['route'] as String),
                 ),
               ],
             ],
@@ -342,7 +426,11 @@ class AllPShostState extends State<AllPShost> {
               ),
             );
           },
-          child: const Icon(Icons.outbox_outlined, color: Colors.white, size: 30),
+          child: const Icon(
+            Icons.outbox_outlined,
+            color: Colors.white,
+            size: 30,
+          ),
         ),
       ),
     );
@@ -392,7 +480,9 @@ class QRScannerPageState extends State<QRScannerPage> {
             builder: (context, state, child) {
               return IconButton(
                 icon: Icon(
-                  cameraController.torchEnabled ? Icons.flash_on : Icons.flash_off,
+                  cameraController.torchEnabled
+                      ? Icons.flash_on
+                      : Icons.flash_off,
                 ),
                 iconSize: 32.0,
                 onPressed: () => cameraController.toggleTorch(),
@@ -403,10 +493,7 @@ class QRScannerPageState extends State<QRScannerPage> {
       ),
       body: Stack(
         children: [
-          MobileScanner(
-            controller: cameraController,
-            onDetect: _onDetect,
-          ),
+          MobileScanner(controller: cameraController, onDetect: _onDetect),
           // Overlay with scanning area
           Container(
             decoration: ShapeDecoration(
@@ -450,8 +537,8 @@ class QrScannerOverlayShape extends ShapeBorder {
     double? cutOutSize,
     double? cutOutHeight,
     double? cutOutWidth,
-  })  : cutOutWidth = cutOutWidth ?? cutOutSize ?? 250,
-        cutOutHeight = cutOutHeight ?? cutOutSize ?? 250;
+  }) : cutOutWidth = cutOutWidth ?? cutOutSize ?? 250,
+       cutOutHeight = cutOutHeight ?? cutOutSize ?? 250;
 
   final Color borderColor;
   final double borderWidth;
@@ -477,7 +564,12 @@ class QrScannerOverlayShape extends ShapeBorder {
       return Path()
         ..moveTo(rect.left, rect.bottom)
         ..lineTo(rect.left, rect.top + borderRadius)
-        ..quadraticBezierTo(rect.left, rect.top, rect.left + borderRadius, rect.top)
+        ..quadraticBezierTo(
+          rect.left,
+          rect.top,
+          rect.left + borderRadius,
+          rect.top,
+        )
         ..lineTo(rect.right, rect.top);
     }
 
@@ -493,8 +585,12 @@ class QrScannerOverlayShape extends ShapeBorder {
     final borderWidthSize = width / 2;
     final height = rect.height;
     final borderHeightSize = height / 2;
-    final cutOutWidth = this.cutOutWidth < width ? this.cutOutWidth : width - borderWidth;
-    final cutOutHeight = this.cutOutHeight < height ? this.cutOutHeight : height - borderWidth;
+    final cutOutWidth = this.cutOutWidth < width
+        ? this.cutOutWidth
+        : width - borderWidth;
+    final cutOutHeight = this.cutOutHeight < height
+        ? this.cutOutHeight
+        : height - borderWidth;
 
     final backgroundPaint = Paint()
       ..color = overlayColor
@@ -513,10 +609,7 @@ class QrScannerOverlayShape extends ShapeBorder {
     );
 
     canvas
-      ..saveLayer(
-        rect,
-        backgroundPaint,
-      )
+      ..saveLayer(rect, backgroundPaint)
       ..drawRect(rect, backgroundPaint)
       ..drawRRect(
         RRect.fromRectAndCorners(
@@ -540,17 +633,26 @@ class QrScannerOverlayShape extends ShapeBorder {
     borderPath
       ..moveTo(cutOutRect.right - borderLength, cutOutRect.top)
       ..lineTo(cutOutRect.right + borderWidth / 2, cutOutRect.top)
-      ..lineTo(cutOutRect.right + borderWidth / 2, cutOutRect.top + borderLength);
+      ..lineTo(
+        cutOutRect.right + borderWidth / 2,
+        cutOutRect.top + borderLength,
+      );
 
     borderPath
-      ..moveTo(cutOutRect.right + borderWidth / 2, cutOutRect.bottom - borderLength)
+      ..moveTo(
+        cutOutRect.right + borderWidth / 2,
+        cutOutRect.bottom - borderLength,
+      )
       ..lineTo(cutOutRect.right + borderWidth / 2, cutOutRect.bottom)
       ..lineTo(cutOutRect.right - borderLength, cutOutRect.bottom);
 
     borderPath
       ..moveTo(cutOutRect.left + borderLength, cutOutRect.bottom)
       ..lineTo(cutOutRect.left - borderWidth / 2, cutOutRect.bottom)
-      ..lineTo(cutOutRect.left - borderWidth / 2, cutOutRect.bottom - borderLength);
+      ..lineTo(
+        cutOutRect.left - borderWidth / 2,
+        cutOutRect.bottom - borderLength,
+      );
 
     canvas.drawPath(borderPath, boxPaint);
   }

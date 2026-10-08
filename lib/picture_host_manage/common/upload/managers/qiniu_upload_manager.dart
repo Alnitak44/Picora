@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 
-import 'package:horopic/picture_host_manage/common/upload/common_service/base_upload_manager.dart';
-import 'package:horopic/api/qiniu_api.dart';
-import 'package:horopic/utils/common_functions.dart';
+import 'package:picora/picture_host_manage/common/upload/common_service/base_upload_manager.dart';
+import 'package:picora/api/qiniu_api.dart';
+import 'package:picora/utils/common_functions.dart';
 
 class UploadManager extends BaseUploadManager {
   static final UploadManager _instance = UploadManager._internal();
