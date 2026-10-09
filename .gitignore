@@ -144,3 +144,4 @@ releases/plugins/*.zip
 /打包说明.md
 /docs/ENVIRONMENT_RESTORE.md
 /docs/GITHUB_PUBLISH.md
+**/android/key.properties.*

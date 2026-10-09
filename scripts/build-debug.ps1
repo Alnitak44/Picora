@@ -1,4 +1,7 @@
-param([switch]$MappedWorkspace)
+param(
+    [switch]$MappedWorkspace,
+    [ValidateSet('debug', 'release')][string]$BuildType = 'debug'
+)
 $ErrorActionPreference = 'Stop'
 $picoraRoot = Split-Path -Parent $PSScriptRoot
 if (-not $MappedWorkspace -and $picoraRoot -match '[^\x00-\x7F]') {
@@ -9,7 +12,7 @@ if (-not $MappedWorkspace -and $picoraRoot -match '[^\x00-\x7F]') {
     if ($LASTEXITCODE -ne 0) { throw 'Could not create the temporary build drive.' }
     try {
         $picoraMappedScript = $picoraDrive + ':\scripts\build-debug.ps1'
-        & $picoraMappedScript -MappedWorkspace
+        & $picoraMappedScript -MappedWorkspace -BuildType $BuildType
     } finally {
         # Restore dependency paths before removing our temporary drive alias.
         . (Join-Path $PSScriptRoot 'android-env.ps1')
@@ -56,16 +59,16 @@ try {
         & (Join-Path $picoraRoot '.tooling/flutter/bin/flutter.bat') pub get --offline
         if ($LASTEXITCODE -ne 0) { throw 'Could not prepare dependencies for the build drive.' }
     }
-    $picoraArgs = @('build', 'apk', '--debug', '--no-pub',
+    $picoraArgs = @('build', 'apk', ('--' + $BuildType), '--no-pub',
         '--target-platform', 'android-arm64', '--split-per-abi')
     & (Join-Path $picoraRoot '.tooling/flutter/bin/flutter.bat') @picoraArgs
-    if ($LASTEXITCODE -ne 0) { throw 'Picora debug APK build failed.' }
+    if ($LASTEXITCODE -ne 0) { throw ('Picora ' + $BuildType + ' APK build failed.') }
     $picoraOutput = Join-Path $picoraRoot 'build/app/outputs/flutter-apk'
     $picoraRelease = Join-Path $picoraRoot 'releases'
     New-Item -ItemType Directory -Force -Path $picoraRelease | Out-Null
-    $picoraPackages = @(Get-Item -LiteralPath (Join-Path $picoraOutput 'app-arm64-v8a-debug.apk'))
+    $picoraPackages = @(Get-Item -LiteralPath (Join-Path $picoraOutput ("app-arm64-v8a-" + $BuildType + ".apk")))
     foreach ($picoraPackage in $picoraPackages) {
-        $picoraName = 'Picora-arm64-debug.apk'
+        $picoraName = ("Picora-arm64-" + $BuildType + ".apk")
         $picoraTarget = Join-Path $picoraRelease $picoraName
         Copy-Item -LiteralPath $picoraPackage.FullName -Destination $picoraTarget -Force
         Get-FileHash -LiteralPath $picoraTarget -Algorithm SHA256

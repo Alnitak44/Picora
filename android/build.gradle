@@ -13,7 +13,7 @@ allprojects {
        //maven { url 'https://maven.aliyun.com/repository/jcenter' }
       // maven { url 'https://maven.aliyun.com/nexus/content/groups/public' }
     }
-    
+
     subprojects {
         afterEvaluate { project ->
             if (project.hasProperty('android')) {
@@ -22,6 +22,12 @@ allprojects {
                         namespace project.group
                     }
                 }
+            }
+            if (project.name == 'ota_update') {
+                // ota_update 5.1.0 写死 compileSdk 28，缺 API 31+ 的 android:attr/lStar，
+                // 库模块仅 Release 变体做独立资源链接校验（Debug 不做），必须补到 31+；
+                // 不要全量覆盖其他插件：如 receive_intent 用自己的 SDK 才能通过 Kotlin 可空性检查
+                project.android.compileSdk = 36
             }
             if (project.plugins.hasPlugin("com.android.application") || project.plugins.hasPlugin("com.android.library")) {
             tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach { kotlinTask ->
