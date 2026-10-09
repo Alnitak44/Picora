@@ -8,7 +8,7 @@
 | http-v1 | schemaVersion: 1 | 基础单次上传 |
 | http-v2 | schemaVersion: 2 | Picora 1.0.1 起：前置请求、缓存、业务判断、受控刷新 |
 
-[基础模板](../plugins/template) · [Telegraph-Image 示例](../plugins/telegraph-image) · [ImgLoc v2 示例](../plugins/imgloc)
+[基础模板](../plugins/template) · [Telegraph-Image 示例](../plugins/telegraph-image)
 
 ## 包结构与元信息
 
@@ -109,7 +109,7 @@ prepare 最多 4 步，按顺序执行，ID 唯一。步骤仅访问当前配置
 {
   "id": "auth",
   "method": "GET",
-  "url": "https://imgloc.com/upload.php?action=token",
+  "url": "https://api.example.com/token",
   "response": {
     "successStatuses": [200],
     "success": {"path": "ok", "equals": true},
@@ -120,7 +120,7 @@ prepare 最多 4 步，按顺序执行，ID 唯一。步骤仅访问当前配置
 }
 ```
 
-上传引用 `${steps.auth.token}`。完整程序见 [ImgLoc/uploader.json](../plugins/imgloc/uploader.json)。
+上传引用 `${steps.auth.token}`。
 
 exports 最多 16 项，每项包含 path、type（string/number/boolean）；source 为 json/header（默认 json），required 和 secret 默认 true。字符串最多 4096 字符；缺失必填项、类型错误或前置业务失败会停止上传。
 
@@ -141,7 +141,7 @@ cache 仅支持 scope: configuration，ttlFrom（响应 JSON 数值路径）与 
 }
 ```
 
-引用步骤必须有缓存。401 可仅按状态判断；其它拒绝响应须匹配明确错误码或凭证错误关键词，不能以 ok == false 作为重传条件。上面的 403 规则针对 ImgLoc 已核实的行为，不应直接套用其它服务。
+引用步骤必须有缓存。401 可仅按状态判断；其它拒绝响应须匹配明确错误码或凭证错误关键词，不能以 ok == false 作为重传条件。403 等规则应依据目标服务的凭证失效响应配置，不应宽泛匹配业务失败。
 
 刷新后只重试一次，第二次失败停止；并发旧凭证失败不会撤销新凭证。已返回图片 URL、超时、断线与 5xx 不自动重传。前置与删除不自动重试。
 

@@ -14,10 +14,10 @@ import 'package:picora/hero/plugins/plugin_manager.dart';
 import 'package:picora/hero/plugins/uploader_registry.dart';
 
 Map<String, dynamic> program() =>
-    jsonDecode(File('plugins/imgloc/uploader.json').readAsStringSync())
+    jsonDecode(File('test/fixtures/imgloc/uploader.json').readAsStringSync())
         as Map<String, dynamic>;
 Map<String, dynamic> metadata() =>
-    jsonDecode(File('plugins/imgloc/plugin.json').readAsStringSync())
+    jsonDecode(File('test/fixtures/imgloc/plugin.json').readAsStringSync())
         as Map<String, dynamic>;
 PicoraPluginManifest manifest([Map<String, dynamic>? value]) {
   final json = {...value ?? program(), ...metadata()}
@@ -50,7 +50,7 @@ Uint8List archiveBytes({
   archive.add(
     ArchiveFile.bytes(
       'assets/icon.svg',
-      File('plugins/imgloc/assets/icon.svg').readAsBytesSync(),
+      File('test/fixtures/imgloc/assets/icon.svg').readAsBytesSync(),
     ),
   );
   return Uint8List.fromList(ZipEncoder().encode(archive));

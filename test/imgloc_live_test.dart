@@ -15,7 +15,7 @@ void main() {
     () async {
       await HttpOverrides.runWithHttpOverrides(() async {
         final archive = Archive();
-        final root = Directory('plugins/imgloc');
+        final root = Directory('test/fixtures/imgloc');
         for (final file in root.listSync(recursive: true).whereType<File>()) {
           final path = file.path
               .substring(root.path.length + 1)
