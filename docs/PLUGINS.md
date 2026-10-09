@@ -1,5 +1,5 @@
 
-# 插件协议
+# 插件开发与发布
 
 原生插件使用 ZIP + 声明式 HTTP 请求，不执行脚本。每个插件注册一个图床类型，可建立多组独立配置。
 
@@ -186,4 +186,49 @@ icon 用于图床与插件列表。教程以 `![图示](assets/example.png)` 引
 .\tools\package-plugin.ps1 -SourceDirectory '.\plugins\my-host' -OutputPath '.\releases\plugins\my-host-1.0.0.picora-plugin.zip'
 ```
 
-安装支持模块仓库、本地 ZIP 与下载 URL；目录协议见 [PLUGIN_MARKETPLACE.md](PLUGIN_MARKETPLACE.md)。错误详情见“设置 → 诊断日志”。
+安装支持模块仓库、本地 ZIP 与下载 URL。错误详情见“设置 → 诊断日志”。
+
+## 发布与模块仓库
+
+客户端从 [Alnitak44/picora-plugins](https://github.com/Alnitak44/picora-plugins) 的 `main/index.json` 读取目录，下载 GitHub Release 中的插件 ZIP。目录缓存 12 小时，可手动刷新；连接失败时使用上次有效目录。
+
+GitHub 镜像在客户端下载时应用，目录保留原始下载地址；图床上传和插件认证不使用镜像。
+
+### 目录格式
+
+```json
+{
+  "schemaVersion": 1,
+  "plugins": [
+    {
+      "id": "io.github.example.host",
+      "name": "Example Host",
+      "description": "Example 图床",
+      "author": "Author",
+      "repository": "https://github.com/Author/Plugin",
+      "version": "1.0.0",
+      "runtime": "http-v1",
+      "packageVersion": 1,
+      "minAppVersion": "1.0.0",
+      "mark": "EX",
+      "example": false,
+      "downloadUrl": "https://github.com/Author/Plugin/releases/download/v1.0.0/host.picora-plugin.zip",
+      "sha256": "<ZIP 文件的 64 位十六进制 SHA-256>",
+      "size": 12345
+    }
+  ]
+}
+```
+
+`id`、`name`、`author`、`version` 与 ZIP 元信息一致。`size` 为 ZIP 字节数，`sha256` 为整个 ZIP 的摘要；`downloadUrl` 与 `repository` 必须使用 HTTPS。`mark`、`example` 可选，分别用于下载前的文字图标和示例标记。图床图标由 ZIP 内的 `assets/` 提供。
+
+`http-v2` 插件的 `minAppVersion` 至少为 `1.0.1`；runtime 与 ZIP 元信息必须一致。运行时要求以条目的 minAppVersion 和 ZIP 内的 runtime 为准。
+
+### 发布流程
+
+1. 使用稳定 ID 编写插件，更新 `plugin.json` 版本并打包 ZIP。
+2. 将 ZIP 上传到作者仓库的 GitHub Release。
+3. 向模块仓库提交目录条目的 PR，附上下载地址、大小和 SHA-256。
+4. 更新时发布新的 ZIP 和条目，不以不同内容覆盖已发布版本。
+
+插件源码与许可证归作者维护，目录合并由维护者审核请求目标、凭证使用及删除语义。
