@@ -13,8 +13,8 @@ if ($output.StartsWith($source.TrimEnd('\') + '\', [StringComparison]::OrdinalIg
     throw '输出 ZIP 不能放进插件源码目录，否则会把自身打进压缩包'
 }
 $metadata = Get-Content -LiteralPath (Join-Path $source 'plugin.json') -Raw | ConvertFrom-Json
-if ($metadata.packageVersion -ne 1 -or $metadata.runtime -ne 'http-v1') {
-    throw '需要 packageVersion: 1 和 runtime: http-v1'
+if ($metadata.packageVersion -ne 1 -or $metadata.runtime -notin @('http-v1', 'http-v2')) {
+    throw '需要 packageVersion: 1 和 runtime: http-v1 / http-v2'
 }
 if (-not $metadata.entry -or $metadata.entry -match '(^/|\\|:|(^|/)\.\.?(/|$))' -or
     -not $metadata.entry.EndsWith('.json')) { throw '程序文件 entry 路径不合法' }
@@ -22,6 +22,12 @@ foreach ($name in @('readme.md', $metadata.entry)) {
     if (-not (Test-Path -LiteralPath (Join-Path $source $name) -PathType Leaf)) {
         throw "缺少 $name"
     }
+}
+$program = Get-Content -LiteralPath (Join-Path $source $metadata.entry) -Raw | ConvertFrom-Json
+$schema = if ($metadata.runtime -eq 'http-v2') { 2 } else { 1 }
+if ($program.schemaVersion -ne $schema) { throw 'runtime 与 schemaVersion 不匹配' }
+if ($schema -eq 1 -and ($program.PSObject.Properties.Name -contains 'prepare' -or $program.PSObject.Properties.Name -contains 'requires')) {
+    throw '前置请求和能力声明需要 http-v2/schemaVersion: 2'
 }
 if (-not (Test-Path -LiteralPath (Join-Path $source 'assets') -PathType Container)) {
     throw '缺少 assets 资源目录；没有资源时也请保留空目录'

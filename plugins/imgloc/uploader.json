@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 2,
+  "requires": [
+    "prepare",
+    "credential-cache",
+    "response-conditions",
+    "credential-refresh",
+    "safe-redirects"
+  ],
+  "permissions": {
+    "network": [
+      "imgloc.com"
+    ],
+    "readSelectedFile": true,
+    "allowInsecureHttp": false
+  },
+  "config": [],
+  "prepare": [
+    {
+      "id": "auth",
+      "method": "GET",
+      "url": "https://imgloc.com/upload.php?action=token",
+      "followRedirects": false,
+      "response": {
+        "successStatuses": [
+          200
+        ],
+        "success": {
+          "path": "ok",
+          "equals": true
+        },
+        "errorMessage": "message",
+        "exports": {
+          "token": {
+            "path": "token",
+            "type": "string",
+            "secret": true
+          }
+        }
+      },
+      "cache": {
+        "ttlFrom": "ttl",
+        "refreshBeforeSeconds": 30,
+        "maxTtlSeconds": 3600
+      }
+    }
+  ],
+  "upload": {
+    "method": "POST",
+    "url": "https://imgloc.com/upload.php",
+    "followRedirects": false,
+    "timeoutSeconds": 120,
+    "body": {
+      "type": "multipart",
+      "fileField": "image",
+      "fields": {
+        "token": "${steps.auth.token}"
+      }
+    },
+    "response": {
+      "url": "url",
+      "successStatuses": [
+        200
+      ],
+      "success": {
+        "path": "ok",
+        "equals": true
+      },
+      "errorMessage": "message"
+    },
+    "refreshCredentials": {
+      "steps": [
+        "auth"
+      ],
+      "statuses": [
+        403
+      ],
+      "condition": {
+        "path": "message",
+        "containsAny": [
+          "凭证",
+          "token"
+        ]
+      },
+      "maxAttempts": 1
+    },
+    "errors": {
+      "400": "请求或图片格式不符合 ImgLoc 要求。",
+      "403": "上传凭证被拒绝，请稍后重试。",
+      "413": "图片过大，请缩小图片后重试。",
+      "429": "请求过于频繁，请稍后重试。",
+      "500": "ImgLoc 服务异常，请稍后重试。",
+      "502": "ImgLoc 网关异常，请稍后重试。",
+      "503": "ImgLoc 暂不可用，请稍后重试。"
+    }
+  }
+}

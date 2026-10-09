@@ -8,7 +8,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'app_updates.dart';
 import 'diagnostics.dart';
+import 'github_mirrors.dart';
 import 'hero_theme.dart';
+import 'markdown_style.dart';
 
 class AppUpdateSheet extends StatefulWidget {
   final AppRelease release;
@@ -80,7 +82,7 @@ class _AppUpdateSheetState extends State<AppUpdateSheet> {
       if (!mounted) return;
       _events = ota
           .execute(
-            apk.url.toString(),
+            GitHubMirrors.instance.resolve(apk.url).toString(),
             destinationFilename: 'Picora-update.apk',
             sha256checksum: apk.sha256,
             androidProviderAuthority:
@@ -161,6 +163,7 @@ class _AppUpdateSheetState extends State<AppUpdateSheet> {
           if (widget.release.notes.trim().isNotEmpty)
             MarkdownBody(
               data: widget.release.notes,
+              styleSheet: picoraMarkdownStyle(context),
               imageBuilder: (_, _, _) => const SizedBox.shrink(),
               onTapLink: (_, href, _) async {
                 final uri = Uri.tryParse(href ?? '');

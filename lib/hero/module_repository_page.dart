@@ -185,7 +185,7 @@ class _ModuleRepositoryPageState extends State<ModuleRepositoryPage> {
               const Padding(
                 padding: EdgeInsets.only(bottom: 8),
                 child: Text(
-                  '首个插件 · 开发示例',
+                  '开发示例',
                   style: TextStyle(color: heroBlue, fontSize: 11),
                 ),
               ),
@@ -275,7 +275,7 @@ class _ModuleRepositoryPageState extends State<ModuleRepositoryPage> {
                 Padding(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   child: Text(
-                    '网络连接失败，显示 ${_catalog!.fetchedAt.toLocal().toString().substring(0, 16)} 的缓存目录。可点击右上角重试。',
+                    '插件获取失败，请检查网络、前往设置切换镜像或点击右上角重试。',
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.error,
                       fontSize: 12,
@@ -287,7 +287,7 @@ class _ModuleRepositoryPageState extends State<ModuleRepositoryPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(_error!),
+                      const Text('插件获取失败，请检查网络、前往设置切换镜像或点击右上角重试。'),
                       const SizedBox(height: 12),
                       FilledButton(
                         onPressed: () => _load(refresh: true),

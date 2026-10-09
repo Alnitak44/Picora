@@ -5,6 +5,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+abstract interface class SafeDiagnosticFailure {
+  Map<String, dynamic> get diagnosticDetails;
+}
+
 /// A single redaction boundary for new UI and inherited provider errors.
 class HeroDiagnostics extends ChangeNotifier {
   static final instance = HeroDiagnostics();
@@ -117,6 +121,9 @@ class HeroDiagnostics extends ChangeNotifier {
       data['message'] = error is HeroFailure
           ? redact(error.message)
           : '异常详情请结合上下文和堆栈查看';
+    }
+    if (error is SafeDiagnosticFailure) {
+      data['pluginRequest'] = redact(error.diagnosticDetails);
     }
     entries.insert(0, data);
     if (entries.length > 300) entries.removeLast();

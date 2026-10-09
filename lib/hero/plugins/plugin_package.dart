@@ -7,6 +7,7 @@ import 'package:archive/archive.dart' hide ZLibDecoder;
 import '../diagnostics.dart';
 import '../models.dart';
 import 'plugin_manifest.dart';
+import 'plugin_protocol.dart';
 
 /// ZIP files stay in app storage; assets are read in memory, never extracted.
 class PicoraPluginPackage {
@@ -128,8 +129,11 @@ class PicoraPluginPackage {
       }
 
       final metadata = jsonFile('plugin.json');
-      if (metadata['packageVersion'] != 1 || metadata['runtime'] != 'http-v1') {
-        throw const HeroFailure('插件需要 packageVersion: 1 和 runtime: http-v1');
+      if (metadata['packageVersion'] != 1 ||
+          !pluginRuntimes.containsKey(metadata['runtime'])) {
+        throw const HeroFailure(
+          '插件需要 packageVersion: 1 和受支持的 http-v1 / http-v2',
+        );
       }
       final entry = metadata['entry'];
       if (entry is! String ||
@@ -140,8 +144,8 @@ class PicoraPluginPackage {
         throw const HeroFailure('插件 entry 必须指向包内的 JSON 程序文件');
       }
       final program = jsonFile(entry);
-      if (program['schemaVersion'] != 1) {
-        throw const HeroFailure('程序文件 schemaVersion 必须是 1');
+      if (program['schemaVersion'] != pluginRuntimes[metadata['runtime']]) {
+        throw const HeroFailure('runtime 与 schemaVersion 不匹配，请升级客户端或修正插件');
       }
       final readme = files['readme.md'];
       if (readme == null ||
@@ -175,7 +179,7 @@ class PicoraPluginPackage {
       }
       final manifest = PicoraPluginManifest.fromJson(
         {
-          'schemaVersion': 1,
+          ...program,
           for (final key in [
             'id',
             'name',
@@ -187,8 +191,6 @@ class PicoraPluginPackage {
             'color',
           ])
             key: metadata[key],
-          for (final key in ['permissions', 'config', 'upload', 'delete'])
-            key: program[key],
         },
         resources: Map.unmodifiable({
           for (final entry in files.entries)
@@ -213,7 +215,7 @@ class PicoraPluginPackage {
     final original = manifest.toJson();
     final metadata = <String, dynamic>{
       'packageVersion': 1,
-      'runtime': 'http-v1',
+      'runtime': 'http-v${manifest.schemaVersion}',
       'entry': 'uploader.json',
       for (final key in [
         'id',
@@ -228,8 +230,15 @@ class PicoraPluginPackage {
         if (original[key] != null) key: original[key],
     };
     final program = <String, dynamic>{
-      'schemaVersion': 1,
-      for (final key in ['permissions', 'config', 'upload', 'delete'])
+      'schemaVersion': manifest.schemaVersion,
+      for (final key in [
+        'permissions',
+        'config',
+        'upload',
+        'delete',
+        'prepare',
+        'requires',
+      ])
         if (original[key] != null) key: original[key],
     };
     final archive = Archive()

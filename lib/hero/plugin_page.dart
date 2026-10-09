@@ -11,7 +11,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'controller.dart';
 import 'hero_theme.dart';
-import 'models.dart';
+import 'markdown_style.dart';
+
 import 'module_repository_page.dart';
 import 'plugins/plugin_manifest.dart';
 import 'plugins/plugin_package.dart';
@@ -200,21 +201,11 @@ class _PluginCenterPageState extends State<PluginCenterPage> {
               Icons.language_rounded,
               '访问 ${manifest.permissions.networkHosts.join('、')}',
             ),
+            if (manifest.delete != null)
+              _permission(Icons.delete_outline_rounded, '可删除选中的云端图片；安装后默认关闭'),
             if (manifest.permissions.allowInsecureHttp)
               _permission(Icons.no_encryption_outlined, '允许使用明文 HTTP'),
-            const SizedBox(height: 14),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: heroBlue.withValues(alpha: .06),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Text(
-                '插件只能按清单发送 HTTP 请求，无法运行脚本、读取其他图床配置或执行系统命令。',
-                style: TextStyle(color: heroMuted, fontSize: 11, height: 1.6),
-              ),
-            ),
+
             const SizedBox(height: 22),
             SizedBox(
               width: double.infinity,
@@ -236,6 +227,9 @@ class _PluginCenterPageState extends State<PluginCenterPage> {
   );
 
   Future<void> _details(PicoraPluginManifest manifest) async {
+    final githubUrl = _pluginGithubUrl(
+      widget.controller.pluginManager.packageFor(manifest.id),
+    );
     final action = await heroSheet<String>(
       context,
       Padding(
@@ -259,16 +253,37 @@ class _PluginCenterPageState extends State<PluginCenterPage> {
               title: const Text('插件主页与使用教程'),
               onTap: () => Navigator.pop(context, 'readme'),
             ),
+            if (manifest.delete != null)
+              SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('允许删除选中的云端图片'),
+                subtitle: const Text('仅在相册主动删除时使用；更新插件后需重新开启'),
+                value: widget.controller.pluginManager.isCloudDeleteAllowed(
+                  manifest.id,
+                ),
+                onChanged: _working
+                    ? null
+                    : (value) {
+                        Navigator.pop(context);
+                        _guard(
+                          '修改删除权限',
+                          () => widget.controller.setPluginCloudDelete(
+                            manifest.id,
+                            value,
+                          ),
+                        );
+                      },
+              ),
             ListTile(
               leading: const Icon(Icons.ios_share_outlined),
               title: const Text('导出 ZIP 插件包'),
               onTap: () => Navigator.pop(context, 'share'),
             ),
-            if (manifest.homepage != null)
+            if (githubUrl != null)
               ListTile(
                 leading: const Icon(Icons.open_in_new_rounded),
-                title: const Text('打开项目网站'),
-                onTap: () => Navigator.pop(context, 'homepage'),
+                title: const Text('GitHub'),
+                onTap: () => Navigator.pop(context, 'github'),
               ),
 
             ListTile(
@@ -302,13 +317,13 @@ class _PluginCenterPageState extends State<PluginCenterPage> {
           XFile(file.path),
         ], text: '${manifest.name} 插件');
       });
-    } else if (action == 'homepage') {
-      await _guard('打开插件项目网站', () async {
+    } else if (action == 'github') {
+      await _guard('打开 GitHub', () async {
         final opened = await launchUrl(
-          Uri.parse(manifest.homepage!),
+          Uri.parse(githubUrl!),
           mode: LaunchMode.externalApplication,
         );
-        if (!opened && mounted) heroSnack(context, '无法打开插件项目网站');
+        if (!opened && mounted) heroSnack(context, '无法打开 GitHub');
       });
     } else if (action == 'remove') {
       final confirmed = await heroSheet<bool>(
@@ -462,47 +477,6 @@ class _PluginCenterPageState extends State<PluginCenterPage> {
             ),
           ),
           const SizedBox(height: 24),
-          const SectionLabel('内置连接器'),
-          HeroPanel(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                RepositoryBadge(hostSpec('picgo'), size: 46),
-                const SizedBox(width: 14),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'PicGo Bridge',
-                        style: TextStyle(fontWeight: FontWeight.w600),
-                      ),
-                      SizedBox(height: 5),
-                      Text(
-                        '通过 PicGo Server 使用现有 PicGo 插件',
-                        style: TextStyle(color: heroMuted, fontSize: 10),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: heroBlue.withValues(alpha: .08),
-                    borderRadius: BorderRadius.circular(7),
-                  ),
-                  child: const Text(
-                    '内置',
-                    style: TextStyle(color: heroBlue, fontSize: 9),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
           Row(
             children: [
               const Expanded(child: SectionLabel('已安装插件')),
@@ -647,17 +621,12 @@ class PluginReadmePage extends StatelessWidget {
                 Wrap(
                   spacing: 12,
                   children: [
-                    if (package.repository != null)
+                    if (_pluginGithubUrl(package) != null)
                       TextButton.icon(
-                        onPressed: () => _open(context, package.repository!),
-                        icon: const Icon(Icons.code_rounded, size: 18),
-                        label: const Text('源码仓库'),
-                      ),
-                    if (manifest.homepage != null)
-                      TextButton.icon(
-                        onPressed: () => _open(context, manifest.homepage!),
+                        onPressed: () =>
+                            _open(context, _pluginGithubUrl(package)!),
                         icon: const Icon(Icons.open_in_new_rounded, size: 18),
-                        label: const Text('项目网站'),
+                        label: const Text('GitHub'),
                       ),
                   ],
                 ),
@@ -672,12 +641,7 @@ class PluginReadmePage extends StatelessWidget {
             onTapLink: (text, href, title) {
               if (href != null) _open(context, href);
             },
-            styleSheet: MarkdownStyleSheet.fromTheme(Theme.of(context))
-                .copyWith(
-                  p: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(height: 1.7),
-                ),
+            styleSheet: picoraMarkdownStyle(context),
           ),
         ],
       ),
@@ -732,4 +696,17 @@ class _PluginUrlInputSheetState extends State<PluginUrlInputSheet> {
       ],
     ),
   );
+}
+
+String? _pluginGithubUrl(PicoraPluginPackage package) {
+  for (final url in [package.repository, package.manifest.homepage]) {
+    final uri = Uri.tryParse(url ?? '');
+    if (uri != null &&
+        uri.scheme == 'https' &&
+        uri.host.toLowerCase() == 'github.com' &&
+        uri.userInfo.isEmpty) {
+      return url;
+    }
+  }
+  return null;
 }

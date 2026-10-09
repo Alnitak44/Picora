@@ -8,11 +8,14 @@ import 'package:path_provider/path_provider.dart';
 
 import '../app_updates.dart';
 import '../diagnostics.dart';
+import '../github_mirrors.dart';
 import 'plugin_manager.dart';
 import 'plugin_package.dart';
+import 'plugin_protocol.dart';
 
 class PluginCatalogEntry {
   final String id, name, description, author, version, digest, mark;
+  final String runtime;
   final Uri downloadUrl, repository;
   final int size;
   final bool example;
@@ -20,6 +23,7 @@ class PluginCatalogEntry {
 
   PluginCatalogEntry._(
     this.id,
+    this.runtime,
     this.name,
     this.description,
     this.author,
@@ -58,7 +62,8 @@ class PluginCatalogEntry {
     if (!RegExp(r'^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)+$').hasMatch(id)) {
       throw const HeroFailure('模块目录的插件 ID 无效');
     }
-    if (json['runtime'] != 'http-v1' || json['packageVersion'] != 1) {
+    if (!pluginRuntimes.containsKey(json['runtime']) ||
+        json['packageVersion'] != 1) {
       throw const HeroFailure('模块目录包含不支持的插件协议');
     }
     final version = text('version', 30);
@@ -73,6 +78,7 @@ class PluginCatalogEntry {
     }
     return PluginCatalogEntry._(
       id,
+      text('runtime', 20),
       text('name', 60),
       text('description', 160),
       text('author', 80),
@@ -108,7 +114,8 @@ class PluginCatalogEntry {
     }
     final package = PicoraPluginPackage.decode(bytes);
     final manifest = package.manifest;
-    if (manifest.id != id ||
+    if (package.metadata['runtime'] != runtime ||
+        manifest.id != id ||
         manifest.version != version ||
         manifest.name != name ||
         manifest.author != author) {
@@ -159,6 +166,7 @@ class PluginCatalogService {
   final DateTime Function() now;
   PluginCatalog? _cached;
   bool _loadedDisk = false;
+  String? _route;
 
   PluginCatalogService({Dio? dio, this.storageRoot, DateTime Function()? now})
     : dio =
@@ -177,6 +185,9 @@ class PluginCatalogService {
   );
 
   Future<PluginCatalog> load({bool forceRefresh = false}) async {
+    final url = GitHubMirrors.instance
+        .resolve(Uri.parse(indexUrl), headers: dio.options.headers)
+        .toString();
     if (!_loadedDisk) {
       _loadedDisk = true;
       try {
@@ -184,6 +195,7 @@ class PluginCatalogService {
         if (await file.exists() && await file.length() <= maxIndexBytes * 2) {
           final value = jsonDecode(await file.readAsString()) as Map;
           final date = DateTime.parse(value['fetchedAt'] as String);
+          _route = value['route'] as String?;
           _cached = PluginCatalog(
             PluginCatalog.parse(value['source'] as String),
             date,
@@ -196,6 +208,7 @@ class PluginCatalogService {
     final cached = _cached;
     final age = cached == null ? null : now().difference(cached.fetchedAt);
     if (!forceRefresh &&
+        _route == url &&
         age != null &&
         !age.isNegative &&
         age < const Duration(hours: 12)) {
@@ -204,7 +217,7 @@ class PluginCatalogService {
     try {
       final cancel = CancelToken();
       final response = await dio.get<List<int>>(
-        indexUrl,
+        url,
         options: Options(responseType: ResponseType.bytes),
         cancelToken: cancel,
         onReceiveProgress: (received, total) {
@@ -218,6 +231,7 @@ class PluginCatalogService {
       final source = utf8.decode(bytes);
       final catalog = PluginCatalog(PluginCatalog.parse(source), now());
       _cached = catalog;
+      _route = url;
       try {
         final file = await _cacheFile();
         await file.parent.create(recursive: true);
@@ -225,6 +239,7 @@ class PluginCatalogService {
         await pending.writeAsString(
           jsonEncode({
             'fetchedAt': catalog.fetchedAt.toIso8601String(),
+            'route': url,
             'source': source,
           }),
           flush: true,

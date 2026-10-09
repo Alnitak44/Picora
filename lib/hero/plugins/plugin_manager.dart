@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import '../diagnostics.dart';
 import '../models.dart';
 import '../app_updates.dart';
+import '../github_mirrors.dart';
 import 'plugin_manifest.dart';
 import 'plugin_package.dart';
 import 'uploader_registry.dart';
@@ -24,6 +25,7 @@ class PluginInstallResult {
 class PicoraPluginManager {
   final UploaderRegistry registry;
   final Directory? storageRoot;
+  final Dio downloadDio;
   final Map<String, PicoraPluginManifest> _installed = {};
   final Map<String, PicoraPluginPackage> _packages = {};
 
@@ -31,7 +33,20 @@ class PicoraPluginManager {
   File? _repositoryFile;
   bool _initialized = false;
 
-  PicoraPluginManager({required this.registry, this.storageRoot});
+  PicoraPluginManager({
+    required this.registry,
+    this.storageRoot,
+    Dio? downloadDio,
+  }) : downloadDio =
+           downloadDio ??
+           Dio(
+             BaseOptions(
+               connectTimeout: const Duration(seconds: 20),
+               receiveTimeout: const Duration(seconds: 30),
+               followRedirects: true,
+               maxRedirects: 5,
+             ),
+           );
 
   List<PicoraPluginManifest> get installed {
     final result = _installed.values.toList()
@@ -49,6 +64,19 @@ class PicoraPluginManager {
 
   bool isEnabled(String id) =>
       SpUtil.getBool('hero_plugin_enabled_$id', defValue: true) ?? true;
+
+  bool isCloudDeleteAllowed(String id) =>
+      SpUtil.getBool('hero_plugin_cloud_delete_$id', defValue: false) ?? false;
+
+  Future<void> setCloudDeleteAllowed(String id, bool allowed) async {
+    await initialize();
+    final plugin = _installed[id];
+    if (plugin == null || plugin.delete == null) {
+      throw const HeroFailure('该插件没有删除接口');
+    }
+    await SpUtil.putBool('hero_plugin_cloud_delete_$id', allowed);
+    registry.runtime.clearCredentials();
+  }
 
   Future<Directory> _root() async =>
       storageRoot ?? await getApplicationSupportDirectory();
@@ -142,6 +170,8 @@ class PicoraPluginManager {
     }
     final updated = previous != null;
     await _persistPackage(package);
+    // A new package cannot inherit a previous version's destructive permission.
+    await SpUtil.putBool('hero_plugin_cloud_delete_${manifest.id}', false);
     _installed[manifest.id] = manifest;
     _packages[manifest.id] = package;
     if (!updated &&
@@ -157,25 +187,19 @@ class PicoraPluginManager {
       throw const HeroFailure('插件地址必须是 HTTP 或 HTTPS URL');
     }
     final cancel = CancelToken();
-    final response =
-        await Dio(
-          BaseOptions(
-            connectTimeout: const Duration(seconds: 20),
-            receiveTimeout: const Duration(seconds: 30),
-            followRedirects: true,
-            maxRedirects: 5,
-          ),
-        ).get<List<int>>(
-          uri.toString(),
-          cancelToken: cancel,
-          options: Options(responseType: ResponseType.bytes),
-          onReceiveProgress: (received, total) {
-            if (received > PicoraPluginPackage.maxZipBytes ||
-                total > PicoraPluginPackage.maxZipBytes) {
-              cancel.cancel('插件 ZIP 超过 10 MB');
-            }
-          },
-        );
+    final response = await downloadDio.get<List<int>>(
+      GitHubMirrors.instance
+          .resolve(uri, headers: downloadDio.options.headers)
+          .toString(),
+      cancelToken: cancel,
+      options: Options(responseType: ResponseType.bytes),
+      onReceiveProgress: (received, total) {
+        if (received > PicoraPluginPackage.maxZipBytes ||
+            total > PicoraPluginPackage.maxZipBytes) {
+          cancel.cancel('插件 ZIP 超过 10 MB');
+        }
+      },
+    );
     final source = response.data ?? const <int>[];
     if (source.isEmpty) throw const HeroFailure('插件地址返回了空内容');
     if (source.length > PicoraPluginPackage.maxZipBytes) {
@@ -203,6 +227,7 @@ class PicoraPluginManager {
       final file = File('${_pluginDirectory!.path}/$id.$extension');
       if (await file.exists()) await file.delete();
     }
+    await SpUtil.remove('hero_plugin_cloud_delete_$id');
     _installed.remove(id);
     _packages.remove(id);
     await SpUtil.remove('hero_plugin_enabled_$id');
@@ -290,6 +315,7 @@ class PicoraPluginManager {
   }
 
   Future<void> _writeRepositories(List<RepositoryConfig> repositories) async {
+    registry.runtime.clearCredentials();
     await _repositoryFile!.parent.create(recursive: true);
     await _repositoryFile!.writeAsString(
       const JsonEncoder.withIndent('  ').convert(

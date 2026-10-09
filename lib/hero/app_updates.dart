@@ -1,6 +1,9 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 
 import 'diagnostics.dart';
+import 'github_mirrors.dart';
 
 class AppVersion implements Comparable<AppVersion> {
   final List<int> core;
@@ -183,6 +186,7 @@ class AppUpdateService {
   AppRelease? _cached;
   DateTime? _checkedAt;
   String? _etag;
+  String? _route;
   AppUpdateService({Dio? dio, DateTime Function()? now})
     : dio =
           dio ??
@@ -195,13 +199,22 @@ class AppUpdateService {
       now = now ?? DateTime.now;
 
   Future<AppRelease?> latest({bool forceRefresh = false}) async {
+    final url = GitHubMirrors.instance
+        .resolve(Uri.parse(latestUrl), headers: dio.options.headers)
+        .toString();
+    if (_route != url) {
+      _route = url;
+      _checkedAt = null;
+      _etag = null;
+      _cached = null;
+    }
     if (!forceRefresh &&
         _checkedAt != null &&
         now().difference(_checkedAt!) < const Duration(hours: 6)) {
       return _cached;
     }
     final response = await dio.get<Object?>(
-      latestUrl,
+      url,
       options: Options(
         headers: {
           'Accept': 'application/vnd.github+json',
@@ -219,10 +232,20 @@ class AppUpdateService {
       return _cached;
     }
     if (response.statusCode == 404) {
+      if (url != latestUrl) {
+        throw const HeroFailure('镜像无法获取更新，请前往设置切换镜像后重试');
+      }
       _cached = null;
       _etag = null;
     } else {
-      final data = response.data;
+      Object? data = response.data;
+      if (data is String) {
+        try {
+          data = jsonDecode(data);
+        } on FormatException {
+          throw const HeroFailure('更新接口返回了无效数据');
+        }
+      }
       if (data is! Map<String, dynamic>) throw const HeroFailure('更新接口返回了无效数据');
       final release = AppRelease.fromJson(data);
       _cached = release;

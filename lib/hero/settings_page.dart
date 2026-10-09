@@ -19,6 +19,8 @@ import 'filename_template_sheet.dart';
 import 'app_updates.dart';
 import 'app_update_sheet.dart';
 import 'diagnostics.dart';
+import 'github_mirrors.dart';
+import 'github_mirror_page.dart';
 
 class SettingsPage extends StatefulWidget {
   final PicoraController controller;
@@ -591,6 +593,19 @@ class _SettingsPageState extends State<SettingsPage> {
             if (choice != null) {
               await _guard('切换主题', () => widget.controller.setTheme(choice));
             }
+          },
+        ),
+      ]),
+      _group('网络与下载', [
+        _row(
+          'GitHub 镜像',
+          Icons.route_outlined,
+          value: GitHubMirrors.instance.selected.name,
+          tap: () async {
+            await Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const GitHubMirrorPage()));
+            if (mounted) setState(() {});
           },
         ),
       ]),

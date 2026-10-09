@@ -486,6 +486,7 @@ class PicoraController extends ChangeNotifier {
                   path: file.path,
                   name: name,
                   config: Map<String, dynamic>.from(config.values),
+                  configurationId: config.id,
                 );
           if (result is! List || result.isEmpty || result[0] != 'success') {
             throw const HeroFailure('图床拒绝上传，请检查配置或查看请求日志');
@@ -712,13 +713,27 @@ class PicoraController extends ChangeNotifier {
     if (busy) throw const HeroFailure('上传进行中，请稍后删除图片');
     for (final entry in entries) {
       if (Global.isDeleteCloud) {
+        final isPlugin = entry.host.startsWith('plugin.');
         final config =
-            repositories.where((r) => r.id == entry.repositoryId).firstOrNull ??
-            repositories.where((r) => r.host == entry.host).firstOrNull;
+            repositories
+                .where(
+                  (r) => r.id == entry.repositoryId && r.host == entry.host,
+                )
+                .firstOrNull ??
+            (isPlugin
+                ? null
+                : repositories.where((r) => r.host == entry.host).firstOrNull);
+        if (isPlugin && config == null) {
+          throw const HeroFailure('原插件配置组已不存在，无法删除云端图片；上传记录已保留');
+        }
         final result = await uploaderRegistry.delete(
           entry.host,
           deleteMap: entry.row,
           config: config?.values ?? {},
+          configurationId: config?.id,
+          allowCloudDelete:
+              !isPlugin ||
+              pluginManager.isCloudDeleteAllowed(entry.host.substring(7)),
         );
         if (result is! List || result.firstOrNull != 'success') {
           throw const HeroFailure('云端删除失败，上传记录已保留');
@@ -812,6 +827,12 @@ class PicoraController extends ChangeNotifier {
   Future<void> setPluginEnabled(String id, bool enabled) async {
     if (busy) throw const HeroFailure('上传进行中，请稍后修改插件');
     await pluginManager.setEnabled(id, enabled);
+    notifyListeners();
+  }
+
+  Future<void> setPluginCloudDelete(String id, bool allowed) async {
+    if (busy) throw const HeroFailure('上传进行中，请稍后修改插件权限');
+    await pluginManager.setCloudDeleteAllowed(id, allowed);
     notifyListeners();
   }
 
