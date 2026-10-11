@@ -196,6 +196,8 @@ GitHub 镜像在客户端下载时应用，目录保留原始下载地址；图�
 
 ### 目录格式
 
+以下是仓库自动生成、供客户端读取的格式；投稿者提交的是 [登记文件](https://github.com/Alnitak44/picora-plugins/tree/main/registrations)，无需编辑 `index.json`。
+
 ```json
 {
   "schemaVersion": 1,
@@ -228,7 +230,8 @@ GitHub 镜像在客户端下载时应用，目录保留原始下载地址；图�
 
 1. 使用稳定 ID 编写插件，更新 `plugin.json` 版本并打包 ZIP。
 2. 将 ZIP 上传到作者仓库的 GitHub Release。
-3. 向模块仓库提交目录条目的 PR，附上下载地址、大小和 SHA-256。
-4. 更新时发布新的 ZIP 和条目，不以不同内容覆盖已发布版本。
+3. Fork 模块仓库，参考 [ImgBB 登记示例](https://github.com/Alnitak44/picora-plugins/blob/main/examples/io.github.ruzmarin.picora.imgbb.json)，在 `registrations/<插件 ID>.json` 提交登记文件的 PR，填写发布仓库和经审核的请求权限；无需手填下载地址、大小或 SHA-256。
+4. 仓库自动从 GitHub Release 验证 ZIP，并生成客户端使用的 `index.json`。更新时只需发布新的 ZIP，不以不同内容覆盖已发布版本；请求权限变化须更新登记文件并接受审核。
 
 插件源码与许可证归作者维护，目录合并由维护者审核请求目标、凭证使用及删除语义。
+
