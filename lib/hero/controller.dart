@@ -44,6 +44,7 @@ class PicoraController extends ChangeNotifier {
   List<AlbumEntry> images = [];
   List<String> pendingSharedPaths = [];
   bool continuousCamera = false;
+  bool showNavigationLabels = true;
   RepositoryConfig? target;
   String? defaultId;
   AlbumEntry? latest;
@@ -53,6 +54,23 @@ class PicoraController extends ChangeNotifier {
   String? failure, failedPath, initializationFailure;
   File? _metadataFile;
   Map<String, dynamic> _metadata = {};
+  final _cloudDeletions = <String>{};
+  Future<void> _metadataSave = Future<void>.value();
+
+  Future<void> _saveMetadata() {
+    final previous = _metadataSave;
+    final save = () async {
+      try {
+        await previous;
+      } catch (_) {}
+      if (_metadataFile != null) {
+        await _metadataFile!.writeAsString(jsonEncode(_metadata));
+      }
+    }();
+    _metadataSave = save;
+    return save;
+  }
+
   bool _disposed = false, _initializationInFlight = false;
   @override
   void notifyListeners() {
@@ -90,6 +108,10 @@ class PicoraController extends ChangeNotifier {
       continuousCamera = SpUtil.getBool(
         'hero_continuous_camera',
         defValue: false,
+      )!;
+      showNavigationLabels = SpUtil.getBool(
+        'hero_show_navigation_labels',
+        defValue: true,
       )!;
       await loadRepositories();
       await loadImages();
@@ -393,6 +415,7 @@ class PicoraController extends ChangeNotifier {
             host.key,
             uploadedAt: DateTime.tryParse(meta?['time'] ?? ''),
             repositoryId: meta?['repository'],
+            cloudDeleted: meta?['cloudDeleted'] == true,
           ),
         );
       }
@@ -412,6 +435,7 @@ class PicoraController extends ChangeNotifier {
             host,
             uploadedAt: DateTime.tryParse(meta?['time'] ?? ''),
             repositoryId: meta?['repository'],
+            cloudDeleted: meta?['cloudDeleted'] == true,
           ),
         );
       }
@@ -536,7 +560,7 @@ class PicoraController extends ChangeNotifier {
         notifyListeners();
       }
       if (_metadataFile != null) {
-        await _metadataFile!.writeAsString(jsonEncode(_metadata));
+        await _saveMetadata();
       }
       if (!insideMigration && Global.isCopyLink && completed.isNotEmpty) {
         await Clipboard.setData(
@@ -709,35 +733,93 @@ class PicoraController extends ChangeNotifier {
       }[type] ??
       'png';
 
+  bool supportsCloudDelete(AlbumEntry entry) =>
+      uploaderRegistry.supportsDelete(entry.host);
+
+  bool isCloudImageDeleted(AlbumEntry entry) =>
+      entry.cloudDeleted ||
+      (_metadata[entry.id] as Map?)?['cloudDeleted'] == true;
+
+  Future<void> deleteCloudImage(
+    AlbumEntry entry, {
+    bool explicitAuthorization = false,
+  }) async {
+    if (busy) throw const HeroFailure('上传进行中，请稍后删除图片');
+    final current = images.where((image) => image.id == entry.id).firstOrNull;
+    if (current == null) throw const HeroFailure('上传记录已不存在');
+    if (isCloudImageDeleted(current)) return;
+    if (!_cloudDeletions.add(current.id)) {
+      throw const HeroFailure('正在删除这张云端图片，请稍候');
+    }
+    try {
+      if (!supportsCloudDelete(current)) {
+        throw const HeroFailure('此图床未提供云端删除接口');
+      }
+      final isPlugin = current.host.startsWith('plugin.');
+      final config =
+          repositories
+              .where(
+                (r) => r.id == current.repositoryId && r.host == current.host,
+              )
+              .firstOrNull ??
+          (isPlugin
+              ? null
+              : repositories.where((r) => r.host == current.host).firstOrNull);
+      if (isPlugin && config == null) {
+        throw const HeroFailure('原插件配置组已不存在，无法删除云端图片；上传记录已保留');
+      }
+      final result = await uploaderRegistry.delete(
+        current.host,
+        deleteMap: current.row,
+        config: config?.values ?? {},
+        configurationId: config?.id,
+        allowCloudDelete:
+            !isPlugin ||
+            explicitAuthorization ||
+            pluginManager.isCloudDeleteAllowed(current.host.substring(7)),
+      );
+      if (result is! List || result.firstOrNull != 'success') {
+        throw const HeroFailure('云端删除失败，上传记录已保留');
+      }
+      _metadata[current.id] = {
+        ...?_metadata[current.id] as Map?,
+        if (current.uploadedAt != null)
+          'time': current.uploadedAt!.toUtc().toIso8601String(),
+        if (current.repositoryId != null) 'repository': current.repositoryId,
+        'cloudDeleted': true,
+      };
+      final updated = AlbumEntry(
+        current.row,
+        current.host,
+        uploadedAt: current.uploadedAt,
+        repositoryId: current.repositoryId,
+        cloudDeleted: true,
+      );
+      final index = images.indexWhere((image) => image.id == current.id);
+      if (index >= 0) images[index] = updated;
+      if (latest?.id == current.id) latest = updated;
+      notifyListeners();
+      if (_metadataFile != null) {
+        try {
+          await _saveMetadata();
+        } catch (error, stack) {
+          describeError('保存云端删除状态', error, stack);
+          throw const HeroFailure('云端图片已删除，但本地删除状态保存失败');
+        }
+      }
+    } finally {
+      _cloudDeletions.remove(current.id);
+    }
+  }
+
   Future<void> removeImages(List<AlbumEntry> entries) async {
     if (busy) throw const HeroFailure('上传进行中，请稍后删除图片');
     for (final entry in entries) {
+      if (_cloudDeletions.contains(entry.id)) {
+        throw const HeroFailure('云端删除进行中，请稍后删除上传记录');
+      }
       if (Global.isDeleteCloud) {
-        final isPlugin = entry.host.startsWith('plugin.');
-        final config =
-            repositories
-                .where(
-                  (r) => r.id == entry.repositoryId && r.host == entry.host,
-                )
-                .firstOrNull ??
-            (isPlugin
-                ? null
-                : repositories.where((r) => r.host == entry.host).firstOrNull);
-        if (isPlugin && config == null) {
-          throw const HeroFailure('原插件配置组已不存在，无法删除云端图片；上传记录已保留');
-        }
-        final result = await uploaderRegistry.delete(
-          entry.host,
-          deleteMap: entry.row,
-          config: config?.values ?? {},
-          configurationId: config?.id,
-          allowCloudDelete:
-              !isPlugin ||
-              pluginManager.isCloudDeleteAllowed(entry.host.substring(7)),
-        );
-        if (result is! List || result.firstOrNull != 'success') {
-          throw const HeroFailure('云端删除失败，上传记录已保留');
-        }
+        await deleteCloudImage(entry);
       }
       if (Global.isDeleteLocal &&
           entry.path.isNotEmpty &&
@@ -760,7 +842,7 @@ class PicoraController extends ChangeNotifier {
       notifyListeners();
     }
     if (_metadataFile != null) {
-      await _metadataFile!.writeAsString(jsonEncode(_metadata));
+      await _saveMetadata();
     }
   }
 
@@ -779,7 +861,7 @@ class PicoraController extends ChangeNotifier {
     images.clear();
     _metadata.clear();
     latest = null;
-    if (_metadataFile != null) await _metadataFile!.writeAsString('{}');
+    if (_metadataFile != null) await _saveMetadata();
     notifyListeners();
   }
 
@@ -796,6 +878,14 @@ class PicoraController extends ChangeNotifier {
   void setContinuousCamera(bool value) {
     continuousCamera = value;
     SpUtil.putBool('hero_continuous_camera', value);
+    notifyListeners();
+  }
+
+  Future<void> setShowNavigationLabels(bool value) async {
+    if (await SpUtil.putBool('hero_show_navigation_labels', value) != true) {
+      throw const HeroFailure('底部导航设置保存失败，请重试');
+    }
+    showNavigationLabels = value;
     notifyListeners();
   }
 

@@ -189,6 +189,7 @@ class _HeroShellState extends State<HeroShell> {
                           child: _NavItem(
                             index: i,
                             selected: _index == i,
+                            showLabel: widget.controller.showNavigationLabels,
                             onTap: () => _go(i),
                           ),
                         ),
@@ -245,6 +246,7 @@ class _HeroShellState extends State<HeroShell> {
                       AlbumPage(
                         controller: widget.controller,
                         openUpload: () => _go(0),
+                        isActive: _index == 1,
                       ),
                       RepositoriesPage(controller: widget.controller),
                       SettingsPage(
@@ -267,10 +269,12 @@ class _HeroShellState extends State<HeroShell> {
 class _NavItem extends StatelessWidget {
   final int index;
   final bool selected;
+  final bool showLabel;
   final VoidCallback onTap;
   const _NavItem({
     required this.index,
     required this.selected,
+    required this.showLabel,
     required this.onTap,
   });
   static const labels = ['上传', '相册', '仓库', '设置'];
@@ -293,31 +297,37 @@ class _NavItem extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 230),
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          padding: EdgeInsets.symmetric(vertical: showLabel ? 10 : 14),
           decoration: BoxDecoration(
             color: selected
                 ? heroBlue.withValues(alpha: .10)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(20),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                icons[index],
-                color: selected ? heroBlue : heroMuted,
-                size: 23,
-              ),
-              const SizedBox(height: 5),
-              Text(
-                labels[index],
-                style: TextStyle(
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 230),
+            curve: Curves.easeOutCubic,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icons[index],
                   color: selected ? heroBlue : heroMuted,
-                  fontSize: 10,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  size: 23,
                 ),
-              ),
-            ],
+                if (showLabel) ...[
+                  const SizedBox(height: 5),
+                  Text(
+                    labels[index],
+                    style: TextStyle(
+                      color: selected ? heroBlue : heroMuted,
+                      fontSize: 10,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),

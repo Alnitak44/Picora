@@ -299,7 +299,14 @@ class AlbumEntry {
   final String host;
   final DateTime? uploadedAt;
   final String? repositoryId;
-  const AlbumEntry(this.row, this.host, {this.uploadedAt, this.repositoryId});
+  final bool cloudDeleted;
+  const AlbumEntry(
+    this.row,
+    this.host, {
+    this.uploadedAt,
+    this.repositoryId,
+    this.cloudDeleted = false,
+  });
   String get id => '$host:${row['id']}';
   String get name => row['name']?.toString() ?? '未命名图片';
   String get url {

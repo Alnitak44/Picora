@@ -11,6 +11,5 @@
   "repository": "https://github.com/Alnitak44/Picora/tree/main/plugins/telegraph-image",
   "mark": "TG",
   "color": "#1D9BF0",
-  "icon": "assets/icon.svg",
-  "example": true
+  "icon": "assets/icon.svg"
 }

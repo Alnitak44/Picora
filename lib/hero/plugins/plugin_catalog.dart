@@ -132,6 +132,12 @@ class PluginCatalog {
   const PluginCatalog(this.entries, this.fetchedAt, {this.refreshError});
   bool get offline => refreshError != null;
 
+  // Only reviewed catalog entries designate examples; ZIP metadata cannot pin.
+  List<PluginCatalogEntry> get orderedEntries => List.unmodifiable([
+    ...entries.where((entry) => entry.example),
+    ...entries.where((entry) => !entry.example),
+  ]);
+
   static List<PluginCatalogEntry> parse(String source) {
     if (utf8.encode(source).length > PluginCatalogService.maxIndexBytes) {
       throw const HeroFailure('模块目录超过 1 MB');

@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flustars_flutter3/flustars_flutter3.dart';
@@ -12,6 +14,7 @@ import 'package:picora/hero/controller.dart';
 import 'package:picora/hero/diagnostics.dart';
 import 'package:picora/hero/github_mirrors.dart';
 import 'package:picora/hero/github_mirror_page.dart';
+import 'package:picora/hero/github_mirror_probe.dart';
 import 'package:picora/hero/hero_theme.dart';
 import 'package:picora/hero/module_repository_page.dart';
 import 'package:picora/hero/plugins/plugin_catalog.dart';
@@ -22,6 +25,39 @@ import 'app_update_test.dart' show releaseJson, mockDio;
 import 'plugin_catalog_test.dart'
     show entryJson, indexSource, FixedCatalogService;
 import 'plugin_fixture.dart';
+
+class FixedMirrorProbe extends GitHubMirrorProbe {
+  @override
+  Future<MirrorProbeResult> probe(
+    GitHubMirror mirror, {
+    CancelToken? cancelToken,
+  }) async {
+    if (mirror.id == 'akams') return MirrorProbeResult(mirror, error: '连接失败');
+    return MirrorProbeResult(
+      mirror,
+      elapsed: Duration(
+        milliseconds: mirror.custom
+            ? 80
+            : mirror.id == 'gh2i'
+            ? 180
+            : 900,
+      ),
+    );
+  }
+}
+
+class WaitingMirrorProbe extends GitHubMirrorProbe {
+  int started = 0;
+  @override
+  Future<MirrorProbeResult> probe(
+    GitHubMirror mirror, {
+    CancelToken? cancelToken,
+  }) async {
+    started++;
+    await cancelToken!.whenCancel;
+    return MirrorProbeResult(mirror, error: '已取消');
+  }
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -233,6 +269,155 @@ void main() {
         'https://gh-proxy.com/${AppUpdateService.latestUrl}',
       );
       expect(requests.last.headers.containsKey('If-None-Match'), isFalse);
+    },
+  );
+
+  test(
+    'speed probe checks the real catalog through the requested route without changing preferences or sending credentials',
+    () async {
+      await mirrors.select('ghproxy');
+      final dio = mockDio((o, h) {
+        expect(
+          o.uri.toString(),
+          'https://gh.2i.gs/${PluginCatalogService.indexUrl}',
+        );
+        expect(o.followRedirects, false);
+        expect(o.headers.containsKey('Authorization'), false);
+        expect(o.headers.containsKey('Cookie'), false);
+        expect(o.queryParameters, isEmpty);
+        h.resolve(
+          Response(
+            requestOptions: o,
+            statusCode: 200,
+            data: ResponseBody.fromBytes(
+              utf8.encode('{"schemaVersion":1,"plugins":[]}'),
+              200,
+            ),
+          ),
+        );
+      });
+      dio.options.headers = {'Authorization': 'private', 'Cookie': 'private'};
+      dio.options.queryParameters = {'secret': 'private'};
+      final result = await GitHubMirrorProbe(
+        dio: dio,
+      ).probe(GitHubMirrors.presets[1]);
+      expect(result.available, true);
+      expect(result.elapsed, isNotNull);
+      expect(mirrors.selected.id, 'ghproxy');
+    },
+  );
+
+  test(
+    'speed probe rejects HTTP errors, false 200 pages, oversized data and insecure redirects',
+    () async {
+      for (final scenario in ['http', 'html', 'oversize', 'redirect']) {
+        final probe = GitHubMirrorProbe(
+          dio: mockDio((o, h) {
+            final status = scenario == 'http'
+                ? 403
+                : scenario == 'redirect'
+                ? 302
+                : 200;
+            final bytes = scenario == 'oversize'
+                ? List<int>.filled(PluginCatalogService.maxIndexBytes + 1, 32)
+                : utf8.encode('<html>blocked</html>');
+            h.resolve(
+              Response(
+                requestOptions: o,
+                statusCode: status,
+                headers: Headers.fromMap({
+                  'location': ['http://unsafe.example/catalog'],
+                }),
+                data: ResponseBody.fromBytes(bytes, status),
+              ),
+            );
+          }),
+        );
+        final result = await probe.probe(GitHubMirrors.presets.first);
+        expect(result.available, false, reason: scenario);
+        expect(result.error, isNotEmpty, reason: scenario);
+      }
+    },
+  );
+
+  test(
+    'speed probe has a total timeout and cancels a stalled response stream',
+    () async {
+      final stream = StreamController<List<int>>();
+      var cancelled = false;
+      stream.onCancel = () => cancelled = true;
+      final probe = GitHubMirrorProbe(
+        // Allow the mocked response to arrive under parallel suite load.
+        timeout: const Duration(milliseconds: 500),
+        dio: mockDio((o, h) {
+          h.resolve(
+            Response(
+              requestOptions: o,
+              statusCode: 200,
+              data: ResponseBody(
+                stream.stream.map((bytes) => Uint8List.fromList(bytes)),
+                200,
+              ),
+            ),
+          );
+        }),
+      );
+      final result = await probe.probe(GitHubMirrors.presets.first);
+      expect(result.error, '超时');
+      expect(cancelled, true);
+      await stream.close();
+    },
+  );
+
+  testWidgets(
+    'speed results show usable routes and select the fastest custom mirror only on request',
+    (tester) async {
+      await mirrors.saveCustom(name: '最快线路', url: 'https://fast.example/');
+      tester.view.physicalSize = const Size(320, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: heroTheme(Brightness.dark),
+          home: GitHubMirrorPage(probe: FixedMirrorProbe()),
+        ),
+      );
+      await tester.tap(find.text('测速'));
+      await tester.pumpAndSettle();
+      expect(find.text('最快：最快线路'), findsOneWidget);
+      expect(find.text('连接失败'), findsOneWidget);
+      expect(mirrors.selected.id, 'direct');
+      await tester.tap(find.text('使用最快'));
+      await tester.pumpAndSettle();
+      expect(mirrors.selected.name, '最快线路');
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    },
+  );
+
+  testWidgets(
+    'mirror speed testing limits concurrency and can be stopped without changing the route',
+    (tester) async {
+      final probe = WaitingMirrorProbe();
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: heroTheme(Brightness.light),
+          home: GitHubMirrorPage(probe: probe),
+        ),
+      );
+      await tester.tap(find.text('测速'));
+      await tester.pump();
+      expect(probe.started, 3);
+      expect(find.text('停止'), findsOneWidget);
+      await tester.tap(find.text('停止'));
+      await tester.pumpAndSettle();
+      expect(find.byType(LinearProgressIndicator), findsNothing);
+      expect(find.text('测速'), findsOneWidget);
+      expect(probe.started, 3);
+      expect(mirrors.selected.id, 'direct');
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
     },
   );
 

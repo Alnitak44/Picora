@@ -55,7 +55,6 @@ class PicoraPluginManager {
   }
 
   bool get initialized => _initialized;
-  bool isExample(String id) => _packages[id]?.metadata['example'] == true;
   PicoraPluginPackage packageFor(String id) {
     final package = _packages[id];
     if (package == null) throw const HeroFailure('插件不存在');

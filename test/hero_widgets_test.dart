@@ -12,6 +12,8 @@ import 'package:picora/hero/hero_theme.dart';
 import 'package:picora/hero/controller.dart';
 import 'package:picora/hero/models.dart';
 import 'package:picora/router/application.dart';
+import 'package:picora/hero/plugins/uploader_registry.dart';
+import 'cloud_delete_fixture.dart';
 
 Future<void> screenshot(WidgetTester tester, String name) async {
   if (!const bool.fromEnvironment('HERO_SCREENSHOTS')) return;
@@ -67,14 +69,17 @@ Future<void> initialize(
   await tester.pumpAndSettle();
 }
 
-PicoraController exampleController({bool images = true}) {
+PicoraController exampleController({
+  bool images = true,
+  UploaderRegistry? uploaderRegistry,
+}) {
   const config = RepositoryConfig(
     host: 'aliyun',
     slot: 'A',
     name: '阿里云 OSS · 主图床',
     values: {'bucket': 'creative-images', 'area': 'oss-cn-hangzhou'},
   );
-  final controller = PicoraController()
+  final controller = PicoraController(uploaderRegistry: uploaderRegistry)
     ..initializing = false
     ..repositories = [config]
     ..target = config
@@ -301,6 +306,91 @@ void main() {
     debugDisableShadows = true;
     controller.dispose();
   });
+  testWidgets(
+    'system back dismisses the sheet before exiting album selection',
+    (tester) async {
+      final controller = exampleController();
+      await initialize(tester, controller);
+      await tester.tap(find.byKey(const ValueKey('nav-1')));
+      await tester.pumpAndSettle();
+      await tester.longPress(find.text('blue_hour.png'));
+      await tester.pumpAndSettle();
+      expect(find.text('已选 1'), findsOneWidget);
+      await tester.tap(find.text('全部相册'));
+      await tester.pumpAndSettle();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byType(BottomSheet), findsNothing);
+      expect(find.text('已选 1'), findsOneWidget);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('结束多选'), findsNothing);
+      expect(find.text('已选 1'), findsNothing);
+      expect(find.byTooltip('多选图片'), findsOneWidget);
+      await tester.longPress(find.text('blue_hour.png'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('nav-2')));
+      await tester.pumpAndSettle();
+      final route = ModalRoute.of(
+        tester.element(find.byKey(const ValueKey('nav-2'))),
+      )!;
+      expect(route.popDisposition, isNot(RoutePopDisposition.doNotPop));
+      await tester.tap(find.byKey(const ValueKey('nav-1')));
+      await tester.pumpAndSettle();
+      expect(find.byTooltip('结束多选'), findsNothing);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      debugDisableShadows = true;
+      controller.dispose();
+    },
+  );
+
+  testWidgets(
+    'details offer cloud delete only for supporting hosts and retain the record',
+    (tester) async {
+      final registry = TestDeleteRegistry();
+      final controller = exampleController(uploaderRegistry: registry);
+      await initialize(tester, controller, size: const Size(320, 780));
+      await tester.tap(find.byKey(const ValueKey('nav-1')));
+      await tester.pumpAndSettle();
+      Future<void> details() async {
+        await tester.tap(find.text('blue_hour.png').first);
+        await tester.pumpAndSettle();
+      }
+
+      await details();
+      final button = find.byKey(const ValueKey('delete-cloud-image'));
+      expect(button, findsOneWidget);
+      await Scrollable.ensureVisible(tester.element(button));
+      await tester.pumpAndSettle();
+      await screenshot(tester, 'album-cloud-delete');
+      await tester.tap(button);
+      await tester.pumpAndSettle();
+      expect(registry.calls, isEmpty);
+      expect(find.text('删除这张云端图片？'), findsOneWidget);
+      await tester.tap(find.text('确认删除云端图片'));
+      await tester.pumpAndSettle();
+      expect(registry.calls, hasLength(1));
+      expect(controller.images, hasLength(6));
+      await details();
+      expect(
+        find.descendant(of: button, matching: find.text('云端图片已删除')),
+        findsOneWidget,
+      );
+      expect(tester.widget<OutlinedButton>(button).onPressed, isNull);
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      registry.supported = false;
+      await details();
+      expect(button, findsNothing);
+      expect(find.text('删除上传记录'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      debugDisableShadows = true;
+      controller.dispose();
+    },
+  );
+
   testWidgets('album distinguishes two configurations on the same platform', (
     tester,
   ) async {
@@ -332,6 +422,63 @@ void main() {
     debugDisableShadows = true;
     controller.dispose();
   });
+  testWidgets(
+    'bottom navigation labels can be hidden and restored from appearance settings',
+    (tester) async {
+      final controller = exampleController();
+      await initialize(tester, controller);
+      Finder navLabel(int index, String label) => find.descendant(
+        of: find.byKey(ValueKey('nav-$index')),
+        matching: find.text(label),
+      );
+      expect(navLabel(0, '上传'), findsOneWidget);
+      final expandedHeight = tester
+          .getSize(find.byKey(const ValueKey('nav-0')))
+          .height;
+
+      await tester.tap(find.byKey(const ValueKey('nav-3')));
+      await tester.pumpAndSettle();
+      final settingRow = find.ancestor(
+        of: find.text('底部导航文字'),
+        matching: find.byType(ListTile),
+      );
+      final toggle = find.descendant(
+        of: settingRow,
+        matching: find.byType(Switch),
+      );
+      expect(toggle, findsOneWidget);
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(controller.showNavigationLabels, false);
+      expect(SpUtil.getBool('hero_show_navigation_labels'), false);
+      for (final (index, label) in ['上传', '相册', '仓库', '设置'].indexed) {
+        expect(navLabel(index, label), findsNothing);
+        expect(find.byKey(ValueKey('nav-$index')), findsOneWidget);
+      }
+      final compactHeight = tester
+          .getSize(find.byKey(const ValueKey('nav-0')))
+          .height;
+      expect(compactHeight, lessThan(expandedHeight));
+      expect(compactHeight, greaterThanOrEqualTo(48));
+      await screenshot(tester, 'navigation-icons-only');
+
+      await tester.tap(find.byKey(const ValueKey('nav-0')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('nav-3')));
+      await tester.pumpAndSettle();
+      expect(navLabel(3, '设置'), findsNothing);
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(controller.showNavigationLabels, true);
+      expect(SpUtil.getBool('hero_show_navigation_labels'), true);
+      expect(navLabel(0, '上传'), findsOneWidget);
+      expect(navLabel(3, '设置'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      debugDisableShadows = true;
+      controller.dispose();
+    },
+  );
   testWidgets(
     'theme selector applies light, dark and automatic modes to all four pages',
     (tester) async {

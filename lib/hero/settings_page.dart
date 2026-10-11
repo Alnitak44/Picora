@@ -595,6 +595,15 @@ class _SettingsPageState extends State<SettingsPage> {
             }
           },
         ),
+        _row(
+          '底部导航文字',
+          Icons.label_outline_rounded,
+          toggle: widget.controller.showNavigationLabels,
+          change: (value) => _guard(
+            '保存底部导航设置',
+            () => widget.controller.setShowNavigationLabels(value),
+          ),
+        ),
       ]),
       _group('网络与下载', [
         _row(

@@ -159,8 +159,12 @@ class GitHubMirrors {
     );
   }
 
-  Uri resolve(Uri source, {Map<String, dynamic> headers = const {}}) {
-    final base = selected.baseUrl;
+  Uri resolve(
+    Uri source, {
+    Map<String, dynamic> headers = const {},
+    GitHubMirror? mirror,
+  }) {
+    final base = (mirror ?? selected).baseUrl;
     if (base == null ||
         source.scheme != 'https' ||
         !const {

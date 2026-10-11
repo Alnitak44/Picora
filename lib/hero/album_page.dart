@@ -11,10 +11,12 @@ import 'upload_page.dart';
 class AlbumPage extends StatefulWidget {
   final PicoraController controller;
   final VoidCallback openUpload;
+  final bool isActive;
   const AlbumPage({
     super.key,
     required this.controller,
     required this.openUpload,
+    this.isActive = true,
   });
   @override
   State<AlbumPage> createState() => _AlbumPageState();
@@ -29,6 +31,20 @@ class _AlbumPageState extends State<AlbumPage> {
   void initState() {
     super.initState();
     _view = SpUtil.getString('hero_album_view', defValue: 'grid')!;
+  }
+
+  void _endSelection() => setState(() {
+    _selectionMode = false;
+    _selected.clear();
+  });
+
+  @override
+  void didUpdateWidget(AlbumPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.isActive && !widget.isActive) {
+      _selectionMode = false;
+      _selected.clear();
+    }
   }
 
   Future<void> _filter() async {
@@ -198,6 +214,57 @@ class _AlbumPageState extends State<AlbumPage> {
     }
   }
 
+  Future<void> _deleteCloud(AlbumEntry entry) async {
+    final confirmed = await heroSheet<bool>(
+      context,
+      Padding(
+        padding: const EdgeInsets.fromLTRB(24, 0, 24, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '删除这张云端图片？',
+              style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              '云端图片删除后无法恢复。上传记录和本地文件会保留。',
+              style: TextStyle(color: heroMuted, height: 1.7),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                ),
+                child: const Text('确认删除云端图片'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      if (mounted) heroSnack(context, '正在删除云端图片…');
+      await widget.controller.deleteCloudImage(
+        entry,
+        explicitAuthorization: true,
+      );
+      if (mounted) heroSnack(context, '云端图片已删除');
+    } catch (error, stack) {
+      if (mounted) {
+        heroSnack(
+          context,
+          widget.controller.describeError('删除云端图片', error, stack),
+        );
+      }
+    }
+  }
+
   Future<void> _details(AlbumEntry entry) async {
     await heroSheet<void>(
       context,
@@ -235,13 +302,64 @@ class _AlbumPageState extends State<AlbumPage> {
                 const SizedBox(height: 18),
                 LatestUploadCard(entry),
                 const SizedBox(height: 18),
-                OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _delete([entry]);
-                  },
-                  icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                  label: const Text('删除上传记录'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _delete([entry]);
+                        },
+                        icon: const Icon(
+                          Icons.delete_outline_rounded,
+                          size: 18,
+                        ),
+                        label: const Text('删除上传记录'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 12,
+                          ),
+                          textStyle: Theme.of(
+                            context,
+                          ).textTheme.labelLarge?.copyWith(fontSize: 12),
+                        ),
+                      ),
+                    ),
+                    if (widget.controller.supportsCloudDelete(entry)) ...[
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          key: const ValueKey('delete-cloud-image'),
+                          onPressed:
+                              widget.controller.isCloudImageDeleted(entry)
+                              ? null
+                              : () {
+                                  Navigator.pop(context);
+                                  _deleteCloud(entry);
+                                },
+                          icon: const Icon(Icons.cloud_off_outlined, size: 18),
+                          label: Text(
+                            widget.controller.isCloudImageDeleted(entry)
+                                ? '云端图片已删除'
+                                : '删除云端图片',
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Theme.of(
+                              context,
+                            ).colorScheme.error,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 12,
+                            ),
+                            textStyle: Theme.of(
+                              context,
+                            ).textTheme.labelLarge?.copyWith(fontSize: 12),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ],
             ),
@@ -402,206 +520,215 @@ class _AlbumPageState extends State<AlbumPage> {
         : width > 600
         ? 3
         : 2;
-    return RefreshIndicator(
-      onRefresh: widget.controller.loadImages,
-      child: ListView(
-        key: const PageStorageKey('album'),
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 130),
-        children: [
-          Row(
-            children: [
-              const SizedBox(width: 48),
-              Expanded(
-                child: Center(
-                  child: TextButton.icon(
-                    onPressed: _filter,
-                    icon: const Icon(Icons.keyboard_arrow_down_rounded),
-                    label: Text(_filterLabel),
-                    iconAlignment: IconAlignment.end,
+    return PopScope<void>(
+      canPop: !widget.isActive || !_selectionMode,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && widget.isActive && _selectionMode) _endSelection();
+      },
+      child: RefreshIndicator(
+        onRefresh: widget.controller.loadImages,
+        child: ListView(
+          key: const PageStorageKey('album'),
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 130),
+          children: [
+            Row(
+              children: [
+                const SizedBox(width: 48),
+                Expanded(
+                  child: Center(
+                    child: TextButton.icon(
+                      onPressed: _filter,
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                      label: Text(_filterLabel),
+                      iconAlignment: IconAlignment.end,
+                    ),
                   ),
                 ),
-              ),
-              IconButton(
-                tooltip: _selectionMode ? '结束多选' : '多选图片',
-                onPressed: () => setState(() {
-                  _selectionMode = !_selectionMode;
-                  _selected.clear();
-                }),
-                icon: Icon(
-                  _selectionMode
-                      ? Icons.close_rounded
-                      : Icons.checklist_rounded,
-                  color: heroBlue,
+                IconButton(
+                  tooltip: _selectionMode ? '结束多选' : '多选图片',
+                  onPressed: () => setState(() {
+                    _selectionMode = !_selectionMode;
+                    _selected.clear();
+                  }),
+                  icon: Icon(
+                    _selectionMode
+                        ? Icons.close_rounded
+                        : Icons.checklist_rounded,
+                    color: heroBlue,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          TextField(
-            onChanged: (v) => setState(() {
-              _query = v;
-              _selected.clear();
-            }),
-            decoration: const InputDecoration(
-              hintText: '搜索图片名称或链接',
-              prefixIcon: Icon(Icons.search_rounded, color: heroMuted),
-              filled: true,
+              ],
             ),
-          ),
-          const SizedBox(height: 24),
-          Row(
-            children: [
-              Text(
-                '${images.length} 张图片',
-                style: const TextStyle(color: heroMuted, fontSize: 12),
+            const SizedBox(height: 14),
+            TextField(
+              onChanged: (v) => setState(() {
+                _query = v;
+                _selected.clear();
+              }),
+              decoration: const InputDecoration(
+                hintText: '搜索图片名称或链接',
+                prefixIcon: Icon(Icons.search_rounded, color: heroMuted),
+                filled: true,
               ),
-              const Spacer(),
-              Container(
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  borderRadius: BorderRadius.circular(12),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Text(
+                  '${images.length} 张图片',
+                  style: const TextStyle(color: heroMuted, fontSize: 12),
                 ),
-                padding: const EdgeInsets.all(3),
-                child: Row(
-                  children: [
-                    for (final view in [
-                      ('masonry', Icons.dashboard_outlined, '瀑布流'),
-                      ('grid', Icons.grid_view_rounded, '网格'),
-                      ('list', Icons.view_list_outlined, '列表'),
-                    ])
-                      Tooltip(
-                        message: view.$3,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(9),
-                          onTap: () {
-                            setState(() => _view = view.$1);
-                            SpUtil.putString('hero_album_view', _view);
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: _view == view.$1
-                                  ? heroBlue.withValues(alpha: .10)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(9),
-                            ),
-                            child: Icon(
-                              view.$2,
-                              color: _view == view.$1 ? heroBlue : heroMuted,
-                              size: 18,
+                const Spacer(),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.all(3),
+                  child: Row(
+                    children: [
+                      for (final view in [
+                        ('masonry', Icons.dashboard_outlined, '瀑布流'),
+                        ('grid', Icons.grid_view_rounded, '网格'),
+                        ('list', Icons.view_list_outlined, '列表'),
+                      ])
+                        Tooltip(
+                          message: view.$3,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(9),
+                            onTap: () {
+                              setState(() => _view = view.$1);
+                              SpUtil.putString('hero_album_view', _view);
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: _view == view.$1
+                                    ? heroBlue.withValues(alpha: .10)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(9),
+                              ),
+                              child: Icon(
+                                view.$2,
+                                color: _view == view.$1 ? heroBlue : heroMuted,
+                                size: 18,
+                              ),
                             ),
                           ),
                         ),
-                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            if (_selectionMode) ...[
+              HeroPanel(
+                padding: const EdgeInsets.all(10),
+                child: Row(
+                  children: [
+                    Checkbox(
+                      value:
+                          images.isNotEmpty &&
+                          _selected.length == images.length,
+                      onChanged: (_) => setState(() {
+                        if (_selected.length == images.length) {
+                          _selected.clear();
+                        } else {
+                          _selected.addAll(images.map((e) => e.id));
+                        }
+                      }),
+                    ),
+                    Text(
+                      '已选 ${_selected.length}',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      tooltip: '复制选中链接',
+                      onPressed: _selected.isEmpty ? null : _batchCopy,
+                      icon: const Icon(Icons.copy_outlined, size: 19),
+                    ),
+                    IconButton(
+                      tooltip: '删除选中图片',
+                      onPressed: _selected.isEmpty
+                          ? null
+                          : () => _delete(
+                              widget.controller.images
+                                  .where((e) => _selected.contains(e.id))
+                                  .toList(),
+                            ),
+                      icon: const Icon(Icons.delete_outline_rounded, size: 21),
+                    ),
                   ],
                 ),
               ),
+              const SizedBox(height: 16),
             ],
-          ),
-          const SizedBox(height: 18),
-          if (_selectionMode) ...[
-            HeroPanel(
-              padding: const EdgeInsets.all(10),
-              child: Row(
+            if (images.isEmpty)
+              HeroPanel(
+                child: HeroEmpty(
+                  icon: Icons.photo_library_outlined,
+                  title: _query.isEmpty ? '暂无上传图片' : '未找到匹配图片',
+                  message: _query.isEmpty
+                      ? '成功上传的图片会显示在这里。'
+                      : '试试其他名称，或切换到全部相册。',
+                  action: _query.isEmpty
+                      ? FilledButton.icon(
+                          onPressed: widget.openUpload,
+                          icon: const Icon(Icons.add_rounded),
+                          label: const Text('上传图片'),
+                        )
+                      : null,
+                ),
+              )
+            else if (_view == 'list')
+              ...images.map(
+                (e) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _item(e, list: true),
+                ),
+              )
+            else if (_view == 'masonry')
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Checkbox(
-                    value:
-                        images.isNotEmpty && _selected.length == images.length,
-                    onChanged: (_) => setState(() {
-                      if (_selected.length == images.length) {
-                        _selected.clear();
-                      } else {
-                        _selected.addAll(images.map((e) => e.id));
-                      }
-                    }),
-                  ),
-                  Text(
-                    '已选 ${_selected.length}',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                  const Spacer(),
-                  IconButton(
-                    tooltip: '复制选中链接',
-                    onPressed: _selected.isEmpty ? null : _batchCopy,
-                    icon: const Icon(Icons.copy_outlined, size: 19),
-                  ),
-                  IconButton(
-                    tooltip: '删除选中图片',
-                    onPressed: _selected.isEmpty
-                        ? null
-                        : () => _delete(
-                            widget.controller.images
-                                .where((e) => _selected.contains(e.id))
-                                .toList(),
-                          ),
-                    icon: const Icon(Icons.delete_outline_rounded, size: 21),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-          ],
-          if (images.isEmpty)
-            HeroPanel(
-              child: HeroEmpty(
-                icon: Icons.photo_library_outlined,
-                title: _query.isEmpty ? '暂无上传图片' : '未找到匹配图片',
-                message: _query.isEmpty ? '成功上传的图片会显示在这里。' : '试试其他名称，或切换到全部相册。',
-                action: _query.isEmpty
-                    ? FilledButton.icon(
-                        onPressed: widget.openUpload,
-                        icon: const Icon(Icons.add_rounded),
-                        label: const Text('上传图片'),
-                      )
-                    : null,
-              ),
-            )
-          else if (_view == 'list')
-            ...images.map(
-              (e) => Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _item(e, list: true),
-              ),
-            )
-          else if (_view == 'masonry')
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (var col = 0; col < columns; col++) ...[
-                  if (col > 0) const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        for (var i = col; i < images.length; i += columns)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _item(images[i], masonry: true),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ],
-            )
-          else
-            LayoutBuilder(
-              builder: (context, constraints) => Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: images
-                    .map(
-                      (e) => SizedBox(
-                        width:
-                            (constraints.maxWidth - (columns - 1) * 12) /
-                            columns,
-                        child: _item(e),
+                  for (var col = 0; col < columns; col++) ...[
+                    if (col > 0) const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        children: [
+                          for (var i = col; i < images.length; i += columns)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: _item(images[i], masonry: true),
+                            ),
+                        ],
                       ),
-                    )
-                    .toList(),
+                    ),
+                  ],
+                ],
+              )
+            else
+              LayoutBuilder(
+                builder: (context, constraints) => Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: images
+                      .map(
+                        (e) => SizedBox(
+                          width:
+                              (constraints.maxWidth - (columns - 1) * 12) /
+                              columns,
+                          child: _item(e),
+                        ),
+                      )
+                      .toList(),
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

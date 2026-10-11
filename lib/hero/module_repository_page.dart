@@ -232,7 +232,7 @@ class _ModuleRepositoryPageState extends State<ModuleRepositoryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final entries = _catalog?.entries
+    final entries = _catalog?.orderedEntries
         .where(
           (entry) =>
               '${entry.name} ${entry.description} ${entry.author} ${entry.id}'

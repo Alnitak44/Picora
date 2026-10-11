@@ -256,8 +256,8 @@ class _PluginCenterPageState extends State<PluginCenterPage> {
             if (manifest.delete != null)
               SwitchListTile.adaptive(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('允许删除选中的云端图片'),
-                subtitle: const Text('仅在相册主动删除时使用；更新插件后需重新开启'),
+                title: const Text('允许同步删除云端图片'),
+                subtitle: const Text('删除上传记录时使用；更新插件后需重新开启'),
                 value: widget.controller.pluginManager.isCloudDeleteAllowed(
                   manifest.id,
                 ),
@@ -363,7 +363,6 @@ class _PluginCenterPageState extends State<PluginCenterPage> {
 
   Widget _pluginCard(PicoraPluginManifest manifest) {
     final enabled = widget.controller.pluginManager.isEnabled(manifest.id);
-    final example = widget.controller.pluginManager.isExample(manifest.id);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: HeroPanel(
@@ -393,11 +392,6 @@ class _PluginCenterPageState extends State<PluginCenterPage> {
                         'v${manifest.version} · ${manifest.author}',
                         style: const TextStyle(color: heroMuted, fontSize: 10),
                       ),
-                      if (example)
-                        const Text(
-                          '示例',
-                          style: TextStyle(color: heroBlue, fontSize: 10),
-                        ),
                     ],
                   ),
                 ),

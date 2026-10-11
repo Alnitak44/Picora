@@ -129,6 +129,8 @@ class PicoraPluginPackage {
       }
 
       final metadata = jsonFile('plugin.json');
+      // Example designation belongs to the reviewed catalog, never to a ZIP.
+      metadata.remove('example');
       if (metadata['packageVersion'] != 1 ||
           !pluginRuntimes.containsKey(metadata['runtime'])) {
         throw const HeroFailure(

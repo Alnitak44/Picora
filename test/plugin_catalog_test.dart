@@ -88,6 +88,49 @@ void main() {
     },
   );
 
+  test('example designation comes from the catalog, not package metadata', () {
+    final package = telegraphPackage();
+    expect(package.metadata.containsKey('example'), isFalse);
+    final json = entryJson(package);
+    expect(PluginCatalogEntry.fromJson(json).example, isTrue);
+    expect(
+      PluginCatalogEntry.fromJson({...json, 'example': false}).example,
+      isFalse,
+    );
+    expect(
+      PluginCatalogEntry.fromJson(
+        json,
+      ).verify(package.bytes).metadata.containsKey('example'),
+      isFalse,
+    );
+  });
+
+  test('catalog examples are pinned while other entry order is preserved', () {
+    final source = entryJson(telegraphPackage());
+    PluginCatalogEntry entry(String id, bool example) =>
+        PluginCatalogEntry.fromJson({...source, 'id': id, 'example': example});
+    final entries = [
+      entry('test.zebra', false),
+      entry('test.example', true),
+      entry('test.alpha', false),
+      entry('test.another-example', true),
+    ];
+    final catalog = PluginCatalog(entries, DateTime.utc(2026, 10, 11));
+    expect(catalog.orderedEntries.map((entry) => entry.id), [
+      'test.example',
+      'test.another-example',
+      'test.zebra',
+      'test.alpha',
+    ]);
+    expect(catalog.entries, orderedEquals(entries));
+    expect(
+      catalog.orderedEntries
+          .where((entry) => entry.id.contains('alpha'))
+          .map((entry) => entry.id),
+      ['test.alpha'],
+    );
+  });
+
   test('malformed and duplicate catalog entries are rejected', () {
     final json = entryJson(telegraphPackage());
     for (final changes in [

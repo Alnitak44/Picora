@@ -89,14 +89,93 @@ class PluginPermissions {
   );
 }
 
+class PluginConditionalJsonField {
+  final String key, config, substring;
+  final bool negate;
+  final Object? value;
+
+  const PluginConditionalJsonField({
+    required this.key,
+    required this.config,
+    required this.substring,
+    required this.negate,
+    required this.value,
+  });
+
+  factory PluginConditionalJsonField.fromJson(Object? raw) {
+    if (raw is! Map) {
+      throw const HeroFailure('body.conditionalFields 项必须是对象');
+    }
+    pluginKeys(raw, {'key', 'value', 'when'}, 'body.conditionalFields');
+    final key = raw['key'];
+    if (key is! String ||
+        key.isEmpty ||
+        key.length > 128 ||
+        RegExp(r'[\x00-\x1f\x7f]').hasMatch(key)) {
+      throw const HeroFailure('body.conditionalFields.key 无效');
+    }
+    if (!raw.containsKey('value')) {
+      throw const HeroFailure('body.conditionalFields.value 缺失');
+    }
+    final when = raw['when'];
+    if (when is! Map) {
+      throw const HeroFailure('body.conditionalFields.when 必须是对象');
+    }
+    pluginKeys(when, {
+      'config',
+      'contains',
+      'notContains',
+    }, 'body.conditionalFields.when');
+    final config = when['config'];
+    final contains = when['contains'];
+    final notContains = when['notContains'];
+    if (config is! String ||
+        !RegExp(r'^[A-Za-z][A-Za-z0-9_]{0,39}$').hasMatch(config) ||
+        (contains == null) == (notContains == null)) {
+      throw const HeroFailure('body.conditionalFields.when 条件无效');
+    }
+    final substring = contains ?? notContains;
+    if (substring is! String || substring.isEmpty || substring.length > 256) {
+      throw const HeroFailure('body.conditionalFields.when 匹配文本无效');
+    }
+    return PluginConditionalJsonField(
+      key: key,
+      config: config,
+      substring: substring,
+      negate: notContains != null,
+      value: raw['value'],
+    );
+  }
+
+  bool matches(Map<String, dynamic> configValues) {
+    final source = configValues[config];
+    if (source is! String) {
+      throw HeroFailure('插件条件字段需要文本配置：$config');
+    }
+    final contains = source.contains(substring);
+    return negate ? !contains : contains;
+  }
+
+  Map<String, dynamic> toJson() => {
+    'key': key,
+    'value': value,
+    'when': {
+      'config': config,
+      if (negate) 'notContains': substring else 'contains': substring,
+    },
+  };
+}
+
 class PluginBodySpec {
   final String type, fileField;
   final Map<String, dynamic> fields;
+  final List<PluginConditionalJsonField> conditionalFields;
 
   const PluginBodySpec({
     required this.type,
     required this.fileField,
     required this.fields,
+    this.conditionalFields = const [],
   });
 
   factory PluginBodySpec.fromJson(Object? value, {required bool upload}) {
@@ -104,7 +183,12 @@ class PluginBodySpec {
       return const PluginBodySpec(type: 'none', fileField: 'file', fields: {});
     }
     if (value is! Map) throw const HeroFailure('插件请求 body 必须是对象');
-    pluginKeys(value, {'type', 'fileField', 'fields'}, 'body');
+    pluginKeys(value, {
+      'type',
+      'fileField',
+      'fields',
+      'conditionalFields',
+    }, 'body');
     final type = value['type']?.toString() ?? 'multipart';
     if (!['multipart', 'json', 'form', 'binary', 'none'].contains(type)) {
       throw HeroFailure('不支持的插件请求体类型：$type');
@@ -113,12 +197,39 @@ class PluginBodySpec {
     if (fields != null && fields is! Map) {
       throw const HeroFailure('插件请求 body.fields 必须是对象');
     }
+    if (fields is Map && fields.keys.any((key) => key is! String)) {
+      throw const HeroFailure('插件请求 body.fields 的键必须是文本');
+    }
+    final conditional = value['conditionalFields'];
+    if (value.containsKey('conditionalFields') && type != 'json') {
+      throw const HeroFailure('conditionalFields 仅支持 JSON 请求体');
+    }
+    if (value.containsKey('conditionalFields') &&
+        (conditional is! List ||
+            conditional.isEmpty ||
+            conditional.length > 32)) {
+      throw const HeroFailure('body.conditionalFields 必须包含 1–32 项');
+    }
+    final conditionalFields = conditional == null
+        ? <PluginConditionalJsonField>[]
+        : (conditional as List)
+              .map<PluginConditionalJsonField>(
+                PluginConditionalJsonField.fromJson,
+              )
+              .toList();
+    final usedKeys = <String>{if (fields is Map) ...fields.keys.cast<String>()};
+    for (final entry in conditionalFields) {
+      if (!usedKeys.add(entry.key)) {
+        throw HeroFailure('body.conditionalFields 字段重复：${entry.key}');
+      }
+    }
     return PluginBodySpec(
       type: type,
       fileField: value['fileField']?.toString().trim().isNotEmpty == true
           ? value['fileField'].toString().trim()
           : 'file',
       fields: fields == null ? const {} : Map<String, dynamic>.from(fields),
+      conditionalFields: conditionalFields,
     );
   }
 
@@ -126,6 +237,10 @@ class PluginBodySpec {
     'type': type,
     if (type == 'multipart') 'fileField': fileField,
     if (fields.isNotEmpty) 'fields': fields,
+    if (conditionalFields.isNotEmpty)
+      'conditionalFields': conditionalFields
+          .map((item) => item.toJson())
+          .toList(),
   };
 }
 
@@ -313,6 +428,9 @@ class PluginRequestSpec {
       throw const HeroFailure('followRedirects 必须是布尔值');
     }
     final body = PluginBodySpec.fromJson(value['body'], upload: upload);
+    if (body.conditionalFields.isNotEmpty && (!prepare || schemaVersion != 2)) {
+      throw const HeroFailure('conditionalFields 仅用于 http-v2 前置请求');
+    }
     if (!upload && ['multipart', 'binary'].contains(body.type)) {
       throw const HeroFailure('前置和删除操作不能发送文件');
     }
@@ -550,6 +668,24 @@ class PicoraPluginManifest {
       throw const HeroFailure('最多 4 个前置请求');
     }
     final prepare = rawPrepare.map(PluginPrepareSpec.fromJson).toList();
+    if (prepare.any((step) => step.request.body.conditionalFields.isNotEmpty)) {
+      if (!requires.contains('conditional-json-fields')) {
+        throw const HeroFailure('条件 JSON 字段需要声明 conditional-json-fields 能力');
+      }
+      for (final step in prepare) {
+        for (final conditional in step.request.body.conditionalFields) {
+          final matching = fields.where(
+            (field) => field.key == conditional.config,
+          );
+          if (matching.isEmpty ||
+              matching.single.secret ||
+              matching.single.isToggle ||
+              matching.single.choices != null) {
+            throw HeroFailure('条件字段只能引用当前插件的文本配置：${conditional.config}');
+          }
+        }
+      }
+    }
     final available = <String, Set<String>>{};
     for (final step in prepare) {
       if (available.containsKey(step.id)) throw const HeroFailure('前置请求 ID 重复');

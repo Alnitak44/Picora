@@ -682,6 +682,13 @@ class PluginHttpRuntime {
       }
       final fields =
           await context.render(request.body.fields) as Map<String, dynamic>;
+      if (request.body.type == 'json') {
+        for (final conditional in request.body.conditionalFields) {
+          if (conditional.matches(context.config)) {
+            fields[conditional.key] = await context.render(conditional.value);
+          }
+        }
+      }
       Object? body;
       switch (request.body.type) {
         case 'multipart':

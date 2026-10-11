@@ -131,6 +131,35 @@ Map<String, dynamic> deletable() {
   return p;
 }
 
+Map<String, dynamic> superbedProgram() {
+  final p = program();
+  (p['requires'] as List).add('conditional-json-fields');
+  p['permissions']['network'] = ['www.superbed.cn', 'imgloc.com'];
+  p['config'] = [
+    {'key': 'account', 'label': '账号', 'type': 'text', 'required': true},
+    {'key': 'password', 'label': '密码', 'type': 'secret', 'required': true},
+  ];
+  p['prepare'][0]['method'] = 'POST';
+  p['prepare'][0]['url'] = 'https://www.superbed.cn/api/v1/auth/login';
+  p['prepare'][0]['body'] = {
+    'type': 'json',
+    'fields': {'password': r'${config.password}', 'remember_me': false},
+    'conditionalFields': [
+      {
+        'key': 'email',
+        'value': r'${config.account}',
+        'when': {'config': 'account', 'contains': '@'},
+      },
+      {
+        'key': 'username',
+        'value': r'${config.account}',
+        'when': {'config': 'account', 'notContains': '@'},
+      },
+    ],
+  };
+  return p;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUpAll(() async {
@@ -155,6 +184,126 @@ void main() {
       expect(wrapped.manifest.toJson(), package.manifest.toJson());
     },
   );
+
+  test('ZIP preserves conditional JSON fields and capability', () {
+    final p = superbedProgram();
+    final package = PicoraPluginPackage.decode(archiveBytes(body: p));
+    final body = package.manifest.prepare.single.request.body;
+    expect(body.conditionalFields, hasLength(2));
+    expect(body.conditionalFields.first.config, 'account');
+    final serialized = package.manifest.toJson();
+    expect(serialized['requires'], contains('conditional-json-fields'));
+    expect(
+      serialized['prepare'][0]['body']['conditionalFields'],
+      p['prepare'][0]['body']['conditionalFields'],
+    );
+    expect(
+      PicoraPluginPackage.fromLegacy(package.manifest).manifest.toJson(),
+      serialized,
+    );
+  });
+
+  test('conditional JSON login sends exactly one account field', () async {
+    final bodies = <Map<String, dynamic>>[];
+    final runtime = PluginHttpRuntime(
+      dio: transport((o) {
+        if (o.uri.host == 'www.superbed.cn') {
+          expect(o.method, 'POST');
+          expect(o.uri.path, '/api/v1/auth/login');
+          final body = Map<String, dynamic>.from(o.data as Map);
+          bodies.add(body);
+          // The service returns 422 for an empty email or both account keys.
+          expect(body['email'] == null || body['username'] == null, true);
+          expect(
+            body.containsKey('email') && body.containsKey('username'),
+            false,
+          );
+          expect(body['email'], isNot(''));
+          return reply(o, credentials('ticket'));
+        }
+        return reply(o, uploaded());
+      }),
+    );
+    final plugin = manifest(superbedProgram());
+    await upload(
+      runtime,
+      plugin: plugin,
+      group: 'email',
+      config: {'account': 'alice@example.com', 'password': 'private'},
+    );
+    await upload(
+      runtime,
+      plugin: plugin,
+      group: 'username',
+      config: {'account': 'alice', 'password': 'private'},
+    );
+    expect(bodies, [
+      {
+        'password': 'private',
+        'remember_me': false,
+        'email': 'alice@example.com',
+      },
+      {'password': 'private', 'remember_me': false, 'username': 'alice'},
+    ]);
+    expect(bodies.first.containsKey('username'), false);
+    expect(bodies.last.containsKey('email'), false);
+  });
+
+  test('installer rejects unsafe or malformed conditional JSON fields', () {
+    void reject(void Function(Map<String, dynamic>) change) {
+      final p = superbedProgram();
+      change(p);
+      expect(
+        () => PicoraPluginPackage.decode(archiveBytes(body: p)),
+        throwsA(isA<HeroFailure>()),
+      );
+    }
+
+    reject((p) => (p['requires'] as List).remove('conditional-json-fields'));
+    reject((p) => p['prepare'][0]['body']['type'] = 'form');
+    reject(
+      (p) =>
+          p['prepare'][0]['body'] = {'type': 'json', 'conditionalFields': null},
+    );
+    reject((p) => p['config'][0]['type'] = 'toggle');
+    reject(
+      (p) => p['prepare'][0]['body']['conditionalFields'][0]['when'] = {
+        'config': 'password',
+        'contains': '@',
+      },
+    );
+    reject(
+      (p) => p['prepare'][0]['body']['conditionalFields'][0]['when'] = {
+        'config': 'other',
+        'contains': '@',
+      },
+    );
+    reject(
+      (p) => p['prepare'][0]['body']['conditionalFields'][0]['when'] = {
+        'config': 'account',
+        'contains': '@',
+        'notContains': '@',
+      },
+    );
+    reject(
+      (p) => p['prepare'][0]['body']['conditionalFields'][0]['when'] = {
+        'config': 'account',
+        'contains': '',
+      },
+    );
+    reject(
+      (p) =>
+          p['prepare'][0]['body']['conditionalFields'][0]['key'] = 'password',
+    );
+    reject(
+      (p) => p['upload']['body']['conditionalFields'] =
+          p['prepare'][0]['body']['conditionalFields'],
+    );
+    reject(
+      (p) => p['prepare'][0]['body']['conditionalFields'][0]['value'] =
+          r'${config.other}',
+    );
+  });
 
   test(
     'installer rejects incompatible runtime/schema, unsupported capability and unknown program fields',

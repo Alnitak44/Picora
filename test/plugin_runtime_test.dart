@@ -108,7 +108,6 @@ void main() {
         expect(registry.contains('plugin.dev.picora.telegraph-image'), isFalse);
         final package = telegraphPackage();
         await manager.installPackage(package.bytes);
-        expect(manager.isExample(package.manifest.id), isTrue);
         expect(registry.contains(package.manifest.hostId), isTrue);
         await manager.remove(package.manifest.id);
         expect(manager.installed, isEmpty);

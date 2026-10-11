@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,6 +15,8 @@ import 'package:picora/utils/global.dart';
 import 'package:picora/picture_host_configure/configure_store/configure_store_file.dart';
 import 'package:picora/picture_host_configure/configure_store/configure_template.dart';
 import 'package:picora/hero/markdown_migration.dart';
+import 'package:picora/album/album_sql.dart';
+import 'cloud_delete_fixture.dart';
 
 class TestPaths extends PathProviderPlatform {
   final String root;
@@ -298,6 +301,141 @@ void main() {
       controller.dispose();
     },
   );
+  test(
+    'cloud-only deletion preserves history and file, persists state and prevents repeat requests',
+    () async {
+      final file = await File(
+        '${dir.path}/cloud-only.png',
+      ).writeAsString('fixture');
+      final registry = TestDeleteRegistry();
+      final controller = PicoraController(
+        uploaderRegistry: registry,
+        uploadOverride: (_, __, ___, ____) async => [
+          'success',
+          'https://e.com/a',
+          'https://e.com/a',
+          '{}',
+          'https://e.com/a',
+        ],
+      )..target = configA;
+      controller.repositories = [configA];
+      final entries = await controller.uploadFiles([file.path]);
+      Global.isDeleteCloud = true;
+      Global.isDeleteLocal = true;
+      await controller.deleteCloudImage(
+        entries.single,
+        explicitAuthorization: true,
+      );
+      expect(registry.calls, hasLength(1));
+      expect(registry.calls.single['configurationId'], configA.id);
+      expect(await file.exists(), true);
+      expect(await Global.imageDB!.query('aliyun'), hasLength(1));
+      expect(controller.images.single.cloudDeleted, true);
+      for (final host in hostToTableNameMap.entries) {
+        final db = host.value.startsWith('PBhostExtend')
+            ? Global.imageDBExtend!
+            : Global.imageDB!;
+        await db.execute(
+          'CREATE TABLE IF NOT EXISTS ${host.value} (id INTEGER PRIMARY KEY)',
+        );
+      }
+      await controller.loadImages();
+      expect(controller.images.single.cloudDeleted, true);
+      await controller.deleteCloudImage(
+        entries.single,
+        explicitAuthorization: true,
+      );
+      expect(registry.calls, hasLength(1));
+      Global.isDeleteLocal = false;
+      await controller.removeImages(controller.images.toList());
+      expect(registry.calls, hasLength(1));
+      expect(controller.images, isEmpty);
+      expect(await file.exists(), true);
+      controller.dispose();
+    },
+  );
+
+  test(
+    'cloud delete failure and concurrent click keep history and do not repeat the request',
+    () async {
+      final file = await File(
+        '${dir.path}/cloud-fail.png',
+      ).writeAsString('fixture');
+      final registry = TestDeleteRegistry()..result = const ['failed'];
+      final controller = PicoraController(
+        uploaderRegistry: registry,
+        uploadOverride: (_, __, ___, ____) async => [
+          'success',
+          'https://e.com/a',
+          'https://e.com/a',
+          '{}',
+        ],
+      )..target = configA;
+      final entry = (await controller.uploadFiles([file.path])).single;
+      await expectLater(
+        controller.deleteCloudImage(entry),
+        throwsA(isA<HeroFailure>()),
+      );
+      expect(controller.images.single.cloudDeleted, false);
+      expect(await Global.imageDB!.query('aliyun'), hasLength(1));
+      expect(await file.exists(), true);
+      final response = Completer<dynamic>();
+      registry.pending = () => response.future;
+      final operation = controller.deleteCloudImage(entry);
+      await expectLater(
+        controller.deleteCloudImage(entry),
+        throwsA(isA<HeroFailure>()),
+      );
+      expect(registry.calls, hasLength(2));
+      response.complete(['success']);
+      await operation;
+      expect(controller.images.single.cloudDeleted, true);
+      controller.dispose();
+    },
+  );
+
+  test(
+    'explicit plugin deletion uses the original group without enabling persistent permission',
+    () async {
+      final registry = TestDeleteRegistry();
+      final controller = PicoraController(uploaderRegistry: registry);
+      const original = RepositoryConfig(
+        host: 'plugin.io.example.host',
+        slot: 'A',
+        name: 'A',
+        values: {'token': 'original'},
+      );
+      const other = RepositoryConfig(
+        host: 'plugin.io.example.host',
+        slot: 'B',
+        name: 'B',
+        values: {'token': 'other'},
+      );
+      const entry = AlbumEntry(
+        {'id': 1, 'pictureKey': '{}'},
+        'plugin.io.example.host',
+        repositoryId: 'plugin.io.example.host:A',
+      );
+      controller.images = [entry];
+      controller.repositories = [other];
+      await expectLater(
+        controller.deleteCloudImage(entry, explicitAuthorization: true),
+        throwsA(isA<HeroFailure>()),
+      );
+      expect(registry.calls, isEmpty);
+      controller.repositories.add(original);
+      await controller.deleteCloudImage(entry, explicitAuthorization: true);
+      expect(registry.calls.single['config'], original.values);
+      expect(registry.calls.single['configurationId'], original.id);
+      expect(registry.calls.single['allowCloudDelete'], true);
+      expect(
+        controller.pluginManager.isCloudDeleteAllowed('io.example.host'),
+        false,
+      );
+      controller.dispose();
+    },
+  );
+
   test('link upload downloads the image and preserves its filename', () async {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     final subscription = server.listen((request) async {

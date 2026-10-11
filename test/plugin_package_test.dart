@@ -68,6 +68,21 @@ void main() {
     },
   );
 
+  test('ZIP cannot self-assign a catalog example designation', () {
+    for (final id in ['test.picora.package', 'dev.picora.telegraph-image']) {
+      final bytes = packageBytes(metadata: {'id': id, 'example': true});
+      final package = PicoraPluginPackage.decode(bytes);
+      expect(package.metadata.containsKey('example'), isFalse);
+      // Re-reading persisted bytes must not restore the author-supplied badge.
+      expect(
+        PicoraPluginPackage.decode(
+          package.bytes,
+        ).metadata.containsKey('example'),
+        isFalse,
+      );
+    }
+  });
+
   test(
     'missing metadata, README, entry, icon and unsupported runtime fail clearly',
     () {

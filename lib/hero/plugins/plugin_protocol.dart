@@ -8,6 +8,7 @@ const pluginV2Capabilities = {
   'credential-refresh',
   'safe-redirects',
   'scoped-delete',
+  'conditional-json-fields',
 };
 void pluginKeys(Map value, Set<String> allowed, String where) {
   for (final key in value.keys) {
