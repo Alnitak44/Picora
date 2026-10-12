@@ -36,7 +36,7 @@ void main() {
     'example manifest preserves the Telegraph PicGo plugin behavior',
     () async {
       final manifest = await telegraphManifest();
-      expect(manifest.id, 'dev.picora.telegraph-image');
+      expect(manifest.id, 'io.github.alnitak44.telegraph-image');
       expect(manifest.name, 'Telegraph-Image');
       expect(manifest.upload.body.type, 'multipart');
       expect(manifest.upload.body.fileField, 'file');
@@ -105,7 +105,10 @@ void main() {
         );
         await manager.initialize();
         expect(manager.installed, isEmpty);
-        expect(registry.contains('plugin.dev.picora.telegraph-image'), isFalse);
+        expect(
+          registry.contains('plugin.io.github.alnitak44.telegraph-image'),
+          isFalse,
+        );
         final package = telegraphPackage();
         await manager.installPackage(package.bytes);
         expect(registry.contains(package.manifest.hostId), isTrue);

@@ -2,7 +2,7 @@
 
 Picora 原生插件使用 **ZIP 包 + 声明式 HTTP 请求**，不执行脚本。每个插件注册一个图床类型，用户可为同一类型建立多组独立配置。
 
-[基础模板](../plugins/template) · [Telegraph-Image 示例](../plugins/telegraph-image) · [插件提交流程](插件提交流程.md)
+[基础模板](../plugins/template) · [Telegraph-Image 示例](https://github.com/Alnitak44/picora-plugin-telegraph-image) · [插件提交流程](插件提交流程.md)
 
 ## 目录
 

@@ -29,10 +29,9 @@ Map<String, dynamic> entryJson(PicoraPluginPackage package) => {
   'minAppVersion': '1.0.0',
   'example': true,
   'mark': 'TG',
-  'repository':
-      'https://github.com/Alnitak44/Picora/tree/main/plugins/telegraph-image',
+  'repository': package.repository,
   'downloadUrl':
-      'https://github.com/Alnitak44/picora-plugins/releases/download/telegraph-image-v1.1.1/telegraph-image-1.1.1.picora-plugin.zip',
+      'https://github.com/Alnitak44/picora-plugin-telegraph-image/releases/download/v1.1.2/telegraph-image-1.1.2.picora-plugin.zip',
   'size': package.bytes.length,
   'sha256': sha256.convert(package.bytes).toString(),
 };
@@ -68,7 +67,7 @@ void main() {
       expect(entry.verify(package.bytes).manifest.id, entry.id);
       expect(entry.supports('1.0.0-debug'), isTrue);
       expect(entry.isUpdateFor('1.1.0'), isTrue);
-      expect(entry.isUpdateFor('1.1.1'), isFalse);
+      expect(entry.isUpdateFor(package.manifest.version), isFalse);
       for (final changes in [
         {'size': package.bytes.length + 1},
         {'sha256': '0' * 64},

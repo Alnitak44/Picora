@@ -58,7 +58,7 @@ void main() {
     'example ZIP includes separate metadata, program, tutorial and provider icon',
     () {
       final package = sample();
-      expect(package.manifest.version, '1.1.1');
+      expect(package.manifest.version, '1.1.2');
       expect(package.readme, contains('上传鉴权'));
       expect(package.repository, startsWith('https://github.com/'));
       expect(package.toHostSpec().iconBytes, isNotEmpty);
@@ -69,7 +69,10 @@ void main() {
   );
 
   test('ZIP cannot self-assign a catalog example designation', () {
-    for (final id in ['test.picora.package', 'dev.picora.telegraph-image']) {
+    for (final id in [
+      'test.picora.package',
+      'io.github.alnitak44.telegraph-image',
+    ]) {
       final bytes = packageBytes(metadata: {'id': id, 'example': true});
       final package = PicoraPluginPackage.decode(bytes);
       expect(package.metadata.containsKey('example'), isFalse);
