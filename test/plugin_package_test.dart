@@ -11,6 +11,7 @@ import 'package:picora/hero/controller.dart';
 import 'package:picora/hero/diagnostics.dart';
 import 'package:picora/hero/hero_theme.dart';
 import 'package:picora/hero/plugin_page.dart';
+import 'package:picora/hero/plugins/plugin_catalog.dart';
 import 'package:picora/hero/plugins/plugin_manager.dart';
 import 'package:picora/hero/plugins/plugin_package.dart';
 import 'package:picora/hero/plugins/uploader_registry.dart';
@@ -441,7 +442,10 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: heroTheme(Brightness.dark),
-        home: PluginCenterPage(controller: controller),
+        home: PluginCenterPage(
+          controller: controller,
+          service: FixtureCatalogService(PluginCatalog([], DateTime.now())),
+        ),
       ),
     );
     await tester.pumpAndSettle();

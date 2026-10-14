@@ -138,6 +138,21 @@ class PluginCatalog {
     ...entries.where((entry) => !entry.example),
   ]);
 
+  List<PluginCatalogEntry> orderedForInstalled(
+    Map<String, String> installedVersions,
+  ) {
+    bool hasUpdate(PluginCatalogEntry entry) {
+      final version = installedVersions[entry.id];
+      return version != null && entry.isUpdateFor(version);
+    }
+
+    final ordered = orderedEntries;
+    return List.unmodifiable([
+      ...ordered.where(hasUpdate),
+      ...ordered.where((entry) => !hasUpdate(entry)),
+    ]);
+  }
+
   static List<PluginCatalogEntry> parse(String source) {
     if (utf8.encode(source).length > PluginCatalogService.maxIndexBytes) {
       throw const HeroFailure('模块目录超过 1 MB');

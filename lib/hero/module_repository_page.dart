@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'controller.dart';
 import 'hero_theme.dart';
 import 'plugin_page.dart';
+import 'plugin_update_badge.dart';
 import 'plugins/plugin_catalog.dart';
 import 'plugins/plugin_package.dart';
 
@@ -134,7 +135,7 @@ class _ModuleRepositoryPageState extends State<ModuleRepositoryPage> {
         : installed == null
         ? '安装'
         : update
-        ? '更新至 ${entry.version}'
+        ? '更新'
         : '已安装';
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -175,6 +176,10 @@ class _ModuleRepositoryPageState extends State<ModuleRepositoryPage> {
                         'v${entry.version} · ${entry.author}',
                         style: const TextStyle(color: heroMuted, fontSize: 11),
                       ),
+                      if (update) ...[
+                        const SizedBox(height: 6),
+                        const PluginUpdateBadge(),
+                      ],
                     ],
                   ),
                 ),
@@ -215,6 +220,12 @@ class _ModuleRepositoryPageState extends State<ModuleRepositoryPage> {
             SizedBox(
               width: double.infinity,
               child: FilledButton(
+                style: update
+                    ? FilledButton.styleFrom(
+                        backgroundColor: pluginUpdateColor,
+                        foregroundColor: Colors.white,
+                      )
+                    : null,
                 onPressed:
                     _activeId != null ||
                         !compatible ||
@@ -232,14 +243,6 @@ class _ModuleRepositoryPageState extends State<ModuleRepositoryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final entries = _catalog?.orderedEntries
-        .where(
-          (entry) =>
-              '${entry.name} ${entry.description} ${entry.author} ${entry.id}'
-                  .toLowerCase()
-                  .contains(_query.toLowerCase()),
-        )
-        .toList();
     return Scaffold(
       appBar: AppBar(
         title: const Text('模块仓库', style: TextStyle(fontSize: 17)),
@@ -255,56 +258,70 @@ class _ModuleRepositoryPageState extends State<ModuleRepositoryPage> {
       ),
       body: ListenableBuilder(
         listenable: widget.controller,
-        builder: (context, _) => RefreshIndicator(
-          onRefresh: () => _load(refresh: true),
-          child: ListView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(24),
-            children: [
-              TextField(
-                onChanged: (value) => setState(() => _query = value),
-                decoration: const InputDecoration(
-                  hintText: '搜索插件',
-                  prefixIcon: Icon(Icons.search_rounded),
+        builder: (context, _) {
+          final entries = _catalog
+              ?.orderedForInstalled({
+                for (final plugin in widget.controller.installedPlugins)
+                  plugin.id: plugin.version,
+              })
+              .where(
+                (entry) =>
+                    '${entry.name} ${entry.description} ${entry.author} ${entry.id}'
+                        .toLowerCase()
+                        .contains(_query.toLowerCase()),
+              )
+              .toList();
+          return RefreshIndicator(
+            onRefresh: () => _load(refresh: true),
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(24),
+              children: [
+                TextField(
+                  onChanged: (value) => setState(() => _query = value),
+                  decoration: const InputDecoration(
+                    hintText: '搜索插件',
+                    prefixIcon: Icon(Icons.search_rounded),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              if (_loading || _activeId != null)
-                const LinearProgressIndicator(),
-              if (_catalog?.offline == true)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  child: Text(
-                    '插件获取失败，请检查网络、前往设置切换镜像或点击右上角重试。',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                      fontSize: 12,
+                const SizedBox(height: 20),
+                if (_loading || _activeId != null)
+                  const LinearProgressIndicator(),
+                if (_catalog?.offline == true)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Text(
+                      '插件获取失败，请检查网络、前往设置切换镜像或点击右上角重试。',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
-                ),
-              if (_error != null)
-                HeroPanel(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('插件获取失败，请检查网络、前往设置切换镜像或点击右上角重试。'),
-                      const SizedBox(height: 12),
-                      FilledButton(
-                        onPressed: () => _load(refresh: true),
-                        child: const Text('重试'),
-                      ),
-                    ],
+                if (_error != null)
+                  HeroPanel(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('插件获取失败，请检查网络、前往设置切换镜像或点击右上角重试。'),
+                        const SizedBox(height: 12),
+                        FilledButton(
+                          onPressed: () => _load(refresh: true),
+                          child: const Text('重试'),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              const SizedBox(height: 12),
-              if (entries != null && entries.isEmpty)
-                const Center(
-                  child: Text('没有找到插件', style: TextStyle(color: heroMuted)),
-                ),
-              if (entries != null) ...entries.map(_card),
-            ],
-          ),
-        ),
+                const SizedBox(height: 12),
+                if (entries != null && entries.isEmpty)
+                  const Center(
+                    child: Text('没有找到插件', style: TextStyle(color: heroMuted)),
+                  ),
+                if (entries != null) ...entries.map(_card),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

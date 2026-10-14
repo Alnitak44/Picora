@@ -14,13 +14,16 @@ import 'hero_theme.dart';
 import 'markdown_style.dart';
 
 import 'module_repository_page.dart';
+import 'plugin_update_badge.dart';
+import 'plugins/plugin_catalog.dart';
 import 'plugins/plugin_manifest.dart';
 import 'plugins/plugin_package.dart';
 import 'upload_page.dart';
 
 class PluginCenterPage extends StatefulWidget {
   final PicoraController controller;
-  const PluginCenterPage({super.key, required this.controller});
+  final PluginCatalogService? service;
+  const PluginCenterPage({super.key, required this.controller, this.service});
 
   @override
   State<PluginCenterPage> createState() => _PluginCenterPageState();
@@ -28,6 +31,31 @@ class PluginCenterPage extends StatefulWidget {
 
 class _PluginCenterPageState extends State<PluginCenterPage> {
   bool _working = false;
+  late final PluginCatalogService _service =
+      widget.service ?? PluginCatalogService();
+  PluginCatalog? _catalog;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.controller.installedPlugins.isNotEmpty) _loadUpdates();
+  }
+
+  Future<void> _loadUpdates() async {
+    try {
+      final catalog = await _service.load();
+      if (mounted) setState(() => _catalog = catalog);
+    } catch (error, stack) {
+      widget.controller.describeError('检查插件更新', error, stack);
+    }
+  }
+
+  bool _hasUpdate(PicoraPluginManifest manifest) =>
+      _catalog?.entries.any(
+        (entry) =>
+            entry.id == manifest.id && entry.isUpdateFor(manifest.version),
+      ) ??
+      false;
 
   Future<void> _openPluginGuide() async {
     await _guard('打开插件开放说明', () async {
@@ -132,7 +160,10 @@ class _PluginCenterPageState extends State<PluginCenterPage> {
     if (approved != true || !mounted) return;
     await _guard('安装插件', () async {
       final result = await widget.controller.installPluginPackage(bytes!);
-      if (mounted) heroSnack(context, result.updated ? '插件已更新' : '插件已安装');
+      if (mounted) {
+        heroSnack(context, result.updated ? '插件已更新' : '插件已安装');
+        _loadUpdates();
+      }
     });
   }
 
@@ -153,10 +184,11 @@ class _PluginCenterPageState extends State<PluginCenterPage> {
         builder: (_) => ModuleRepositoryPage(
           controller: widget.controller,
           review: _review,
+          service: _service,
         ),
       ),
     );
-    if (mounted) setState(() {});
+    if (mounted) await _loadUpdates();
   }
 
   Future<bool?> _review(PicoraPluginPackage package) {
@@ -392,6 +424,10 @@ class _PluginCenterPageState extends State<PluginCenterPage> {
                         'v${manifest.version} · ${manifest.author}',
                         style: const TextStyle(color: heroMuted, fontSize: 10),
                       ),
+                      if (_hasUpdate(manifest)) ...[
+                        const SizedBox(height: 6),
+                        const PluginUpdateBadge(),
+                      ],
                     ],
                   ),
                 ),
@@ -437,6 +473,13 @@ class _PluginCenterPageState extends State<PluginCenterPage> {
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: widget.controller,
+      builder: (context, _) => _build(context),
+    );
+  }
+
+  Widget _build(BuildContext context) {
     final plugins = widget.controller.installedPlugins;
     return Scaffold(
       appBar: AppBar(

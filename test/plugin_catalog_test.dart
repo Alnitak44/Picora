@@ -10,6 +10,8 @@ import 'package:picora/hero/controller.dart';
 import 'package:picora/hero/diagnostics.dart';
 import 'package:picora/hero/hero_theme.dart';
 import 'package:picora/hero/module_repository_page.dart';
+import 'package:picora/hero/plugin_page.dart';
+import 'package:picora/hero/plugin_update_badge.dart';
 import 'package:picora/hero/plugins/plugin_catalog.dart';
 import 'package:picora/hero/plugins/plugin_manager.dart';
 import 'package:picora/hero/plugins/plugin_package.dart';
@@ -128,6 +130,56 @@ void main() {
           .map((entry) => entry.id),
       ['test.alpha'],
     );
+  });
+
+  test('updates precede examples and keep stable order within each group', () {
+    final source = entryJson(telegraphPackage());
+    PluginCatalogEntry entry(String id, {bool example = false}) =>
+        PluginCatalogEntry.fromJson({
+          ...source,
+          'id': id,
+          'example': example,
+          'version': '1.2.0',
+        });
+    final catalog = PluginCatalog([
+      entry('test.uninstalled'),
+      entry('test.example', example: true),
+      entry('test.update'),
+      entry('test.current'),
+      entry('test.newer-local'),
+      entry('test.update-example', example: true),
+      entry('test.second-update'),
+    ], DateTime.utc(2026, 10, 14));
+    final versions = {
+      'test.update': '1.1.0',
+      'test.current': '1.2.0',
+      'test.newer-local': '1.3.0',
+      'test.update-example': '1.0.0',
+      'test.second-update': '1.2.0-beta.1',
+    };
+    expect(catalog.orderedForInstalled(versions).map((entry) => entry.id), [
+      'test.update-example',
+      'test.update',
+      'test.second-update',
+      'test.example',
+      'test.uninstalled',
+      'test.current',
+      'test.newer-local',
+    ]);
+    expect(
+      catalog.orderedForInstalled({}),
+      orderedEquals(catalog.orderedEntries),
+    );
+    versions['test.update'] = '1.2.0';
+    expect(catalog.orderedForInstalled(versions).map((entry) => entry.id), [
+      'test.update-example',
+      'test.second-update',
+      'test.example',
+      'test.uninstalled',
+      'test.update',
+      'test.current',
+      'test.newer-local',
+    ]);
   });
 
   test('malformed and duplicate catalog entries are rejected', () {
@@ -288,6 +340,113 @@ void main() {
       expect(manager.installed, isEmpty);
     },
   );
+
+  for (final brightness in Brightness.values) {
+    testWidgets('update cards and installed badges refresh in $brightness', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(320, 1100);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final registry = UploaderRegistry();
+      final manager = PicoraPluginManager(
+        registry: registry,
+        storageRoot: root,
+      );
+      final installed = telegraphPackage();
+      final latest = telegraphPackage(version: '1.2.0');
+      await tester.runAsync(() => manager.installPackage(installed.bytes));
+      final controller = PicoraController(
+        uploaderRegistry: registry,
+        pluginManager: manager,
+      )..initializing = false;
+      addTearDown(controller.dispose);
+      final latestJson = {...entryJson(latest), 'example': false};
+      final catalog = PluginCatalog([
+        PluginCatalogEntry.fromJson({
+          ...entryJson(installed),
+          'id': 'test.example',
+          'name': 'Pinned Example',
+        }),
+        PluginCatalogEntry.fromJson(latestJson),
+      ], DateTime.utc(2026, 10, 14));
+      Widget app(Widget page) => MaterialApp(
+        theme: heroTheme(brightness),
+        home: MediaQuery(
+          data: const MediaQueryData(
+            size: Size(320, 1100),
+            textScaler: TextScaler.linear(1.5),
+          ),
+          child: page,
+        ),
+      );
+      await tester.pumpWidget(
+        app(
+          ModuleRepositoryPage(
+            controller: controller,
+            review: (_) async => false,
+            service: FixedCatalogService(catalog),
+            appVersionLoader: () async => '1.0.6',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('可更新'), findsOneWidget);
+      expect(find.text('更新'), findsOneWidget);
+      expect(find.textContaining('更新至'), findsNothing);
+      expect(
+        tester.getTopLeft(find.text('Telegraph-Image')).dy,
+        lessThan(tester.getTopLeft(find.text('Pinned Example')).dy),
+      );
+      final updateButton = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, '更新'),
+      );
+      expect(
+        updateButton.style?.backgroundColor?.resolve({}),
+        pluginUpdateColor,
+      );
+      expect(tester.takeException(), isNull);
+      await tester.enterText(find.byType(TextField), 'Pinned');
+      await tester.pumpAndSettle();
+      expect(find.text('可更新'), findsNothing);
+      expect(find.text('Pinned Example'), findsOneWidget);
+      await tester.pumpWidget(
+        app(
+          PluginCenterPage(
+            controller: controller,
+            service: FixedCatalogService(catalog),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('可更新'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.runAsync(() => manager.installPackage(latest.bytes));
+      controller.notifyListeners();
+      await tester.pumpAndSettle();
+      expect(find.text('可更新'), findsNothing);
+      await tester.pumpWidget(
+        app(
+          ModuleRepositoryPage(
+            controller: controller,
+            review: (_) async => false,
+            service: FixedCatalogService(catalog),
+            appVersionLoader: () async => '1.0.6',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('更新'), findsNothing);
+      expect(find.text('已安装'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('Pinned Example')).dy,
+        lessThan(tester.getTopLeft(find.text('Telegraph-Image')).dy),
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
 
   testWidgets('module cards support narrow screens, large text and search', (
     tester,
