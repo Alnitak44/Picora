@@ -24,10 +24,14 @@ Picora在继承[PicHoro](https://github.com/Kuingsmile/PicHoro)大部分功能�
 
 阿里云 OSS、腾讯云 COS、七牛云、又拍云、S3 兼容存储、GitHub、SM.MS、Imgur、兰空图床、OpenList(Alist)、WebDAV、FTP / SFTP、自定义 Web 图床。
 
-原生插件使用 ZIP + JSON HTTP 协议，支持模块仓库下载、资源图标、离线教程和同 ID 更新。PicGo 插件可通过 PicGo Bridge 调用。
+## 插件
+Picora支持自定义插件，理论上可以通过插件实现对任何图床的适配支持。
 
-[插件开放说明](%E6%8F%92%E4%BB%B6%E5%BC%80%E6%94%BE%E8%AF%B4%E6%98%8E.md) · [插件模板](plugins/template) · [Telegraph-Image 示例](https://github.com/Alnitak44/picora-plugin-telegraph-image)
+原生插件使用 ZIP + JSON HTTP 协议，支持插件仓库下载、资源图标、离线教程和同 ID 更新。
 
+同时Picora对部分PicGo插件适配，可通过 PicGo Bridge 调用。
+
+[插件文档](https://github.com/Alnitak44/picora-plugins/tree/main/docs) · [插件模板](plugins/template)
 ## 下载
 
 [GitHub Releases](https://github.com/Alnitak44/Picora/releases)
@@ -47,10 +51,24 @@ Flutter **3.35.7** / Dart **3.9.2**，JDK **21**，Android SDK **36**，NDK **27
 
 ```sh
 flutter pub get --enforce-lockfile
-flutter analyze --no-pub lib/hero lib/main.dart test
+flutter analyze --no-pub lib/app lib/main.dart test
 flutter test --no-pub
 flutter build apk --debug --no-pub --split-per-abi
 ```
+
+## 项目结构
+
+| 路径 | 内容 |
+| --- | --- |
+| `lib/main.dart` | 入口：初始化路由与全局异常捕获 |
+| `lib/app/` | Picora 自研前端：四个主页、控制器、主题、诊断与插件运行时 |
+| `lib/legacy/` | 继承自 PicHoro 的上游实现：各图床 API、云端文件管理页、通用组件与路由表 |
+| `plugins/` | 插件模板 |
+| `docs/` | 实现说明、插件协议、提交流程等文档 |
+| `android/`、`ios/` | 原生工程；`android/vendor/` 为 PDF 组件的本地补丁 |
+| `scripts/` | 本机构建脚本；`tools/` 为插件打包等辅助工具 |
+
+新代码写在 `lib/app/`；`lib/legacy/` 保留上游页面以支撑云端文件管理，改动时保持最小侵入。
 
 ## License
 

@@ -4,8 +4,8 @@ import 'package:archive/archive.dart';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:picora/hero/plugins/plugin_package.dart';
-import 'package:picora/hero/plugins/uploader_registry.dart';
+import 'package:picora/app/plugins/plugin_package.dart';
+import 'package:picora/app/plugins/uploader_registry.dart';
 
 class _LiveHttp extends HttpOverrides {}
 

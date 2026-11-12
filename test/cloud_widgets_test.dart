@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:picora/hero/hero_theme.dart';
-import 'package:picora/picture_host_manage/common/base_file_explorer_page.dart';
-import 'package:picora/picture_host_manage/common/loading_state.dart';
-import 'package:picora/picture_host_manage/common/rename_dialog_widgets.dart';
-import 'package:picora/picture_host_manage/imgur/imgur_login.dart';
-import 'package:picora/picture_host_manage/upyun/upyun_login.dart';
-import 'package:picora/utils/common_functions.dart';
+import 'package:picora/app/hero_theme.dart';
+import 'package:picora/legacy/picture_host_manage/common/base_file_explorer_page.dart';
+import 'package:picora/legacy/picture_host_manage/common/loading_state.dart';
+import 'package:picora/legacy/picture_host_manage/common/rename_dialog_widgets.dart';
+import 'package:picora/legacy/picture_host_manage/imgur/imgur_login.dart';
+import 'package:picora/legacy/picture_host_manage/upyun/upyun_login.dart';
+import 'package:picora/legacy/utils/common_functions.dart';
 
 class FixtureExplorer extends BaseFileExplorer {
   const FixtureExplorer({super.key});

@@ -4,10 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluro/fluro.dart';
-import 'package:picora/router/application.dart';
-import 'package:picora/router/routers.dart';
-import 'package:picora/hero/hero_app.dart';
-import 'package:picora/hero/diagnostics.dart';
+import 'package:picora/legacy/router/application.dart';
+import 'package:picora/legacy/router/routers.dart';
+import 'package:picora/app/hero_app.dart';
+import 'package:picora/app/diagnostics.dart';
 
 void main() {
   runZonedGuarded(

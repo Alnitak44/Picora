@@ -4,12 +4,12 @@ import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flustars_flutter3/flustars_flutter3.dart';
-import 'package:picora/hero/diagnostics.dart';
-import 'package:picora/hero/models.dart';
-import 'package:picora/hero/plugins/plugin_manager.dart';
-import 'package:picora/hero/plugins/plugin_manifest.dart';
+import 'package:picora/app/diagnostics.dart';
+import 'package:picora/app/models.dart';
+import 'package:picora/app/plugins/plugin_manager.dart';
+import 'package:picora/app/plugins/plugin_manifest.dart';
 import 'plugin_fixture.dart';
-import 'package:picora/hero/plugins/uploader_registry.dart';
+import 'package:picora/app/plugins/uploader_registry.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

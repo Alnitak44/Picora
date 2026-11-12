@@ -7,12 +7,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flustars_flutter3/flustars_flutter3.dart';
 import 'package:fluro/fluro.dart';
-import 'package:picora/hero/hero_app.dart';
-import 'package:picora/hero/hero_theme.dart';
-import 'package:picora/hero/controller.dart';
-import 'package:picora/hero/models.dart';
-import 'package:picora/router/application.dart';
-import 'package:picora/hero/plugins/uploader_registry.dart';
+import 'package:picora/app/hero_app.dart';
+import 'package:picora/app/hero_theme.dart';
+import 'package:picora/app/controller.dart';
+import 'package:picora/app/models.dart';
+import 'package:picora/legacy/router/application.dart';
+import 'package:picora/app/plugins/uploader_registry.dart';
 import 'cloud_delete_fixture.dart';
 
 Future<void> screenshot(WidgetTester tester, String name) async {

@@ -1,4 +1,4 @@
-import 'package:picora/hero/plugins/uploader_registry.dart';
+import 'package:picora/app/plugins/uploader_registry.dart';
 
 class TestDeleteRegistry extends UploaderRegistry {
   bool supported = true;

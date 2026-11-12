@@ -5,16 +5,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
-import 'package:picora/hero/controller.dart';
-import 'package:picora/hero/diagnostics.dart';
-import 'package:picora/hero/filename_template.dart';
-import 'package:picora/hero/filename_template_sheet.dart';
-import 'package:picora/hero/hero_theme.dart';
-import 'package:picora/hero/markdown_documents.dart';
-import 'package:picora/hero/markdown_images.dart';
-import 'package:picora/hero/markdown_migration.dart';
-import 'package:picora/hero/markdown_migration_page.dart';
-import 'package:picora/hero/models.dart';
+import 'package:picora/app/controller.dart';
+import 'package:picora/app/diagnostics.dart';
+import 'package:picora/app/filename_template.dart';
+import 'package:picora/app/filename_template_sheet.dart';
+import 'package:picora/app/hero_theme.dart';
+import 'package:picora/app/markdown_documents.dart';
+import 'package:picora/app/markdown_images.dart';
+import 'package:picora/app/markdown_migration.dart';
+import 'package:picora/app/markdown_migration_page.dart';
+import 'package:picora/app/models.dart';
 
 class FeaturePaths extends PathProviderPlatform {
   final String path;

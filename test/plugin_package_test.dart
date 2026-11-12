@@ -7,15 +7,15 @@ import 'package:dio/dio.dart';
 import 'package:flustars_flutter3/flustars_flutter3.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:picora/hero/controller.dart';
-import 'package:picora/hero/diagnostics.dart';
-import 'package:picora/hero/hero_theme.dart';
-import 'package:picora/hero/plugin_page.dart';
-import 'package:picora/hero/plugins/plugin_catalog.dart';
-import 'package:picora/hero/plugins/plugin_manager.dart';
-import 'package:picora/hero/plugins/plugin_package.dart';
-import 'package:picora/hero/plugins/uploader_registry.dart';
-import 'package:picora/hero/repositories_page.dart';
+import 'package:picora/app/controller.dart';
+import 'package:picora/app/diagnostics.dart';
+import 'package:picora/app/hero_theme.dart';
+import 'package:picora/app/plugin_page.dart';
+import 'package:picora/app/plugins/plugin_catalog.dart';
+import 'package:picora/app/plugins/plugin_manager.dart';
+import 'package:picora/app/plugins/plugin_package.dart';
+import 'package:picora/app/plugins/uploader_registry.dart';
+import 'package:picora/app/repositories_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'plugin_fixture.dart';
 
@@ -68,24 +68,6 @@ void main() {
       expect(package.resource('plugin.json'), isNull);
     },
   );
-
-  test('ZIP cannot self-assign a catalog example designation', () {
-    for (final id in [
-      'test.picora.package',
-      'io.github.alnitak44.telegraph-image',
-    ]) {
-      final bytes = packageBytes(metadata: {'id': id, 'example': true});
-      final package = PicoraPluginPackage.decode(bytes);
-      expect(package.metadata.containsKey('example'), isFalse);
-      // Re-reading persisted bytes must not restore the author-supplied badge.
-      expect(
-        PicoraPluginPackage.decode(
-          package.bytes,
-        ).metadata.containsKey('example'),
-        isFalse,
-      );
-    }
-  });
 
   test(
     'missing metadata, README, entry, icon and unsupported runtime fail clearly',

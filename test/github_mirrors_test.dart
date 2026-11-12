@@ -9,17 +9,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:picora/hero/app_updates.dart';
-import 'package:picora/hero/controller.dart';
-import 'package:picora/hero/diagnostics.dart';
-import 'package:picora/hero/github_mirrors.dart';
-import 'package:picora/hero/github_mirror_page.dart';
-import 'package:picora/hero/github_mirror_probe.dart';
-import 'package:picora/hero/hero_theme.dart';
-import 'package:picora/hero/module_repository_page.dart';
-import 'package:picora/hero/plugins/plugin_catalog.dart';
-import 'package:picora/hero/plugins/plugin_manager.dart';
-import 'package:picora/hero/plugins/uploader_registry.dart';
+import 'package:picora/app/app_updates.dart';
+import 'package:picora/app/controller.dart';
+import 'package:picora/app/diagnostics.dart';
+import 'package:picora/app/github_mirrors.dart';
+import 'package:picora/app/github_mirror_page.dart';
+import 'package:picora/app/github_mirror_probe.dart';
+import 'package:picora/app/hero_theme.dart';
+import 'package:picora/app/plugin_repository_page.dart';
+import 'package:picora/app/plugins/plugin_catalog.dart';
+import 'package:picora/app/plugins/plugin_manager.dart';
+import 'package:picora/app/plugins/uploader_registry.dart';
 
 import 'app_update_test.dart' show releaseJson, mockDio;
 import 'plugin_catalog_test.dart'
@@ -345,7 +345,11 @@ void main() {
     () async {
       final stream = StreamController<List<int>>();
       var cancelled = false;
-      stream.onCancel = () => cancelled = true;
+      final cancellation = Completer<void>();
+      stream.onCancel = () {
+        cancelled = true;
+        cancellation.complete();
+      };
       final probe = GitHubMirrorProbe(
         // Allow the mocked response to arrive under parallel suite load.
         timeout: const Duration(milliseconds: 500),
@@ -364,6 +368,7 @@ void main() {
       );
       final result = await probe.probe(GitHubMirrors.presets.first);
       expect(result.error, '超时');
+      await cancellation.future.timeout(const Duration(seconds: 1));
       expect(cancelled, true);
       await stream.close();
     },
@@ -470,7 +475,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: heroTheme(Brightness.dark),
-          home: ModuleRepositoryPage(
+          home: PluginRepositoryPage(
             controller: controller,
             review: (_) async => false,
             service: FixedCatalogService(

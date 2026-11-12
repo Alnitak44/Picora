@@ -7,15 +7,15 @@ import 'package:flustars_flutter3/flustars_flutter3.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
-import 'package:picora/hero/controller.dart';
-import 'package:picora/hero/models.dart';
-import 'package:picora/hero/config_exchange.dart';
-import 'package:picora/hero/diagnostics.dart';
-import 'package:picora/utils/global.dart';
-import 'package:picora/picture_host_configure/configure_store/configure_store_file.dart';
-import 'package:picora/picture_host_configure/configure_store/configure_template.dart';
-import 'package:picora/hero/markdown_migration.dart';
-import 'package:picora/album/album_sql.dart';
+import 'package:picora/app/controller.dart';
+import 'package:picora/app/models.dart';
+import 'package:picora/app/config_exchange.dart';
+import 'package:picora/app/diagnostics.dart';
+import 'package:picora/legacy/utils/global.dart';
+import 'package:picora/legacy/picture_host_configure/configure_store/configure_store_file.dart';
+import 'package:picora/legacy/picture_host_configure/configure_store/configure_template.dart';
+import 'package:picora/app/markdown_migration.dart';
+import 'package:picora/legacy/album/album_sql.dart';
 import 'cloud_delete_fixture.dart';
 
 class TestPaths extends PathProviderPlatform {

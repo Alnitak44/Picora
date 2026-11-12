@@ -1,13 +1,13 @@
 import 'dart:io';
 import 'dart:convert';
 import 'package:archive/archive.dart';
-import 'package:picora/hero/plugins/plugin_catalog.dart';
-import 'package:picora/hero/plugins/plugin_package.dart';
+import 'package:picora/app/plugins/plugin_catalog.dart';
+import 'package:picora/app/plugins/plugin_package.dart';
 
-// Build fixtures from source; example plugins are never Flutter assets.
+// Build fixtures from source; plugin packages are never Flutter assets.
 PicoraPluginPackage telegraphPackage({String? version}) {
   final archive = Archive();
-  final root = Directory('plugins/telegraph-image');
+  final root = Directory('test/fixtures/telegraph-image');
   for (final file in root.listSync(recursive: true).whereType<File>()) {
     final path = file.path
         .substring(root.path.length + 1)

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -6,16 +7,19 @@ import 'package:dio/dio.dart';
 import 'package:flustars_flutter3/flustars_flutter3.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:picora/hero/controller.dart';
-import 'package:picora/hero/diagnostics.dart';
-import 'package:picora/hero/hero_theme.dart';
-import 'package:picora/hero/module_repository_page.dart';
-import 'package:picora/hero/plugin_page.dart';
-import 'package:picora/hero/plugin_update_badge.dart';
-import 'package:picora/hero/plugins/plugin_catalog.dart';
-import 'package:picora/hero/plugins/plugin_manager.dart';
-import 'package:picora/hero/plugins/plugin_package.dart';
-import 'package:picora/hero/plugins/uploader_registry.dart';
+import 'package:picora/app/controller.dart';
+import 'package:picora/app/diagnostics.dart';
+import 'package:picora/app/hero_theme.dart';
+import 'package:picora/app/models.dart';
+import 'package:picora/app/plugin_repository_page.dart';
+import 'package:picora/app/plugin_page.dart';
+import 'package:picora/app/plugin_tags.dart';
+import 'package:picora/app/plugin_update_badge.dart';
+import 'package:picora/app/plugins/plugin_catalog.dart';
+import 'package:picora/app/plugins/plugin_manager.dart';
+import 'package:picora/app/plugins/plugin_manifest.dart';
+import 'package:picora/app/plugins/plugin_package.dart';
+import 'package:picora/app/plugins/uploader_registry.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'plugin_fixture.dart';
@@ -29,8 +33,8 @@ Map<String, dynamic> entryJson(PicoraPluginPackage package) => {
   'runtime': 'http-v1',
   'packageVersion': 1,
   'minAppVersion': '1.0.0',
-  'example': true,
   'mark': 'TG',
+  'tags': <String>[],
   'repository': package.repository,
   'downloadUrl':
       'https://github.com/Alnitak44/picora-plugin-telegraph-image/releases/download/v1.1.2/telegraph-image-1.1.2.picora-plugin.zip',
@@ -49,6 +53,13 @@ class FixedCatalogService extends PluginCatalogService {
   Future<PluginCatalog> load({bool forceRefresh = false}) async => catalog;
 }
 
+class PendingCatalogService extends PluginCatalogService {
+  final completer = Completer<PluginCatalog>();
+
+  @override
+  Future<PluginCatalog> load({bool forceRefresh = false}) => completer.future;
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late Directory root;
@@ -56,7 +67,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     await SpUtil.getInstance();
     await Directory('artifacts').create(recursive: true);
-    root = await Directory('artifacts').createTemp('module-tests-');
+    root = await Directory('artifacts').createTemp('plugin-tests-');
   });
   tearDown(() async => root.delete(recursive: true));
 
@@ -89,92 +100,239 @@ void main() {
     },
   );
 
-  test('example designation comes from the catalog, not package metadata', () {
-    final package = telegraphPackage();
-    expect(package.metadata.containsKey('example'), isFalse);
-    final json = entryJson(package);
-    expect(PluginCatalogEntry.fromJson(json).example, isTrue);
+  test('plugin tags map to visible attributes', () {
+    final json = entryJson(telegraphPackage());
+    final withoutTags = {...json}..remove('tags');
+    expect(PluginCatalogEntry.fromJson(withoutTags).tags, isNull);
+    expect(PluginCatalogEntry.fromJson(json).tags, isEmpty);
     expect(
-      PluginCatalogEntry.fromJson({...json, 'example': false}).example,
-      isFalse,
+      PluginCatalogEntry.fromJson({
+        ...json,
+        'tags': ['token'],
+      }).tags,
+      {PluginTag.token},
     );
     expect(
-      PluginCatalogEntry.fromJson(
-        json,
-      ).verify(package.bytes).metadata.containsKey('example'),
-      isFalse,
+      PluginCatalogEntry.fromJson({
+        ...json,
+        'tags': ['account'],
+      }).tags,
+      {PluginTag.account},
     );
+    expect(
+      PluginCatalogEntry.fromJson({
+        ...json,
+        'tags': ['token', 'account', 'custom-url'],
+      }).tags,
+      {PluginTag.token, PluginTag.account, PluginTag.customUrl},
+    );
+    for (final invalid in [
+      'token',
+      ['unknown'],
+      [1],
+      ['token', 'token'],
+    ]) {
+      expect(
+        () => PluginCatalogEntry.fromJson({...json, 'tags': invalid}),
+        throwsA(isA<HeroFailure>()),
+      );
+    }
   });
 
-  test('catalog examples are pinned while other entry order is preserved', () {
-    final source = entryJson(telegraphPackage());
-    PluginCatalogEntry entry(String id, bool example) =>
-        PluginCatalogEntry.fromJson({...source, 'id': id, 'example': example});
-    final entries = [
-      entry('test.zebra', false),
-      entry('test.example', true),
-      entry('test.alpha', false),
-      entry('test.another-example', true),
+  test('config roles derive tags while unknown roles stay compatible', () {
+    HostField field(
+      String key, {
+      String type = 'text',
+      String? role,
+      bool required = false,
+    }) => HostField(
+      key,
+      key,
+      secret: type == 'secret',
+      required: required,
+      role: role,
+    );
+
+    expect(<HostField>[].derivedTags, isEmpty);
+    expect(<HostField>[].derivedRequiresAuth, isFalse);
+    expect([field('token', type: 'secret', role: 'token')].derivedTags, {
+      PluginTag.token,
+    });
+    expect(
+      [
+        field('user', role: 'account'),
+        field('pass', type: 'secret'),
+      ].derivedTags,
+      {PluginTag.account},
+    );
+    expect([field('baseUrl', role: 'endpoint')].derivedTags, {
+      PluginTag.customUrl,
+    });
+    expect(
+      [
+        field('token', type: 'secret', role: 'token'),
+        field('baseUrl', role: 'endpoint'),
+      ].derivedTags,
+      {PluginTag.token, PluginTag.customUrl},
+    );
+    expect([field('apiKey', type: 'secret', required: true)].derivedTags, {
+      PluginTag.token,
+    });
+    expect([field('account', required: true)].derivedTags, {PluginTag.account});
+    expect([field('baseUrl', required: true)].derivedTags, {
+      PluginTag.customUrl,
+    });
+    expect(
+      [field('username'), field('password', type: 'secret')].derivedTags,
+      isEmpty,
+    );
+    // Unknown roles are ignored, but a required secret still needs credentials.
+    final future = [
+      field('cookie', type: 'secret', role: 'cookie', required: true),
     ];
-    final catalog = PluginCatalog(entries, DateTime.utc(2026, 10, 11));
-    expect(catalog.orderedEntries.map((entry) => entry.id), [
-      'test.example',
-      'test.another-example',
-      'test.zebra',
-      'test.alpha',
-    ]);
-    expect(catalog.entries, orderedEquals(entries));
+    expect(future.derivedTags, isEmpty);
+    expect(future.derivedRequiresAuth, isTrue);
+    expect([field('path', required: true)].derivedRequiresAuth, isFalse);
     expect(
-      catalog.orderedEntries
-          .where((entry) => entry.id.contains('alpha'))
-          .map((entry) => entry.id),
-      ['test.alpha'],
+      [field('key', type: 'secret', required: true)].derivedRequiresAuth,
+      isTrue,
+    );
+    expect([field('key', type: 'secret', required: true)].derivedTags, {
+      PluginTag.token,
+    });
+  });
+
+  test('catalog requiresAuth prefers the generated field', () {
+    final json = entryJson(telegraphPackage());
+    expect(
+      PluginCatalogEntry.fromJson({...json, 'tags': []}).requiresAuth,
+      isFalse,
+    );
+    expect(
+      PluginCatalogEntry.fromJson({
+        ...json,
+        'tags': ['token'],
+      }).requiresAuth,
+      isTrue,
+    );
+    expect(
+      PluginCatalogEntry.fromJson({
+        ...json,
+        'tags': [],
+        'requiresAuth': true,
+      }).requiresAuth,
+      isTrue,
+    );
+    expect(
+      PluginCatalogEntry.fromJson({
+        ...json,
+        'tags': ['custom-url'],
+      }).requiresAuth,
+      isFalse,
     );
   });
 
-  test('updates precede examples and keep stable order within each group', () {
+  test('cloud delete is derived from the delete request', () {
+    Map<String, dynamic> program() {
+      final body =
+          jsonDecode(
+                File('test/fixtures/imgloc/uploader.json').readAsStringSync(),
+              )
+              as Map<String, dynamic>;
+      final meta =
+          jsonDecode(
+                File('test/fixtures/imgloc/plugin.json').readAsStringSync(),
+              )
+              as Map<String, dynamic>;
+      return {...body, ...meta}
+        ..remove('packageVersion')
+        ..remove('runtime')
+        ..remove('entry')
+        ..remove('icon')
+        ..remove('repository');
+    }
+
+    expect(
+      PicoraPluginManifest.fromJson(program()).derivedTags,
+      isNot(contains(PluginTag.cloudDelete)),
+    );
+    final deletable = program();
+    deletable['permissions']['deleteUploadedFile'] = true;
+    deletable['upload']['response']['deleteKey'] = 'deleteKey';
+    deletable['delete'] = {
+      'method': 'POST',
+      'url': 'https://imgloc.com/delete',
+      'body': {
+        'type': 'json',
+        'fields': {'key': r'${upload.deleteKey}'},
+      },
+    };
+    final manifest = PicoraPluginManifest.fromJson(deletable);
+    expect(manifest.derivedTags, contains(PluginTag.cloudDelete));
+    expect(manifest.derivedRequiresAuth, isFalse);
+
+    final json = entryJson(telegraphPackage());
+    final entry = PluginCatalogEntry.fromJson({
+      ...json,
+      'tags': ['cloud-delete'],
+    });
+    expect(entry.tags, {PluginTag.cloudDelete});
+    expect(entry.requiresAuth, isFalse);
+  });
+
+  test('prerelease versions are tagged as beta', () {
+    final preview = telegraphPackage(version: '1.2.0-beta.1');
+    final json = entryJson(preview);
+    expect(PluginCatalogEntry.fromJson(json).tags, {PluginTag.beta});
+    expect(
+      PluginCatalogEntry.fromJson({
+        ...json,
+        'tags': ['token'],
+      }).tags,
+      {PluginTag.token, PluginTag.beta},
+    );
+    expect(
+      PluginCatalogEntry.fromJson({...json, 'tags': []}).requiresAuth,
+      isFalse,
+    );
+    expect(preview.manifest.derivedTags, contains(PluginTag.beta));
+    expect(
+      PluginCatalogEntry.fromJson(entryJson(telegraphPackage())).tags,
+      isNot(contains(PluginTag.beta)),
+    );
+  });
+
+  test('installed updates are listed first and other order is preserved', () {
     final source = entryJson(telegraphPackage());
-    PluginCatalogEntry entry(String id, {bool example = false}) =>
-        PluginCatalogEntry.fromJson({
-          ...source,
-          'id': id,
-          'example': example,
-          'version': '1.2.0',
-        });
+    PluginCatalogEntry entry(String id) =>
+        PluginCatalogEntry.fromJson({...source, 'id': id, 'version': '1.2.0'});
     final catalog = PluginCatalog([
       entry('test.uninstalled'),
-      entry('test.example', example: true),
       entry('test.update'),
       entry('test.current'),
       entry('test.newer-local'),
-      entry('test.update-example', example: true),
       entry('test.second-update'),
     ], DateTime.utc(2026, 10, 14));
     final versions = {
       'test.update': '1.1.0',
       'test.current': '1.2.0',
       'test.newer-local': '1.3.0',
-      'test.update-example': '1.0.0',
       'test.second-update': '1.2.0-beta.1',
     };
     expect(catalog.orderedForInstalled(versions).map((entry) => entry.id), [
-      'test.update-example',
       'test.update',
       'test.second-update',
-      'test.example',
       'test.uninstalled',
       'test.current',
       'test.newer-local',
     ]);
     expect(
-      catalog.orderedForInstalled({}),
-      orderedEquals(catalog.orderedEntries),
+      catalog.orderedForInstalled({}).map((entry) => entry.id),
+      catalog.entries.map((entry) => entry.id),
     );
     versions['test.update'] = '1.2.0';
     expect(catalog.orderedForInstalled(versions).map((entry) => entry.id), [
-      'test.update-example',
       'test.second-update',
-      'test.example',
       'test.uninstalled',
       'test.update',
       'test.current',
@@ -292,6 +450,40 @@ void main() {
     );
   });
 
+  test('catalog cache from before auth tags is ignored', () async {
+    final source = indexSource(entryJson(telegraphPackage()));
+    await File('${root.path}/picora-plugin-index.json').writeAsString(
+      jsonEncode({
+        'fetchedAt': DateTime.utc(2026, 10, 8).toIso8601String(),
+        'route': PluginCatalogService.indexUrl,
+        'source': source,
+      }),
+    );
+    var calls = 0;
+    final dio = Dio();
+    dio.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          calls++;
+          handler.resolve(
+            Response<List<int>>(
+              requestOptions: options,
+              statusCode: 200,
+              data: utf8.encode(source),
+            ),
+          );
+        },
+      ),
+    );
+    final catalog = await PluginCatalogService(
+      dio: dio,
+      storageRoot: root,
+      now: () => DateTime.utc(2026, 11, 11),
+    ).load();
+    expect(calls, 1);
+    expect(catalog.entries.single.tags, isEmpty);
+  });
+
   test(
     'old bundled configurations survive until same-ID download restores them',
     () async {
@@ -334,8 +526,8 @@ void main() {
         manager.remove(package.manifest.id),
         throwsA(isA<HeroFailure>()),
       );
-      await manager.deleteRepository(after);
-      await manager.remove(package.manifest.id);
+      await manager.remove(package.manifest.id, deleteRepositories: true);
+      expect(await manager.readRepositories(), isEmpty);
       await manager.initialize(force: true);
       expect(manager.installed, isEmpty);
     },
@@ -362,12 +554,15 @@ void main() {
         pluginManager: manager,
       )..initializing = false;
       addTearDown(controller.dispose);
-      final latestJson = {...entryJson(latest), 'example': false};
+      final latestJson = {
+        ...entryJson(latest),
+        'tags': ['token'],
+      };
       final catalog = PluginCatalog([
         PluginCatalogEntry.fromJson({
           ...entryJson(installed),
           'id': 'test.example',
-          'name': 'Pinned Example',
+          'name': 'Another Plugin',
         }),
         PluginCatalogEntry.fromJson(latestJson),
       ], DateTime.utc(2026, 10, 14));
@@ -383,7 +578,7 @@ void main() {
       );
       await tester.pumpWidget(
         app(
-          ModuleRepositoryPage(
+          PluginRepositoryPage(
             controller: controller,
             review: (_) async => false,
             service: FixedCatalogService(catalog),
@@ -394,10 +589,12 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('可更新'), findsOneWidget);
       expect(find.text('更新'), findsOneWidget);
+      expect(find.widgetWithText(PluginTagChip, '需认证'), findsOneWidget);
+      expect(find.widgetWithText(PluginTagChip, 'Token'), findsOneWidget);
       expect(find.textContaining('更新至'), findsNothing);
       expect(
         tester.getTopLeft(find.text('Telegraph-Image')).dy,
-        lessThan(tester.getTopLeft(find.text('Pinned Example')).dy),
+        lessThan(tester.getTopLeft(find.text('Another Plugin')).dy),
       );
       final updateButton = tester.widget<FilledButton>(
         find.widgetWithText(FilledButton, '更新'),
@@ -407,10 +604,10 @@ void main() {
         pluginUpdateColor,
       );
       expect(tester.takeException(), isNull);
-      await tester.enterText(find.byType(TextField), 'Pinned');
+      await tester.enterText(find.byType(TextField), 'Another');
       await tester.pumpAndSettle();
       expect(find.text('可更新'), findsNothing);
-      expect(find.text('Pinned Example'), findsOneWidget);
+      expect(find.text('Another Plugin'), findsOneWidget);
       await tester.pumpWidget(
         app(
           PluginCenterPage(
@@ -421,6 +618,7 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('可更新'), findsOneWidget);
+      expect(find.text('无需认证'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await tester.runAsync(() => manager.installPackage(latest.bytes));
       controller.notifyListeners();
@@ -428,7 +626,7 @@ void main() {
       expect(find.text('可更新'), findsNothing);
       await tester.pumpWidget(
         app(
-          ModuleRepositoryPage(
+          PluginRepositoryPage(
             controller: controller,
             review: (_) async => false,
             service: FixedCatalogService(catalog),
@@ -438,9 +636,13 @@ void main() {
       );
       await tester.pumpAndSettle();
       expect(find.text('更新'), findsNothing);
-      expect(find.text('已安装'), findsOneWidget);
       expect(
-        tester.getTopLeft(find.text('Pinned Example')).dy,
+        find.byKey(const ValueKey('plugin-installed-status')),
+        findsOneWidget,
+      );
+      expect(find.widgetWithText(PluginTagChip, '需认证'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('Another Plugin')).dy,
         lessThan(tester.getTopLeft(find.text('Telegraph-Image')).dy),
       );
       expect(tester.takeException(), isNull);
@@ -448,7 +650,7 @@ void main() {
     });
   }
 
-  testWidgets('module cards support narrow screens, large text and search', (
+  testWidgets('plugin rows support narrow screens, large text and search', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(320, 900);
@@ -466,7 +668,7 @@ void main() {
             size: Size(320, 900),
             textScaler: TextScaler.linear(1.5),
           ),
-          child: ModuleRepositoryPage(
+          child: PluginRepositoryPage(
             controller: PicoraController()..initializing = false,
             review: (_) async => false,
             service: FixedCatalogService(catalog),
@@ -477,10 +679,132 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('Telegraph-Image'), findsOneWidget);
+    expect(find.widgetWithText(PluginTagChip, '无需认证'), findsOneWidget);
     expect(tester.takeException(), isNull);
+    await tester.enterText(find.byType(TextField), '无需认证');
+    await tester.pumpAndSettle();
+    expect(find.text('Telegraph-Image'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), 'Token');
+    await tester.pumpAndSettle();
+    expect(find.text('没有找到插件'), findsOneWidget);
     await tester.enterText(find.byType(TextField), 'missing');
     await tester.pumpAndSettle();
     expect(find.text('没有找到插件'), findsOneWidget);
     expect(find.text('Telegraph-Image'), findsNothing);
+  });
+
+  testWidgets('plugin repository filters by install state and tags', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(360, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final registry = UploaderRegistry();
+    final manager = PicoraPluginManager(registry: registry, storageRoot: root);
+    final installed = telegraphPackage();
+    await tester.runAsync(() => manager.installPackage(installed.bytes));
+    final controller = PicoraController(
+      uploaderRegistry: registry,
+      pluginManager: manager,
+    )..initializing = false;
+    addTearDown(controller.dispose);
+    final catalog = PluginCatalog([
+      PluginCatalogEntry.fromJson({
+        ...entryJson(installed),
+        'tags': ['custom-url'],
+      }),
+      PluginCatalogEntry.fromJson({
+        ...entryJson(installed),
+        'id': 'test.auth',
+        'name': 'Auth Plugin',
+        'tags': ['token'],
+      }),
+    ], DateTime.utc(2026, 11, 12));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: heroTheme(Brightness.light),
+        home: PluginRepositoryPage(
+          controller: controller,
+          review: (_) async => false,
+          service: FixedCatalogService(catalog),
+          appVersionLoader: () async => '1.0.0-debug',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Telegraph-Image'), findsOneWidget);
+    expect(find.text('Auth Plugin'), findsOneWidget);
+    expect(find.byKey(const ValueKey('plugin-filter-tag-token')), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('plugin-filter-available')));
+    await tester.pumpAndSettle();
+    expect(find.text('Telegraph-Image'), findsNothing);
+    expect(find.text('Auth Plugin'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('plugin-filter-installed')));
+    await tester.pumpAndSettle();
+    expect(find.text('Telegraph-Image'), findsOneWidget);
+    expect(find.text('Auth Plugin'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('plugin-filter-all')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('plugin-filter-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('plugin-filter-tag-token')));
+    await tester.pumpAndSettle();
+    expect(find.text('Telegraph-Image'), findsNothing);
+    expect(find.text('Auth Plugin'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('plugin-filter-auth-optional')));
+    await tester.pumpAndSettle();
+    expect(find.text('没有找到插件'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('plugin-filter-reset-tags')));
+    await tester.pumpAndSettle();
+    expect(find.text('Telegraph-Image'), findsOneWidget);
+    expect(find.text('Auth Plugin'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('plugin-filter-done')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('plugin-filter-tag-token')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('plugin repository shows a skeleton while loading', (
+    tester,
+  ) async {
+    final service = PendingCatalogService();
+    final controller = PicoraController()..initializing = false;
+    addTearDown(controller.dispose);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: heroTheme(Brightness.light),
+        home: PluginRepositoryPage(
+          controller: controller,
+          review: (_) async => false,
+          service: service,
+          appVersionLoader: () async => '1.0.0-debug',
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(
+      find.byKey(const ValueKey('plugin-repository-skeleton')),
+      findsOneWidget,
+    );
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+
+    service.completer.complete(
+      PluginCatalog([
+        PluginCatalogEntry.fromJson(entryJson(telegraphPackage())),
+      ], DateTime.utc(2026, 11, 12)),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('plugin-repository-skeleton')),
+      findsNothing,
+    );
+    expect(find.text('Telegraph-Image'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }

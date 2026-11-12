@@ -6,7 +6,7 @@
 
 ## 架构
 
-`lib/hero/` 是新前端。`main.dart` 同步初始化路由并安装 Flutter、平台与异步异常捕获，随后运行 HeroApp。PicoraController 初始化上游服务；首次配置读取失败时显示可重试的启动错误，不隐藏故障。
+`lib/app/` 是新前端（原 `lib/hero/`）。`main.dart` 同步初始化路由并安装 Flutter、平台与异步异常捕获，随后运行 HeroApp。PicoraController 初始化上游服务；首次配置读取失败时显示可重试的启动错误，不隐藏故障。上游 PicHoro 实现集中在 `lib/legacy/`，仅用于图床 API 与云端文件管理。
 
 - `hero_theme.dart`：蓝白/深色设计系统、统一反馈与卡片。
 - `hero_app.dart`：四页导航、玻璃底栏、转场、系统分享接收。
@@ -15,7 +15,7 @@
 - `models.dart`：与上游完全对应的十二种图床字段。
 - `config_exchange.dart`：Picora 备份、PicHoro 分组与 PicGo/PicList 参数转换；导入前验证必填字段和容量。
 - `diagnostics.dart` / `diagnostics_page.dart`：结构化异常记录、查看、复制、分享导出。
-- `lib/hero/plugins/` / `plugin_page.dart`：ZIP 插件包、独立元信息与 HTTP 程序、资源和离线教程、权限校验、旧版迁移、插件生命周期与 PicGo Server 桥接；示例源码在项目根目录 `plugins/`。
+- `lib/app/plugins/` / `plugin_page.dart`：ZIP 插件包、独立元信息与 HTTP 程序、资源和离线教程、权限校验、旧版迁移、插件生命周期与 PicGo Server 桥接；模板在 `plugins/template`，插件测试夹具在 `test/fixtures/`。
 - `compatibility_routes.dart`：旧主页面、设置与图床参数入口转到新界面。
 
 云端浏览与桶、目录、文件操作继续使用上游管理 API。云端文件列表、玻璃批量操作条、文件操作 Bottom Sheet、详情卡片、加载/空状态、重命名/新建目录表单与又拍云/Imgur 登录表单已重写。上传与下载管理接入新版主题；少量存储桶专用表单、预览与本地浏览页面仍沿用上游布局，尚未达到所有细分页视觉全部替换的目标。
@@ -32,7 +32,7 @@
 
 GitHub 记录的复制地址采用 raw/custom domain URL，数据库仍保留删除所需的原始记录。图片链接上传仅接受 HTTP/HTTPS，校验图片响应与 50 MB 限制。
 
-插件图床配置独立保存在应用支持目录，上传记录写入预留扩展表。运行时只执行经过校验的 HTTP 请求模板，并按清单限制目标主机、明文 HTTP、超时和重定向。“示例”插件基于现有 Telegraph-Image PicGo 插件移植；直接复用其他 PicGo 插件可通过 PicGo Bridge，原生扩展格式见 `docs/PLUGINS.md`。
+插件图床配置独立保存在应用支持目录，上传记录写入预留扩展表。运行时只执行经过校验的 HTTP 请求模板，并按清单限制目标主机、明文 HTTP、超时和重定向。直接复用其他 PicGo 插件可通过 PicGo Bridge，原生扩展格式见 [插件协议](https://github.com/Alnitak44/picora-plugins/blob/main/docs/PLUGINS.md)。
 
 ## 诊断
 

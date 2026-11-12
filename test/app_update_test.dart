@@ -5,11 +5,11 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:flustars_flutter3/flustars_flutter3.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:picora/hero/app_updates.dart';
-import 'package:picora/hero/controller.dart';
-import 'package:picora/hero/diagnostics.dart';
-import 'package:picora/hero/hero_theme.dart';
-import 'package:picora/hero/settings_page.dart';
+import 'package:picora/app/app_updates.dart';
+import 'package:picora/app/controller.dart';
+import 'package:picora/app/diagnostics.dart';
+import 'package:picora/app/hero_theme.dart';
+import 'package:picora/app/settings_page.dart';
 
 Map<String, dynamic> releaseJson({
   String tag = 'v1.1.0',

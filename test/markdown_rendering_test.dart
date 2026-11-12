@@ -10,12 +10,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flustars_flutter3/flustars_flutter3.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:picora/hero/controller.dart';
-import 'package:picora/hero/hero_theme.dart';
-import 'package:picora/hero/plugin_page.dart';
-import 'package:picora/hero/plugins/plugin_manager.dart';
-import 'package:picora/hero/plugins/plugin_package.dart';
-import 'package:picora/hero/plugins/uploader_registry.dart';
+import 'package:picora/app/controller.dart';
+import 'package:picora/app/hero_theme.dart';
+import 'package:picora/app/plugin_page.dart';
+import 'package:picora/app/plugins/plugin_manager.dart';
+import 'package:picora/app/plugins/plugin_package.dart';
+import 'package:picora/app/plugins/uploader_registry.dart';
 
 import 'plugin_package_test.dart' show packageBytes;
 

@@ -11,6 +11,7 @@
       "label": "API Token",
       "type": "secret",
       "required": true,
+      "role": "token",
       "hint": "填写服务提供的上传 Token"
     }
   ],

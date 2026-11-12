@@ -2,8 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:picora/hero/diagnostics.dart';
-import 'package:picora/hero/plugins/uploader_registry.dart';
+import 'package:picora/app/diagnostics.dart';
+import 'package:picora/app/plugins/uploader_registry.dart';
 import 'plugin_v2_test.dart' as fixture;
 
 void main() {
