@@ -64,11 +64,29 @@ flutter build apk --debug --no-pub --split-per-abi
 | `lib/app/` | Picora 自研前端：四个主页、控制器、主题、诊断与插件运行时 |
 | `lib/legacy/` | 继承自 PicHoro 的上游实现：各图床 API、云端文件管理页、通用组件与路由表 |
 | `plugins/` | 插件模板 |
-| `docs/` | 实现说明、插件协议、提交流程等文档 |
+| `docs/` | 功能说明与上游 README 存档 |
 | `android/`、`ios/` | 原生工程；`android/vendor/` 为 PDF 组件的本地补丁 |
 | `scripts/` | 本机构建脚本；`tools/` 为插件打包等辅助工具 |
 
 新代码写在 `lib/app/`；`lib/legacy/` 保留上游页面以支撑云端文件管理，改动时保持最小侵入。
+
+## 架构
+
+- `hero_app.dart` / `hero_theme.dart`：四页导航、玻璃底栏、转场、系统分享接收与设计系统。
+- `upload_page.dart`、`album_page.dart`、`repositories_page.dart`、`settings_page.dart`：四个主页面。
+- `controller.dart` / `models.dart`：配置选择、上传预处理、上游 API 调用与相册记录；字段与上游十二种图床一致。
+- `config_exchange.dart`：备份与 PicHoro / PicGo / PicList 参数转换，导入前校验必填字段。
+- `diagnostics.dart` / `diagnostics_page.dart`：结构化异常记录与导出。
+- `lib/app/plugins/`：ZIP 插件包、清单校验、HTTP 模板运行时与 PicGo Server 桥接。
+
+默认图床按配置 ID 保存，临时目标只在当前会话生效。上传开始时固定配置快照，整批使用同一目标，期间禁止切换或编辑配置；失败不入库，部分成功保留记录并可重试。数据库位于应用私有目录，不共用旧项目的 Downloads 数据库，旧配置需显式导入。仓库不预设假配置，首次运行把尚未收录的上游活动配置迁入空位，每类只迁移一次。
+
+诊断日志写入应用支持目录 `picora-diagnostics.jsonl`，保留最近 300 条。密钥、Token、Authorization、Cookie 与签名 URL 参数自动脱敏，导出不含凭据。
+
+## 文档
+
+- [文件命名与 Markdown 图片迁移](docs/MARKDOWN_MIGRATION.md)
+- [上游 README](docs/UPSTREAM_README.md)
 
 ## License
 

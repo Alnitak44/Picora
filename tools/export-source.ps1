@@ -42,7 +42,7 @@ try {
     }
     if ($picoraRows.Count -eq 0) { throw 'No source files found.' }
     foreach ($picoraRequired in @('README.md', 'LICENSE', 'pubspec.yaml', 'pubspec.lock',
-        'lib/main.dart', 'docs/PLUGINS.md', 'plugins/template/plugin.json',
+        'lib/main.dart', 'CONTRIBUTING.md', 'plugins/template/plugin.json',
         'android/gradlew', 'android/gradlew.bat', 'android/gradle/wrapper/gradle-wrapper.jar')) {
         if ($picoraRequired -notin $picoraRows.path) { throw "Required source missing: $picoraRequired" }
     }
