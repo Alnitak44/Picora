@@ -50,7 +50,13 @@ class DownloadFixture extends PicoraPluginManager {
   final Uint8List bytes;
   DownloadFixture(this.bytes) : super(registry: UploaderRegistry());
   @override
-  Future<Uint8List> fetch(Uri uri) async => bytes;
+  Future<Uint8List> fetch(
+    Uri uri, {
+    void Function(Uint8List bytes)? validate,
+  }) async {
+    validate?.call(bytes);
+    return bytes;
+  }
 }
 
 Color? spanColor(

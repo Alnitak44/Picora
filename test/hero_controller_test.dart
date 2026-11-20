@@ -302,6 +302,33 @@ void main() {
     },
   );
   test(
+    'upload can delete original files only after successful records are saved',
+    () async {
+      final good = await File(
+        '${dir.path}/upload-delete-good.png',
+      ).writeAsString('fixture');
+      final bad = await File(
+        '${dir.path}/upload-delete-bad.png',
+      ).writeAsString('fixture');
+      final controller =
+          PicoraController(
+              uploadOverride: (_, __, name, ____) async => name.contains('bad')
+                  ? ['failed']
+                  : ['success', 'https://e.com/a', 'https://e.com/a', '{}'],
+            )
+            ..target = configA
+            ..deleteOriginalAfterUpload = true;
+      await expectLater(
+        controller.uploadFiles([good.path, bad.path]),
+        throwsA(isA<HeroFailure>()),
+      );
+      expect(await good.exists(), false);
+      expect(await bad.exists(), true);
+      expect(controller.images, hasLength(1));
+      controller.dispose();
+    },
+  );
+  test(
     'cloud-only deletion preserves history and file, persists state and prevents repeat requests',
     () async {
       final file = await File(

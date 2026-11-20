@@ -36,10 +36,8 @@ class AppVersion implements Comparable<AppVersion> {
 
   @override
   int compareTo(AppVersion other) {
-    for (var i = 0; i < 3; i++) {
-      final result = core[i].compareTo(other.core[i]);
-      if (result != 0) return result;
-    }
+    final coreResult = compareCoreTo(other);
+    if (coreResult != 0) return coreResult;
     if (prerelease.isEmpty || other.prerelease.isEmpty) {
       if (prerelease.isEmpty && other.prerelease.isEmpty) return 0;
       return prerelease.isEmpty ? 1 : -1;
@@ -58,6 +56,15 @@ class AppVersion implements Comparable<AppVersion> {
       if (result != 0) return result;
     }
     return prerelease.length.compareTo(other.prerelease.length);
+  }
+
+  /// Compares only the stable `major.minor.patch` portion.
+  int compareCoreTo(AppVersion other) {
+    for (var i = 0; i < 3; i++) {
+      final result = core[i].compareTo(other.core[i]);
+      if (result != 0) return result;
+    }
+    return 0;
   }
 }
 
@@ -198,10 +205,33 @@ class AppUpdateService {
           ),
       now = now ?? DateTime.now;
 
+  Future<void> _rememberMirror(GitHubMirror mirror, int index) async {
+    if (index == 0) return;
+    try {
+      await GitHubMirrors.instance.select(mirror.id);
+    } catch (error, stack) {
+      HeroDiagnostics.instance.record(
+        '保存应用更新镜像',
+        error,
+        stack: stack,
+        context: {'mirror': mirror.id},
+      );
+    }
+  }
+
   Future<AppRelease?> latest({bool forceRefresh = false}) async {
-    final url = GitHubMirrors.instance
-        .resolve(Uri.parse(latestUrl), headers: dio.options.headers)
-        .toString();
+    final sourceUri = Uri.parse(latestUrl);
+    final routes = GitHubMirrors.instance.requestRoutes(
+      sourceUri,
+      headers: dio.options.headers,
+    );
+    final urls = [
+      for (final mirror in routes)
+        GitHubMirrors.instance
+            .resolve(sourceUri, headers: dio.options.headers, mirror: mirror)
+            .toString(),
+    ];
+    final url = urls.first;
     if (_route != url) {
       _route = url;
       _checkedAt = null;
@@ -213,45 +243,74 @@ class AppUpdateService {
         now().difference(_checkedAt!) < const Duration(hours: 6)) {
       return _cached;
     }
-    final response = await dio.get<Object?>(
-      url,
-      options: Options(
-        headers: {
-          'Accept': 'application/vnd.github+json',
-          'X-GitHub-Api-Version': '2022-11-28',
-          'User-Agent': 'Picora',
-          if (_etag != null) 'If-None-Match': _etag,
-        },
-        validateStatus: (status) =>
-            status == 200 || status == 304 || status == 404,
-      ),
-    );
-    if (response.statusCode == 304) {
-      if (_checkedAt == null) throw const HeroFailure('更新接口返回了无缓存的响应');
-      _checkedAt = now();
-      return _cached;
-    }
-    if (response.statusCode == 404) {
-      if (url != latestUrl) {
-        throw const HeroFailure('镜像无法获取更新，请前往设置切换镜像后重试');
-      }
-      _cached = null;
-      _etag = null;
-    } else {
-      Object? data = response.data;
-      if (data is String) {
-        try {
-          data = jsonDecode(data);
-        } on FormatException {
+    Object? lastError;
+    StackTrace? lastStack;
+    for (var index = 0; index < urls.length; index++) {
+      final routeUrl = urls[index];
+      final mirror = routes[index];
+      try {
+        final response = await dio.get<Object?>(
+          routeUrl,
+          options: Options(
+            headers: {
+              'Accept': 'application/vnd.github+json',
+              'X-GitHub-Api-Version': '2022-11-28',
+              'User-Agent': 'Picora',
+              if (_etag != null) 'If-None-Match': _etag,
+            },
+            validateStatus: (status) =>
+                status == 200 || status == 304 || status == 404,
+          ),
+        );
+        if (response.statusCode == 304) {
+          if (_checkedAt == null) {
+            throw const HeroFailure('更新接口返回了无缓存的响应');
+          }
+          await _rememberMirror(mirror, index);
+          _checkedAt = now();
+          _route = routeUrl;
+          return _cached;
+        }
+        if (response.statusCode == 404) {
+          throw HeroFailure(routeUrl == latestUrl ? '尚无正式发布版本' : '镜像无法获取更新');
+        }
+        Object? data = response.data;
+        if (data is String) {
+          try {
+            data = jsonDecode(data);
+          } on FormatException {
+            throw const HeroFailure('更新接口返回了无效数据');
+          }
+        }
+        if (data is! Map<String, dynamic>) {
           throw const HeroFailure('更新接口返回了无效数据');
         }
+        final release = AppRelease.fromJson(data);
+        await _rememberMirror(mirror, index);
+        _cached = release;
+        _etag = response.headers.value('etag');
+        _route = routeUrl;
+        _checkedAt = now();
+        return release;
+      } catch (error, stack) {
+        if (error is HeroFailure && error.message == '尚无正式发布版本') {
+          _cached = null;
+          _etag = null;
+          _checkedAt = now();
+          return null;
+        }
+        lastError = error;
+        lastStack = stack;
+        if (index + 1 < urls.length) {
+          HeroDiagnostics.instance.record(
+            '自动切换应用更新镜像',
+            error,
+            stack: stack,
+            context: {'mirror': mirror.id, 'next': routes[index + 1].id},
+          );
+        }
       }
-      if (data is! Map<String, dynamic>) throw const HeroFailure('更新接口返回了无效数据');
-      final release = AppRelease.fromJson(data);
-      _cached = release;
-      _etag = response.headers.value('etag');
     }
-    _checkedAt = now();
-    return _cached;
+    Error.throwWithStackTrace(lastError!, lastStack!);
   }
 }

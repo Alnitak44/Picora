@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -155,14 +158,74 @@ class _PluginRepositoryPageState extends State<PluginRepositoryPage> {
   String? _version, _error, _activeId;
   String _query = '';
   _InstallFilter _installFilter = _InstallFilter.all;
+  _InstallFilter? _previewInstallFilter;
   _AuthFilter _authFilter = _AuthFilter.all;
   final Set<PluginTag> _tagFilters = {};
   bool _loading = false;
+  late final PageController _filterPager = PageController(
+    initialPage: _installFilter.index,
+  );
+
+  void _selectInstallFilter(_InstallFilter filter, {bool animate = true}) {
+    if (_installFilter == filter) {
+      if (_previewInstallFilter != null) {
+        setState(() => _previewInstallFilter = null);
+      }
+      return;
+    }
+    setState(() => _installFilter = filter);
+    if (!_filterPager.hasClients) return;
+    if (animate) {
+      _filterPager.animateToPage(
+        filter.index,
+        duration: MediaQuery.maybeOf(context)?.disableAnimations ?? false
+            ? Duration.zero
+            : const Duration(milliseconds: 260),
+        curve: Curves.easeOutCubic,
+      );
+    } else {
+      _filterPager.jumpToPage(filter.index);
+    }
+  }
+
+  _InstallFilter get _highlightedInstallFilter =>
+      _previewInstallFilter ?? _installFilter;
+
+  void _previewInstallFilterAt(Offset position, double itemWidth) {
+    final index = ((position.dx - 3) / itemWidth).floor().clamp(
+      0,
+      _InstallFilter.values.length - 1,
+    );
+    final filter = _InstallFilter.values[index];
+    if (filter != _previewInstallFilter) {
+      HapticFeedback.selectionClick();
+      setState(() => _previewInstallFilter = filter);
+    }
+  }
+
+  void _commitInstallFilterPreview() {
+    final filter = _previewInstallFilter;
+    if (filter == null) return;
+    setState(() => _previewInstallFilter = null);
+    _selectInstallFilter(filter);
+  }
+
+  void _cancelInstallFilterPreview() {
+    if (_previewInstallFilter != null) {
+      setState(() => _previewInstallFilter = null);
+    }
+  }
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _filterPager.dispose();
+    super.dispose();
   }
 
   Future<void> _load({bool refresh = false}) async {
@@ -466,55 +529,97 @@ class _PluginRepositoryPageState extends State<PluginRepositoryPage> {
 
   Widget _installFilterBar() {
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: heroMuted.withValues(alpha: dark ? .12 : .06),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          for (final filter in _InstallFilter.values)
-            Expanded(
-              child: Semantics(
-                button: true,
-                selected: _installFilter == filter,
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    key: ValueKey('plugin-filter-${filter.name}'),
-                    borderRadius: BorderRadius.circular(9),
-                    onTap: () => setState(() => _installFilter = filter),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      curve: Curves.easeOut,
-                      alignment: Alignment.center,
-                      padding: const EdgeInsets.symmetric(vertical: 9),
-                      decoration: BoxDecoration(
-                        color: _installFilter == filter
-                            ? heroBlue
-                            : Colors.transparent,
-                        borderRadius: BorderRadius.circular(9),
-                      ),
-                      child: Text(
-                        filter.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: _installFilter == filter
-                              ? Colors.white
-                              : heroMuted,
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w600,
+    final duration = MediaQuery.maybeOf(context)?.disableAnimations ?? false
+        ? Duration.zero
+        : const Duration(milliseconds: 220);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final itemWidth =
+            (constraints.maxWidth - 6) / _InstallFilter.values.length;
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onHorizontalDragStart: (details) {
+            unawaited(HapticFeedback.selectionClick());
+            _previewInstallFilterAt(details.localPosition, itemWidth);
+          },
+          onHorizontalDragUpdate: (details) =>
+              _previewInstallFilterAt(details.localPosition, itemWidth),
+          onHorizontalDragEnd: (_) => _commitInstallFilterPreview(),
+          onHorizontalDragCancel: _cancelInstallFilterPreview,
+          child: Container(
+            key: const ValueKey('plugin-install-filter-bar'),
+            height: 42,
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: heroMuted.withValues(alpha: dark ? .12 : .06),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Stack(
+              children: [
+                AnimatedPositioned(
+                  key: const ValueKey('plugin-filter-indicator'),
+                  duration: duration,
+                  curve: Curves.easeOutCubic,
+                  left: _highlightedInstallFilter.index * itemWidth,
+                  top: 0,
+                  bottom: 0,
+                  width: itemWidth,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: heroBlue,
+                      borderRadius: BorderRadius.circular(9),
+                      boxShadow: [
+                        BoxShadow(
+                          color: heroBlue.withValues(alpha: .20),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
                         ),
-                      ),
+                      ],
                     ),
                   ),
                 ),
-              ),
+                Row(
+                  children: [
+                    for (final filter in _InstallFilter.values)
+                      Expanded(
+                        child: Semantics(
+                          button: true,
+                          selected: _highlightedInstallFilter == filter,
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              key: ValueKey('plugin-filter-${filter.name}'),
+                              borderRadius: BorderRadius.circular(9),
+                              onTap: () => _selectInstallFilter(filter),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 9,
+                                ),
+                                child: Text(
+                                  filter.label,
+                                  textAlign: TextAlign.center,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: _highlightedInstallFilter == filter
+                                        ? Colors.white
+                                        : heroMuted,
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
             ),
-        ],
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -555,25 +660,29 @@ class _PluginRepositoryPageState extends State<PluginRepositoryPage> {
     final count = (_authFilter == _AuthFilter.all ? 0 : 1) + _tagFilters.length;
     final active = count > 0;
     final dark = Theme.of(context).brightness == Brightness.dark;
-    return OutlinedButton.icon(
-      key: const ValueKey('plugin-filter-button'),
-      onPressed: _openTagFilters,
-      icon: const Icon(Icons.tune_rounded, size: 18),
-      label: Text(active ? '筛选 $count' : '筛选'),
-      style: OutlinedButton.styleFrom(
-        minimumSize: const Size(0, 56),
-        padding: const EdgeInsets.symmetric(horizontal: 13),
-        foregroundColor: active ? heroBlue : heroMuted,
-        backgroundColor: active
-            ? heroBlue.withValues(alpha: dark ? .16 : .08)
-            : Colors.transparent,
-        side: BorderSide(
-          color: active
-              ? heroBlue.withValues(alpha: .42)
-              : heroMuted.withValues(alpha: .18),
+    return Tooltip(
+      message: active ? '筛选插件（已启用 $count 项）' : '筛选插件',
+      child: OutlinedButton(
+        key: const ValueKey('plugin-filter-button'),
+        onPressed: _openTagFilters,
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(56, 56),
+          maximumSize: const Size(56, 56),
+          padding: EdgeInsets.zero,
+          foregroundColor: active ? heroBlue : heroMuted,
+          backgroundColor: active
+              ? heroBlue.withValues(alpha: dark ? .16 : .08)
+              : Colors.transparent,
+          side: BorderSide(
+            color: active
+                ? heroBlue.withValues(alpha: .42)
+                : heroMuted.withValues(alpha: .18),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-        textStyle: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+        child: const Icon(Icons.tune_rounded, size: 20),
       ),
     );
   }
@@ -699,10 +808,7 @@ class _PluginRepositoryPageState extends State<PluginRepositoryPage> {
     );
   }
 
-  bool _matchesFilters(PluginCatalogEntry entry, Set<String> installedIds) {
-    final installed = installedIds.contains(entry.id);
-    if (_installFilter == _InstallFilter.installed && !installed) return false;
-    if (_installFilter == _InstallFilter.available && installed) return false;
+  bool _matchesFilters(PluginCatalogEntry entry) {
     if (_authFilter == _AuthFilter.required && !entry.requiresAuth) {
       return false;
     }
@@ -737,20 +843,97 @@ class _PluginRepositoryPageState extends State<PluginRepositoryPage> {
               plugin.id: plugin.version,
           };
           final installedIds = installedVersions.keys.toSet();
-          final entries = _catalog
-              ?.orderedForInstalled(installedVersions)
-              .where(
-                (entry) => _searchText(entry).contains(_query.toLowerCase()),
-              )
-              .where((entry) => _matchesFilters(entry, installedIds))
-              .toList();
-          return RefreshIndicator(
-            onRefresh: () => _load(refresh: true),
-            child: ListView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(24),
-              children: [
-                Row(
+          List<PluginCatalogEntry>? entriesFor(_InstallFilter filter) =>
+              _catalog
+                  ?.orderedForInstalled(installedVersions)
+                  .where(
+                    (entry) =>
+                        _searchText(entry).contains(_query.toLowerCase()),
+                  )
+                  .where(_matchesFilters)
+                  .where((entry) {
+                    final installed = installedIds.contains(entry.id);
+                    return filter == _InstallFilter.all ||
+                        filter == _InstallFilter.installed && installed ||
+                        filter == _InstallFilter.available && !installed;
+                  })
+                  .toList();
+
+          Widget repositoryPage(_InstallFilter filter) {
+            final entries = entriesFor(filter);
+            return RefreshIndicator(
+              onRefresh: () => _load(refresh: true),
+              child: ListView(
+                key: PageStorageKey('plugin-repository-${filter.name}'),
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                children: [
+                  if ((_loading && _catalog != null) || _activeId != null)
+                    const LinearProgressIndicator(),
+                  if (_catalog?.offline == true)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      child: Text(
+                        '插件获取失败，请检查网络、前往设置切换镜像或点击右上角重试。',
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  if (_error != null)
+                    HeroPanel(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('插件获取失败，请检查网络、前往设置切换镜像或点击右上角重试。'),
+                          const SizedBox(height: 12),
+                          FilledButton(
+                            onPressed: () => _load(refresh: true),
+                            child: const Text('重试'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 12),
+                  if (_catalog == null && _loading)
+                    const _PluginRepositorySkeleton(),
+                  if (entries != null && entries.isEmpty)
+                    const Center(
+                      child: Text('没有找到插件', style: TextStyle(color: heroMuted)),
+                    ),
+                  if (entries != null && entries.isNotEmpty)
+                    HeroPanel(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Column(
+                        children: [
+                          for (
+                            var index = 0;
+                            index < entries.length;
+                            index++
+                          ) ...[
+                            if (index > 0)
+                              const Divider(
+                                height: 1,
+                                thickness: 1,
+                                indent: 56,
+                                endIndent: 14,
+                              ),
+                            _row(entries[index]),
+                          ],
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            );
+          }
+
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+                child: Row(
                   children: [
                     Expanded(
                       child: TextField(
@@ -765,67 +948,27 @@ class _PluginRepositoryPageState extends State<PluginRepositoryPage> {
                     _tagFilterButton(),
                   ],
                 ),
-                const SizedBox(height: 14),
-                _installFilterBar(),
-                const SizedBox(height: 16),
-                if ((_loading && _catalog != null) || _activeId != null)
-                  const LinearProgressIndicator(),
-                if (_catalog?.offline == true)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Text(
-                      '插件获取失败，请检查网络、前往设置切换镜像或点击右上角重试。',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                        fontSize: 12,
-                      ),
-                    ),
+              ),
+              const SizedBox(height: 14),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: _installFilterBar(),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: PageView(
+                  key: const ValueKey('plugin-filter-pager'),
+                  controller: _filterPager,
+                  onPageChanged: (index) => setState(
+                    () => _installFilter = _InstallFilter.values[index],
                   ),
-                if (_error != null)
-                  HeroPanel(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('插件获取失败，请检查网络、前往设置切换镜像或点击右上角重试。'),
-                        const SizedBox(height: 12),
-                        FilledButton(
-                          onPressed: () => _load(refresh: true),
-                          child: const Text('重试'),
-                        ),
-                      ],
-                    ),
-                  ),
-                const SizedBox(height: 12),
-                if (_catalog == null && _loading)
-                  const _PluginRepositorySkeleton(),
-                if (entries != null && entries.isEmpty)
-                  const Center(
-                    child: Text('没有找到插件', style: TextStyle(color: heroMuted)),
-                  ),
-                if (entries != null && entries.isNotEmpty)
-                  HeroPanel(
-                    padding: const EdgeInsets.symmetric(vertical: 2),
-                    child: Column(
-                      children: [
-                        for (
-                          var index = 0;
-                          index < entries.length;
-                          index++
-                        ) ...[
-                          if (index > 0)
-                            const Divider(
-                              height: 1,
-                              thickness: 1,
-                              indent: 56,
-                              endIndent: 14,
-                            ),
-                          _row(entries[index]),
-                        ],
-                      ],
-                    ),
-                  ),
-              ],
-            ),
+                  children: [
+                    for (final filter in _InstallFilter.values)
+                      repositoryPage(filter),
+                  ],
+                ),
+              ),
+            ],
           );
         },
       ),

@@ -12,15 +12,34 @@ class GitHubMirror {
   const GitHubMirror(this.id, this.name, this.baseUrl, {this.custom = false});
 }
 
+enum MirrorSortMode { defaultOrder, latency, successRate }
+
+class MirrorStats {
+  final int attempts, successes;
+  const MirrorStats({this.attempts = 0, this.successes = 0});
+
+  double get successRate => attempts == 0 ? 0 : successes / attempts;
+  int get successPercent => (successRate * 100).round();
+
+  /// A small prior keeps one lucky probe from outranking a long history.
+  double get stability => (successes + 1) / (attempts + 2);
+}
+
 /// Applied only at public download call sites, never to uploader traffic.
 class GitHubMirrors {
   static const preferenceKey = 'picora_github_mirrors';
+  static const statsKey = 'picora_github_mirror_stats';
+  static const autoFallbackKey = 'picora_github_mirror_auto_fallback';
+  static const sortKey = 'picora_github_mirror_sort';
   static final instance = GitHubMirrors();
+  static const maxFallbackRoutes = 4;
   static const presets = [
     GitHubMirror('direct', 'GitHub 直连', null),
-    GitHubMirror('gh2i', 'gh.2i.gs', 'https://gh.2i.gs/'),
-    GitHubMirror('akams', 'github.akams.cn', 'https://github.akams.cn/'),
     GitHubMirror('ghproxy', 'gh-proxy.com', 'https://gh-proxy.com/'),
+    GitHubMirror('669966', 'git.669966.xyz', 'https://git.669966.xyz/'),
+    GitHubMirror('dpik', 'gh.dpik.top', 'https://gh.dpik.top/'),
+    GitHubMirror('ghproxy-net', 'ghproxy.net', 'https://ghproxy.net/'),
+    GitHubMirror('chjina', 'gh.chjina.com', 'https://gh.chjina.com/'),
   ];
 
   Map<String, dynamic> get _state {
@@ -29,6 +48,16 @@ class GitHubMirrors {
       if (value is Map<String, dynamic>) return value;
     } catch (_) {
       // Missing or damaged preferences fall back to direct downloads.
+    }
+    return {};
+  }
+
+  Map<String, dynamic> get _statsState {
+    try {
+      final value = jsonDecode(SpUtil.getString(statsKey) ?? '');
+      if (value is Map<String, dynamic>) return value;
+    } catch (_) {
+      // Corrupt statistics must never affect mirror selection.
     }
     return {};
   }
@@ -72,6 +101,45 @@ class GitHubMirrors {
   }
 
   String get routeKey => selected.baseUrl ?? 'direct';
+
+  bool get autoFallbackEnabled =>
+      SpUtil.getBool(autoFallbackKey, defValue: true) ?? true;
+
+  MirrorSortMode get sortMode {
+    final saved = SpUtil.getString(sortKey, defValue: '');
+    return MirrorSortMode.values.firstWhere(
+      (mode) => mode.name == saved,
+      orElse: () => MirrorSortMode.defaultOrder,
+    );
+  }
+
+  MirrorStats statsFor(String id) {
+    final value = _statsState[id];
+    if (value is! Map) return const MirrorStats();
+    final attempts = value['attempts'];
+    final successes = value['successes'];
+    if (attempts is! int ||
+        successes is! int ||
+        attempts < 0 ||
+        attempts > 100000 ||
+        successes < 0 ||
+        successes > attempts) {
+      return const MirrorStats();
+    }
+    return MirrorStats(attempts: attempts, successes: successes);
+  }
+
+  Future<void> setAutoFallback(bool value) async {
+    await SpUtil.getInstance();
+    final saved = await SpUtil.putBool(autoFallbackKey, value);
+    if (saved != true) throw const HeroFailure('无法保存自动切换设置');
+  }
+
+  Future<void> setSortMode(MirrorSortMode mode) async {
+    await SpUtil.getInstance();
+    final saved = await SpUtil.putString(sortKey, mode.name);
+    if (saved != true) throw const HeroFailure('无法保存镜像排序设置');
+  }
 
   static String normalizeBase(String value) {
     final text = value.trim();
@@ -119,6 +187,41 @@ class GitHubMirrors {
     await _save(id, entries);
   }
 
+  Future<void> _writeStats(Map<String, dynamic> stats) async {
+    await SpUtil.getInstance();
+    final saved = await SpUtil.putString(statsKey, jsonEncode(stats));
+    if (saved != true) throw const HeroFailure('无法保存镜像测速记录');
+  }
+
+  Future<void> _serializedStatWrite(Future<void> Function() write) {
+    final next = _statWrite.then((_) => write());
+    _statWrite = next.catchError((Object _) {});
+    return next;
+  }
+
+  Future<void> _statWrite = Future.value();
+
+  /// Records one completed probe. Cancelled probes must not call this.
+  Future<void> recordProbe(String id, {required bool available}) {
+    if (!options.any((entry) => entry.id == id)) {
+      return Future.error(const HeroFailure('镜像不存在'));
+    }
+    return _serializedStatWrite(() async {
+      final stats = <String, dynamic>{
+        for (final entry in _statsState.entries)
+          if (entry.value is Map) entry.key: entry.value,
+      };
+      final previous = statsFor(id);
+      final attempts = (previous.attempts + 1).clamp(0, 100000);
+      final successes = (previous.successes + (available ? 1 : 0)).clamp(
+        0,
+        attempts,
+      );
+      stats[id] = {'attempts': attempts, 'successes': successes};
+      await _writeStats(stats);
+    });
+  }
+
   Future<void> saveCustom({
     String? id,
     required String name,
@@ -157,16 +260,17 @@ class GitHubMirrors {
       selected.id == id ? 'direct' : selected.id,
       entries.where((entry) => entry.id != id).toList(),
     );
+    await _serializedStatWrite(() async {
+      final stats = <String, dynamic>{
+        for (final entry in _statsState.entries)
+          if (entry.key != id && entry.value is Map) entry.key: entry.value,
+      };
+      await _writeStats(stats);
+    });
   }
 
-  Uri resolve(
-    Uri source, {
-    Map<String, dynamic> headers = const {},
-    GitHubMirror? mirror,
-  }) {
-    final base = (mirror ?? selected).baseUrl;
-    if (base == null ||
-        source.scheme != 'https' ||
+  bool canMirror(Uri source, {Map<String, dynamic> headers = const {}}) {
+    if (source.scheme != 'https' ||
         !const {
           'github.com',
           'raw.githubusercontent.com',
@@ -175,14 +279,49 @@ class GitHubMirrors {
         source.userInfo.isNotEmpty ||
         source.hasQuery ||
         source.hasFragment ||
-        (source.hasPort && source.port != 443) ||
-        headers.keys.any(
-          (key) => const {
-            'authorization',
-            'cookie',
-            'proxy-authorization',
-          }.contains(key.toLowerCase()),
-        )) {
+        (source.hasPort && source.port != 443)) {
+      return false;
+    }
+    return !headers.keys.any(
+      (key) => const {
+        'authorization',
+        'cookie',
+        'proxy-authorization',
+      }.contains(key.toLowerCase()),
+    );
+  }
+
+  /// Routes the current mirror first, then stable alternatives.
+  ///
+  /// Only public GitHub URLs are eligible. Credential-bearing requests always
+  /// stay on the selected route so a proxy can never receive user secrets.
+  List<GitHubMirror> requestRoutes(
+    Uri source, {
+    Map<String, dynamic> headers = const {},
+  }) {
+    final current = selected;
+    if (!autoFallbackEnabled || !canMirror(source, headers: headers)) {
+      return [current];
+    }
+    final alternatives =
+        options.where((entry) => entry.id != current.id).toList()..sort((a, b) {
+          final sa = statsFor(a.id), sb = statsFor(b.id);
+          final rate = sb.stability.compareTo(sa.stability);
+          if (rate != 0) return rate;
+          final count = sb.attempts.compareTo(sa.attempts);
+          if (count != 0) return count;
+          return options.indexOf(a).compareTo(options.indexOf(b));
+        });
+    return [current, ...alternatives.take(maxFallbackRoutes - 1)];
+  }
+
+  Uri resolve(
+    Uri source, {
+    Map<String, dynamic> headers = const {},
+    GitHubMirror? mirror,
+  }) {
+    final base = (mirror ?? selected).baseUrl;
+    if (base == null || !canMirror(source, headers: headers)) {
       return source;
     }
     // Preserve the original URL verbatim after the mirror prefix.

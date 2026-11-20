@@ -7,6 +7,19 @@ const heroBlue = Color(0xFF316BFA);
 const heroInk = Color(0xFF17233C);
 const heroMuted = Color(0xFF8C96A9);
 
+/// Keeps Android's predictive-back preview and shared-element transition while
+/// shortening the non-gesture completion so it does not feel sluggish.
+class _PicoraPredictiveBackPageTransitionsBuilder
+    extends PredictiveBackPageTransitionsBuilder {
+  const _PicoraPredictiveBackPageTransitionsBuilder();
+
+  @override
+  Duration get transitionDuration => const Duration(milliseconds: 220);
+
+  @override
+  Duration get reverseTransitionDuration => const Duration(milliseconds: 180);
+}
+
 ThemeData heroTheme(Brightness brightness) {
   final dark = brightness == Brightness.dark;
   final scheme =
@@ -92,7 +105,7 @@ ThemeData heroTheme(Brightness brightness) {
     ),
     pageTransitionsTheme: const PageTransitionsTheme(
       builders: {
-        TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+        TargetPlatform.android: _PicoraPredictiveBackPageTransitionsBuilder(),
         TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
         TargetPlatform.windows: FadeUpwardsPageTransitionsBuilder(),
       },
@@ -139,6 +152,45 @@ class HeroPanel extends StatelessWidget {
     ),
     child: child,
   );
+}
+
+class HeroPressable extends StatefulWidget {
+  final Widget child;
+  final bool enabled;
+  const HeroPressable({super.key, required this.child, this.enabled = true});
+  @override
+  State<HeroPressable> createState() => _HeroPressableState();
+}
+
+class _HeroPressableState extends State<HeroPressable> {
+  bool _pressed = false;
+
+  void _setPressed(bool value) {
+    if (!widget.enabled || _pressed == value || !mounted) return;
+    setState(() => _pressed = value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final duration = MediaQuery.maybeOf(context)?.disableAnimations ?? false
+        ? Duration.zero
+        : const Duration(milliseconds: 130);
+    return Listener(
+      onPointerDown: (_) => _setPressed(true),
+      onPointerUp: (_) => _setPressed(false),
+      onPointerCancel: (_) => _setPressed(false),
+      child: AnimatedScale(
+        scale: _pressed ? .972 : 1,
+        duration: duration,
+        curve: Curves.easeOutCubic,
+        child: AnimatedContainer(
+          duration: duration,
+          curve: Curves.easeOutCubic,
+          child: widget.child,
+        ),
+      ),
+    );
+  }
 }
 
 class PageHeading extends StatelessWidget {
@@ -259,16 +311,22 @@ class HeroEmpty extends StatelessWidget {
   );
 }
 
-Future<T?> heroSheet<T>(BuildContext context, Widget child) =>
-    showModalBottomSheet<T>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      constraints: const BoxConstraints(maxWidth: 640),
-      builder: (context) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(context).viewInsets.bottom,
+Future<T?> heroSheet<T>(
+  BuildContext context,
+  Widget child,
+) => showModalBottomSheet<T>(
+  context: context,
+  isScrollControlled: true,
+  useSafeArea: true,
+  constraints: const BoxConstraints(maxWidth: 640),
+  sheetAnimationStyle: MediaQuery.maybeOf(context)?.disableAnimations ?? false
+      ? AnimationStyle.noAnimation
+      : const AnimationStyle(
+          duration: Duration(milliseconds: 280),
+          reverseDuration: Duration(milliseconds: 200),
         ),
-        child: SizedBox(width: double.infinity, child: child),
-      ),
-    );
+  builder: (context) => Padding(
+    padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+    child: SizedBox(width: double.infinity, child: child),
+  ),
+);

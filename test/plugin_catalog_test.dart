@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:picora/app/controller.dart';
 import 'package:picora/app/diagnostics.dart';
+import 'package:picora/app/github_mirrors.dart';
 import 'package:picora/app/hero_theme.dart';
 import 'package:picora/app/models.dart';
 import 'package:picora/app/plugin_repository_page.dart';
@@ -66,6 +67,7 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     await SpUtil.getInstance();
+    await GitHubMirrors.instance.setAutoFallback(false);
     await Directory('artifacts').create(recursive: true);
     root = await Directory('artifacts').createTemp('plugin-tests-');
   });
@@ -79,6 +81,14 @@ void main() {
       final entry = PluginCatalogEntry.fromJson(json);
       expect(entry.verify(package.bytes).manifest.id, entry.id);
       expect(entry.supports('1.0.0-debug'), isTrue);
+      expect(entry.supports('1.0.0-beta.3'), isTrue);
+      expect(entry.supports('0.9.9-beta'), isFalse);
+      final newerCore = PluginCatalogEntry.fromJson({
+        ...json,
+        'minAppVersion': '1.0.9',
+      });
+      expect(newerCore.supports('1.0.9-beta.1'), isTrue);
+      expect(newerCore.supports('1.0.8'), isFalse);
       expect(entry.isUpdateFor('1.1.0'), isTrue);
       expect(entry.isUpdateFor(package.manifest.version), isFalse);
       for (final changes in [
@@ -736,7 +746,34 @@ void main() {
     expect(find.text('Telegraph-Image'), findsOneWidget);
     expect(find.text('Auth Plugin'), findsOneWidget);
     expect(find.byKey(const ValueKey('plugin-filter-tag-token')), findsNothing);
+    expect(find.text('筛选'), findsNothing);
+    expect(find.byIcon(Icons.tune_rounded), findsOneWidget);
 
+    final filterBar = tester.getRect(
+      find.byKey(const ValueKey('plugin-install-filter-bar')),
+    );
+    final gesture = await tester.startGesture(
+      Offset(filterBar.left + filterBar.width / 2, filterBar.center.dy),
+    );
+    await gesture.moveTo(
+      Offset(filterBar.right - filterBar.width / 8, filterBar.center.dy),
+    );
+    await tester.pump();
+    expect(
+      tester
+          .widget<AnimatedPositioned>(
+            find.byKey(const ValueKey('plugin-filter-indicator')),
+          )
+          .left,
+      greaterThan(150),
+    );
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(find.text('Telegraph-Image'), findsNothing);
+    expect(find.text('Auth Plugin'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('plugin-filter-all')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('plugin-filter-available')));
     await tester.pumpAndSettle();
     expect(find.text('Telegraph-Image'), findsNothing);
@@ -746,6 +783,14 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Telegraph-Image'), findsOneWidget);
     expect(find.text('Auth Plugin'), findsNothing);
+
+    await tester.drag(
+      find.byKey(const ValueKey('plugin-filter-pager')),
+      const Offset(-360, 0),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Telegraph-Image'), findsNothing);
+    expect(find.text('Auth Plugin'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('plugin-filter-all')));
     await tester.pumpAndSettle();

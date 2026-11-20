@@ -181,30 +181,74 @@ class PicoraPluginManager {
     return PluginInstallResult(manifest, updated: updated);
   }
 
-  Future<Uint8List> fetch(Uri uri) async {
+  Future<Uint8List> fetch(
+    Uri uri, {
+    void Function(Uint8List bytes)? validate,
+  }) async {
     if (!['http', 'https'].contains(uri.scheme) || uri.host.isEmpty) {
       throw const HeroFailure('插件地址必须是 HTTP 或 HTTPS URL');
     }
-    final cancel = CancelToken();
-    final response = await downloadDio.get<List<int>>(
-      GitHubMirrors.instance
-          .resolve(uri, headers: downloadDio.options.headers)
-          .toString(),
-      cancelToken: cancel,
-      options: Options(responseType: ResponseType.bytes),
-      onReceiveProgress: (received, total) {
-        if (received > PicoraPluginPackage.maxZipBytes ||
-            total > PicoraPluginPackage.maxZipBytes) {
-          cancel.cancel('插件 ZIP 超过 10 MB');
-        }
-      },
+    final routes = GitHubMirrors.instance.requestRoutes(
+      uri,
+      headers: downloadDio.options.headers,
     );
-    final source = response.data ?? const <int>[];
-    if (source.isEmpty) throw const HeroFailure('插件地址返回了空内容');
-    if (source.length > PicoraPluginPackage.maxZipBytes) {
-      throw const HeroFailure('插件 ZIP 不能超过 10 MB');
+    Object? lastError;
+    StackTrace? lastStack;
+    for (var index = 0; index < routes.length; index++) {
+      final mirror = routes[index];
+      final target = GitHubMirrors.instance.resolve(
+        uri,
+        headers: downloadDio.options.headers,
+        mirror: mirror,
+      );
+      try {
+        final cancel = CancelToken();
+        final response = await downloadDio.get<List<int>>(
+          target.toString(),
+          cancelToken: cancel,
+          options: Options(responseType: ResponseType.bytes),
+          onReceiveProgress: (received, total) {
+            if (received > PicoraPluginPackage.maxZipBytes ||
+                total > PicoraPluginPackage.maxZipBytes) {
+              cancel.cancel('插件 ZIP 超过 10 MB');
+            }
+          },
+        );
+        final source = response.data ?? const <int>[];
+        if (source.isEmpty) throw const HeroFailure('插件地址返回了空内容');
+        if (source.length > PicoraPluginPackage.maxZipBytes) {
+          throw const HeroFailure('插件 ZIP 不能超过 10 MB');
+        }
+        final bytes = Uint8List.fromList(source);
+        validate?.call(bytes);
+        if (index > 0) {
+          try {
+            await GitHubMirrors.instance.select(mirror.id);
+          } catch (error, stack) {
+            HeroDiagnostics.instance.record(
+              '保存插件下载镜像',
+              error,
+              stack: stack,
+              context: {'mirror': mirror.id},
+            );
+          }
+        }
+        return bytes;
+      } catch (error, stack) {
+        lastError = error;
+        lastStack = stack;
+        if (index + 1 < routes.length) {
+          HeroDiagnostics.instance.record(
+            '自动切换插件下载镜像',
+            error,
+            stack: stack,
+            context: {'mirror': mirror.id, 'next': routes[index + 1].id},
+          );
+        }
+      }
     }
-    return Uint8List.fromList(source);
+    HeroDiagnostics.instance.record('下载插件', lastError!, stack: lastStack);
+    Error.throwWithStackTrace(lastError, lastStack!);
   }
 
   Future<void> setEnabled(String id, bool enabled) async {

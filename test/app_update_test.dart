@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:picora/app/app_updates.dart';
 import 'package:picora/app/controller.dart';
 import 'package:picora/app/diagnostics.dart';
+import 'package:picora/app/github_mirrors.dart';
 import 'package:picora/app/hero_theme.dart';
 import 'package:picora/app/settings_page.dart';
 
@@ -40,6 +41,11 @@ Dio mockDio(void Function(RequestOptions, RequestInterceptorHandler) request) {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    await SpUtil.getInstance();
+    await GitHubMirrors.instance.setAutoFallback(false);
+  });
 
   test(
     'semantic precedence handles numeric segments, prereleases and metadata',
@@ -202,6 +208,37 @@ void main() {
     },
   );
 
+  test('release lookup automatically falls back to a working mirror', () async {
+    final mirrors = GitHubMirrors.instance;
+    await mirrors.select('ghproxy');
+    await mirrors.setAutoFallback(true);
+    var calls = 0;
+    final service = AppUpdateService(
+      dio: mockDio((options, handler) {
+        calls++;
+        if (options.uri.host == 'gh-proxy.com') {
+          handler.reject(
+            DioException(
+              requestOptions: options,
+              type: DioExceptionType.connectionTimeout,
+            ),
+          );
+          return;
+        }
+        handler.resolve(
+          Response(
+            requestOptions: options,
+            statusCode: 200,
+            data: releaseJson(),
+          ),
+        );
+      }),
+    );
+    expect(await service.latest(), isNotNull);
+    expect(calls, 2);
+    expect(mirrors.selected.id, 'direct');
+  });
+
   test('rate limits and timeout never masquerade as no update', () async {
     for (final status in [403, 429, 500]) {
       final service = AppUpdateService(
@@ -252,6 +289,7 @@ void main() {
   Future<void> settings(WidgetTester tester, AppUpdateService updates) async {
     SharedPreferences.setMockInitialValues({});
     await SpUtil.getInstance();
+    await GitHubMirrors.instance.setAutoFallback(false);
     await tester.pumpWidget(
       MaterialApp(
         theme: heroTheme(Brightness.light),

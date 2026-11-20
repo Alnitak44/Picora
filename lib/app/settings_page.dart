@@ -617,6 +617,15 @@ class _SettingsPageState extends State<SettingsPage> {
             if (mounted) setState(() {});
           },
         ),
+        _row(
+          '镜像自动切换',
+          Icons.swap_horiz_rounded,
+          toggle: GitHubMirrors.instance.autoFallbackEnabled,
+          change: (value) => _guard(
+            '保存自动切换设置',
+            () => GitHubMirrors.instance.setAutoFallback(value),
+          ),
+        ),
       ]),
       _group('配置与数据', [
         _row(
@@ -673,18 +682,14 @@ class _SettingsPageState extends State<SettingsPage> {
       ]),
       _group('删除偏好', [
         _row(
-          '同步删除云端文件',
-          Icons.cloud_off_outlined,
-          subtitle: '删除记录时，删除图床中的原文件',
-          toggle: Global.isDeleteCloud,
-          change: (v) => setState(() => Global.setIsDeleteCloud(v)),
-        ),
-        _row(
-          '同步删除本地原图',
+          '上传后删除原图',
           Icons.delete_outline_rounded,
-          subtitle: '会删除设备上的原始图片，请按需开启',
-          toggle: Global.isDeleteLocal,
-          change: (v) => setState(() => Global.setIsDeleteLocal(v)),
+          subtitle: '完成上传后删除本地图片。',
+          toggle: widget.controller.deleteOriginalAfterUpload,
+          change: (value) => _guard(
+            '保存删除原图设置',
+            () => widget.controller.setDeleteOriginalAfterUpload(value),
+          ),
         ),
       ]),
       _group('支持与诊断', [

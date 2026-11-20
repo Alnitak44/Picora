@@ -132,7 +132,7 @@ class UploaderRegistry {
     }
     if (!provider.enabled) throw const HeroFailure('该插件已停用，无法删除云端文件');
     if (provider.delete == null) {
-      throw const HeroFailure('此图床未提供云端删除接口，请关闭同步删除云端文件');
+      throw const HeroFailure('此图床未提供云端删除接口');
     }
     if (provider.manifest != null) {
       return runtime.delete(

@@ -12,8 +12,15 @@ class MirrorProbeResult {
   final GitHubMirror mirror;
   final Duration? elapsed;
   final String? error;
-  const MirrorProbeResult(this.mirror, {this.elapsed, this.error});
-  bool get available => elapsed != null && error == null;
+  final bool cancelled;
+  const MirrorProbeResult(
+    this.mirror, {
+    this.elapsed,
+    this.error,
+    this.cancelled = false,
+  });
+  bool get completed => !cancelled;
+  bool get available => completed && elapsed != null && error == null;
 }
 
 class GitHubMirrorProbe {
@@ -44,9 +51,10 @@ class GitHubMirrorProbe {
       );
       return MirrorProbeResult(mirror, elapsed: watch.elapsed);
     } catch (error, stack) {
+      final wasCancelled = !timedOut && cancel.isCancelled;
       final message = timedOut
           ? '超时'
-          : cancel.isCancelled
+          : wasCancelled
           ? '已取消'
           : error is TimeoutException ||
                 error is DioException &&
@@ -69,7 +77,7 @@ class GitHubMirrorProbe {
           context: {'mirror': mirror.id},
         );
       }
-      return MirrorProbeResult(mirror, error: message);
+      return MirrorProbeResult(mirror, error: message, cancelled: wasCancelled);
     } finally {
       timer.cancel();
       watch.stop();

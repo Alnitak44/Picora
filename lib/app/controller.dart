@@ -45,6 +45,7 @@ class PicoraController extends ChangeNotifier {
   List<String> pendingSharedPaths = [];
   bool continuousCamera = false;
   bool showNavigationLabels = true;
+  bool deleteOriginalAfterUpload = false;
   RepositoryConfig? target;
   String? defaultId;
   AlbumEntry? latest;
@@ -112,6 +113,10 @@ class PicoraController extends ChangeNotifier {
       showNavigationLabels = SpUtil.getBool(
         'hero_show_navigation_labels',
         defValue: true,
+      )!;
+      deleteOriginalAfterUpload = SpUtil.getBool(
+        'hero_delete_original_after_upload',
+        defValue: false,
       )!;
       await loadRepositories();
       await loadImages();
@@ -470,6 +475,7 @@ class PicoraController extends ChangeNotifier {
     failedPath = null;
     notifyListeners();
     final completed = <AlbumEntry>[];
+    final originalsToDelete = <String>[];
     final failed = <String>[];
     Object? lastError;
     StackTrace? lastStack;
@@ -549,6 +555,7 @@ class PicoraController extends ChangeNotifier {
           images.insert(0, entry);
           latest = entry;
           completed.add(entry);
+          originalsToDelete.add(paths[i]);
         } catch (e, stack) {
           lastError = e;
           lastStack = stack;
@@ -561,6 +568,9 @@ class PicoraController extends ChangeNotifier {
       }
       if (_metadataFile != null) {
         await _saveMetadata();
+      }
+      if (!insideMigration && deleteOriginalAfterUpload) {
+        await _deleteOriginals(originalsToDelete);
       }
       if (!insideMigration && Global.isCopyLink && completed.isNotEmpty) {
         await Clipboard.setData(
@@ -586,6 +596,17 @@ class PicoraController extends ChangeNotifier {
         activity = '';
       }
       notifyListeners();
+    }
+  }
+
+  Future<void> _deleteOriginals(Iterable<String> paths) async {
+    for (final path in paths.toSet()) {
+      try {
+        final file = File(path);
+        if (await file.exists()) await file.delete();
+      } catch (error, stack) {
+        describeError('上传后删除原图', error, stack);
+      }
     }
   }
 
@@ -818,14 +839,6 @@ class PicoraController extends ChangeNotifier {
       if (_cloudDeletions.contains(entry.id)) {
         throw const HeroFailure('云端删除进行中，请稍后删除上传记录');
       }
-      if (Global.isDeleteCloud) {
-        await deleteCloudImage(entry);
-      }
-      if (Global.isDeleteLocal &&
-          entry.path.isNotEmpty &&
-          await File(entry.path).exists()) {
-        await File(entry.path).delete();
-      }
       final table = _albumTable(entry.host);
       await AlbumSQL.deleteData(
         table.startsWith('PBhostExtend')
@@ -886,6 +899,15 @@ class PicoraController extends ChangeNotifier {
       throw const HeroFailure('底部导航设置保存失败，请重试');
     }
     showNavigationLabels = value;
+    notifyListeners();
+  }
+
+  Future<void> setDeleteOriginalAfterUpload(bool value) async {
+    if (await SpUtil.putBool('hero_delete_original_after_upload', value) !=
+        true) {
+      throw const HeroFailure('上传后删除原图设置保存失败，请重试');
+    }
+    deleteOriginalAfterUpload = value;
     notifyListeners();
   }
 

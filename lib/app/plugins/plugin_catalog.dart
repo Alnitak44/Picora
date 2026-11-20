@@ -239,7 +239,7 @@ class PluginCatalogEntry {
   }
 
   bool supports(String appVersion) =>
-      minAppVersion.compareTo(
+      minAppVersion.compareCoreTo(
         AppVersion.parse(appVersion, ignoreDebugSuffix: true),
       ) <=
       0;
@@ -339,9 +339,18 @@ class PluginCatalogService {
   );
 
   Future<PluginCatalog> load({bool forceRefresh = false}) async {
-    final url = GitHubMirrors.instance
-        .resolve(Uri.parse(indexUrl), headers: dio.options.headers)
-        .toString();
+    final sourceUri = Uri.parse(indexUrl);
+    final routes = GitHubMirrors.instance.requestRoutes(
+      sourceUri,
+      headers: dio.options.headers,
+    );
+    final urls = [
+      for (final mirror in routes)
+        GitHubMirrors.instance
+            .resolve(sourceUri, headers: dio.options.headers, mirror: mirror)
+            .toString(),
+    ];
+    final url = urls.first;
     if (!_loadedDisk) {
       _loadedDisk = true;
       try {
@@ -369,58 +378,91 @@ class PluginCatalogService {
         age < const Duration(hours: 12)) {
       return cached!;
     }
-    try {
-      final cancel = CancelToken();
-      final response = await dio.get<List<int>>(
-        url,
-        options: Options(responseType: ResponseType.bytes),
-        cancelToken: cancel,
-        onReceiveProgress: (received, total) {
-          if (received > maxIndexBytes || total > maxIndexBytes) {
-            cancel.cancel('插件目录超过 1 MB');
-          }
-        },
-      );
-      final bytes = response.data ?? <int>[];
-      if (bytes.length > maxIndexBytes) throw const HeroFailure('插件目录超过 1 MB');
-      final source = utf8.decode(bytes);
-      final catalog = PluginCatalog(PluginCatalog.parse(source), now());
-      _cached = catalog;
-      _route = url;
+    Object? lastError;
+    StackTrace? lastStack;
+    for (var index = 0; index < urls.length; index++) {
+      final routeUrl = urls[index];
+      final mirror = routes[index];
       try {
-        final file = await _cacheFile();
-        await file.parent.create(recursive: true);
-        final pending = File('${file.path}.pending');
-        await pending.writeAsString(
-          jsonEncode({
-            'cacheVersion': 4,
-            'fetchedAt': catalog.fetchedAt.toIso8601String(),
-            'route': url,
-            'source': source,
-          }),
-          flush: true,
+        final cancel = CancelToken();
+        final response = await dio.get<List<int>>(
+          routeUrl,
+          options: Options(responseType: ResponseType.bytes),
+          cancelToken: cancel,
+          onReceiveProgress: (received, total) {
+            if (received > maxIndexBytes || total > maxIndexBytes) {
+              cancel.cancel('插件目录超过 1 MB');
+            }
+          },
         );
-        await pending.rename(file.path);
+        final bytes = response.data ?? <int>[];
+        if (bytes.length > maxIndexBytes) {
+          throw const HeroFailure('插件目录超过 1 MB');
+        }
+        final source = utf8.decode(bytes);
+        final catalog = PluginCatalog(PluginCatalog.parse(source), now());
+        _cached = catalog;
+        _route = routeUrl;
+        if (index > 0) {
+          try {
+            await GitHubMirrors.instance.select(mirror.id);
+          } catch (error, stack) {
+            HeroDiagnostics.instance.record(
+              '保存插件仓库镜像',
+              error,
+              stack: stack,
+              context: {'mirror': mirror.id},
+            );
+          }
+        }
+        try {
+          final file = await _cacheFile();
+          await file.parent.create(recursive: true);
+          final pending = File('${file.path}.pending');
+          await pending.writeAsString(
+            jsonEncode({
+              'cacheVersion': 4,
+              'fetchedAt': catalog.fetchedAt.toIso8601String(),
+              'route': routeUrl,
+              'source': source,
+            }),
+            flush: true,
+          );
+          await pending.rename(file.path);
+        } catch (error, stack) {
+          HeroDiagnostics.instance.record('保存插件目录缓存', error, stack: stack);
+        }
+        return catalog;
       } catch (error, stack) {
-        HeroDiagnostics.instance.record('保存插件目录缓存', error, stack: stack);
+        lastError = error;
+        lastStack = stack;
+        if (index + 1 < urls.length) {
+          HeroDiagnostics.instance.record(
+            '自动切换插件仓库镜像',
+            error,
+            stack: stack,
+            context: {'mirror': mirror.id, 'next': routes[index + 1].id},
+          );
+        }
       }
-      return catalog;
-    } catch (error, stack) {
-      HeroDiagnostics.instance.record('刷新插件仓库', error, stack: stack);
-      if (cached == null) rethrow;
-      return PluginCatalog(
-        cached.entries,
-        cached.fetchedAt,
-        refreshError: error,
-      );
     }
+    HeroDiagnostics.instance.record('刷新插件仓库', lastError!, stack: lastStack);
+    if (cached == null) Error.throwWithStackTrace(lastError, lastStack!);
+    return PluginCatalog(
+      cached.entries,
+      cached.fetchedAt,
+      refreshError: lastError,
+    );
   }
 
   Future<PicoraPluginPackage> download(
     PluginCatalogEntry entry,
     PicoraPluginManager manager,
   ) async {
-    final Uint8List bytes = await manager.fetch(entry.downloadUrl);
+    final Uint8List bytes = await manager.fetch(
+      entry.downloadUrl,
+      validate: entry.verify,
+    );
     return entry.verify(bytes);
   }
 }

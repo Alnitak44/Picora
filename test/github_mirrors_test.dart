@@ -32,13 +32,15 @@ class FixedMirrorProbe extends GitHubMirrorProbe {
     GitHubMirror mirror, {
     CancelToken? cancelToken,
   }) async {
-    if (mirror.id == 'akams') return MirrorProbeResult(mirror, error: '连接失败');
+    if (mirror.id == 'ghproxy') {
+      return MirrorProbeResult(mirror, error: '连接失败');
+    }
     return MirrorProbeResult(
       mirror,
       elapsed: Duration(
         milliseconds: mirror.custom
             ? 80
-            : mirror.id == 'gh2i'
+            : mirror.id == '669966'
             ? 180
             : 900,
       ),
@@ -67,11 +69,18 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     await SpUtil.getInstance();
     await SpUtil.remove(GitHubMirrors.preferenceKey);
+    await SpUtil.remove(GitHubMirrors.statsKey);
+    await SpUtil.remove(GitHubMirrors.autoFallbackKey);
+    await SpUtil.remove(GitHubMirrors.sortKey);
+    await mirrors.setAutoFallback(true);
     await Directory('artifacts').create(recursive: true);
     root = await Directory('artifacts').createTemp('mirror-tests-');
   });
   tearDown(() async {
     await SpUtil.remove(GitHubMirrors.preferenceKey);
+    await SpUtil.remove(GitHubMirrors.statsKey);
+    await SpUtil.remove(GitHubMirrors.autoFallbackKey);
+    await SpUtil.remove(GitHubMirrors.sortKey);
     await root.delete(recursive: true);
   });
 
@@ -81,6 +90,16 @@ void main() {
       AppUpdateService.latestUrl,
       'https://github.com/Alnitak44/Picora/releases/download/v1.0.2/Picora-arm64-release.apk',
     ];
+    expect(
+      GitHubMirrors.presets.map((preset) => preset.baseUrl),
+      containsAll([
+        'https://gh-proxy.com/',
+        'https://git.669966.xyz/',
+        'https://gh.dpik.top/',
+        'https://ghproxy.net/',
+        'https://gh.chjina.com/',
+      ]),
+    );
     expect(mirrors.selected.id, 'direct');
     for (final preset in GitHubMirrors.presets) {
       await mirrors.select(preset.id);
@@ -119,10 +138,23 @@ void main() {
       );
       await mirrors.remove(entry.id);
       expect(mirrors.selected.id, 'direct');
-      expect(mirrors.options.length, 4);
-      await expectLater(mirrors.remove('gh2i'), throwsA(isA<HeroFailure>()));
+      expect(mirrors.options.length, GitHubMirrors.presets.length);
+      await expectLater(mirrors.remove('669966'), throwsA(isA<HeroFailure>()));
     },
   );
+
+  test('auto fallback is enabled when no preference has been stored', () async {
+    await SpUtil.remove(GitHubMirrors.autoFallbackKey);
+    expect(mirrors.autoFallbackEnabled, isTrue);
+  });
+
+  test('a removed preset in stored preferences falls back to direct', () async {
+    await SpUtil.putString(
+      GitHubMirrors.preferenceKey,
+      jsonEncode({'selected': 'gh2i', 'custom': []}),
+    );
+    expect(mirrors.selected.id, 'direct');
+  });
 
   test(
     'invalid roots and tampered preferences cannot construct unsafe URLs',
@@ -152,7 +184,7 @@ void main() {
         }),
       );
       expect(mirrors.selected.id, 'direct');
-      expect(mirrors.options.length, 4);
+      expect(mirrors.options.length, GitHubMirrors.presets.length);
     },
   );
 
@@ -175,6 +207,52 @@ void main() {
     for (final header in ['Authorization', 'cookie', 'pRoXy-AuThOrIzAtIoN']) {
       expect(mirrors.resolve(uri, headers: {header: 'secret'}), uri);
     }
+  });
+
+  test(
+    'probe statistics persist, drive fallback order and bypass credentials',
+    () async {
+      await mirrors.recordProbe('669966', available: true);
+      await mirrors.recordProbe('669966', available: false);
+      await mirrors.recordProbe('669966', available: true);
+      await mirrors.recordProbe('ghproxy', available: false);
+      expect(mirrors.statsFor('669966').attempts, 3);
+      expect(mirrors.statsFor('669966').successes, 2);
+      expect(mirrors.statsFor('669966').successPercent, 67);
+      expect(mirrors.statsFor('direct').attempts, 0);
+
+      final source = Uri.parse(PluginCatalogService.indexUrl);
+      await mirrors.select('direct');
+      await mirrors.setAutoFallback(true);
+      final routes = mirrors.requestRoutes(source);
+      expect(routes.first.id, 'direct');
+      expect(routes[1].id, '669966');
+      expect(routes.length, lessThanOrEqualTo(GitHubMirrors.maxFallbackRoutes));
+      expect(
+        mirrors
+            .requestRoutes(source, headers: {'Authorization': 'private'})
+            .map((entry) => entry.id),
+        ['direct'],
+      );
+      await mirrors.setAutoFallback(false);
+      expect(mirrors.autoFallbackEnabled, isFalse);
+      expect(mirrors.requestRoutes(source).map((entry) => entry.id), [
+        'direct',
+      ]);
+    },
+  );
+
+  test('a single success does not outrank a longer stable history', () async {
+    for (var i = 0; i < 10; i++) {
+      await mirrors.recordProbe('ghproxy', available: i < 9);
+    }
+    await mirrors.recordProbe('669966', available: true);
+    await mirrors.select('direct');
+    await mirrors.setAutoFallback(true);
+    final routes = mirrors.requestRoutes(
+      Uri.parse(PluginCatalogService.indexUrl),
+    );
+    expect(routes[1].id, 'ghproxy');
   });
 
   test(
@@ -201,7 +279,7 @@ void main() {
         storageRoot: root,
         downloadDio: dio,
       );
-      await mirrors.select('gh2i');
+      await mirrors.select('669966');
       await service.load();
       await service.load();
       expect(requests.length, 1);
@@ -211,18 +289,21 @@ void main() {
       final reopened = PluginCatalogService(dio: dio, storageRoot: root);
       await reopened.load();
       expect(requests.length, 2);
-      await mirrors.select('akams');
+      await mirrors.select('chjina');
       final switched = PluginCatalogService(dio: dio, storageRoot: root);
       await switched.load();
       expect(requests.length, 3);
       expect(
         requests[2],
-        'https://github.akams.cn/${PluginCatalogService.indexUrl}',
+        'https://gh.chjina.com/${PluginCatalogService.indexUrl}',
       );
       await mirrors.select('ghproxy');
       final downloaded = await service.download(entry, manager);
       expect(downloaded.manifest.id, entry.id);
-      expect(requests[0], 'https://gh.2i.gs/${PluginCatalogService.indexUrl}');
+      expect(
+        requests[0],
+        'https://git.669966.xyz/${PluginCatalogService.indexUrl}',
+      );
       expect(
         requests[1],
         'https://gh-proxy.com/${PluginCatalogService.indexUrl}',
@@ -231,6 +312,77 @@ void main() {
       expect(() => entry.verify([0, 1, 2]), throwsA(isA<HeroFailure>()));
       // Canonical identities remain GitHub URLs.
       expect(entry.downloadUrl.host, 'github.com');
+    },
+  );
+
+  test(
+    'catalog automatically falls back and persists the first working route',
+    () async {
+      final package = telegraphPackage();
+      final requests = <String>[];
+      final dio = mockDio((request, handler) {
+        requests.add(request.uri.toString());
+        if (request.uri.host == 'gh.dpik.top') {
+          handler.reject(
+            DioException(
+              requestOptions: request,
+              type: DioExceptionType.connectionTimeout,
+            ),
+          );
+          return;
+        }
+        handler.resolve(
+          Response<List<int>>(
+            requestOptions: request,
+            statusCode: 200,
+            data: utf8.encode(indexSource(entryJson(package))),
+          ),
+        );
+      });
+      await mirrors.select('dpik');
+      await mirrors.setAutoFallback(true);
+      final catalog = await PluginCatalogService(
+        dio: dio,
+        storageRoot: root,
+      ).load();
+      expect(catalog.entries.single.id, package.manifest.id);
+      expect(requests.length, 2);
+      expect(requests.first, contains('gh.dpik.top'));
+      expect(mirrors.selected.id, isNot('dpik'));
+    },
+  );
+
+  test(
+    'corrupt plugin ZIP automatically retries through another mirror',
+    () async {
+      final package = telegraphPackage();
+      final entry = PluginCatalogEntry.fromJson(entryJson(package));
+      final requests = <String>[];
+      final dio = mockDio((request, handler) {
+        requests.add(request.uri.toString());
+        handler.resolve(
+          Response<List<int>>(
+            requestOptions: request,
+            statusCode: 200,
+            data: request.uri.host == 'gh.dpik.top'
+                ? utf8.encode('<html>bad proxy</html>')
+                : package.bytes,
+          ),
+        );
+      });
+      await mirrors.select('dpik');
+      await mirrors.setAutoFallback(true);
+      final service = PluginCatalogService(dio: dio, storageRoot: root);
+      final manager = PicoraPluginManager(
+        registry: UploaderRegistry(),
+        storageRoot: root,
+        downloadDio: dio,
+      );
+      final downloaded = await service.download(entry, manager);
+      expect(downloaded.manifest.id, entry.id);
+      expect(requests.length, 2);
+      expect(requests.first, contains('gh.dpik.top'));
+      expect(mirrors.selected.id, isNot('dpik'));
     },
   );
 
@@ -253,7 +405,7 @@ void main() {
           );
         }),
       );
-      await mirrors.select('gh2i');
+      await mirrors.select('669966');
       final release = await service.latest();
       expect(release!.apks.single.url.host, 'github.com');
       expect(release.apks.single.sha256, List.filled(64, 'a').join());
@@ -279,7 +431,7 @@ void main() {
       final dio = mockDio((o, h) {
         expect(
           o.uri.toString(),
-          'https://gh.2i.gs/${PluginCatalogService.indexUrl}',
+          'https://gh-proxy.com/${PluginCatalogService.indexUrl}',
         );
         expect(o.followRedirects, false);
         expect(o.headers.containsKey('Authorization'), false);
@@ -390,10 +542,11 @@ void main() {
       );
       await tester.tap(find.text('测速'));
       await tester.pumpAndSettle();
-      expect(find.text('最快：最快线路'), findsOneWidget);
+      expect(find.text('推荐：最快线路'), findsOneWidget);
       expect(find.text('连接失败'), findsOneWidget);
+      expect(find.textContaining('成功率 100%'), findsWidgets);
       expect(mirrors.selected.id, 'direct');
-      await tester.tap(find.text('使用最快'));
+      await tester.tap(find.text('使用推荐'));
       await tester.pumpAndSettle();
       expect(mirrors.selected.name, '最快线路');
       expect(tester.takeException(), isNull);
@@ -421,18 +574,20 @@ void main() {
       expect(find.text('测速'), findsOneWidget);
       expect(probe.started, 3);
       expect(mirrors.selected.id, 'direct');
+      expect(mirrors.statsFor('direct').attempts, 0);
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
     },
   );
 
   test('mirror 404 is an error rather than a missing release', () async {
+    await mirrors.setAutoFallback(false);
     final service = AppUpdateService(
       dio: mockDio((request, handler) {
         handler.resolve(Response(requestOptions: request, statusCode: 404));
       }),
     );
-    await mirrors.select('akams');
+    await mirrors.select('chjina');
     await expectLater(service.latest(), throwsA(isA<HeroFailure>()));
     await mirrors.select('direct');
     expect(await service.latest(), isNull);
@@ -451,10 +606,13 @@ void main() {
           home: const GitHubMirrorPage(),
         ),
       );
-      await tester.tap(find.text('gh.2i.gs'));
       await tester.pumpAndSettle();
-      expect(mirrors.selected.id, 'gh2i');
-      await tester.tap(find.byTooltip('添加镜像'));
+      await tester.tap(find.text('gh-proxy.com'));
+      await tester.pumpAndSettle();
+      expect(mirrors.selected.id, 'ghproxy');
+      await tester.pump(const Duration(seconds: 2));
+      final addButton = find.text('添加自定义镜像');
+      await tester.tap(addButton);
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField).first, '自定义线路');
       await tester.enterText(
@@ -465,6 +623,85 @@ void main() {
       await tester.pumpAndSettle();
       expect(mirrors.options.last.name, '自定义线路');
       expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'sort menu persists and animates without moving direct from the top',
+    (tester) async {
+      late GitHubMirror custom;
+      await tester.runAsync(() async {
+        final setup = GitHubMirrors();
+        for (var i = 0; i < 6; i++) {
+          await setup.recordProbe('direct', available: false);
+        }
+        for (var i = 0; i < 6; i++) {
+          await setup.recordProbe('ghproxy', available: true);
+        }
+        await setup.recordProbe('669966', available: false);
+        await setup.saveCustom(name: '较慢线路', url: 'https://slow.example/');
+        custom = setup.options.last;
+        for (var i = 0; i < 2; i++) {
+          await setup.recordProbe(custom.id, available: true);
+        }
+      });
+      tester.view.physicalSize = const Size(360, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: heroTheme(Brightness.light),
+          home: GitHubMirrorPage(probe: FixedMirrorProbe()),
+        ),
+      );
+      await tester.tap(find.text('测速'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('测速'), findsOneWidget);
+
+      final sortButton = find.byKey(const ValueKey('mirror-sort'));
+      expect(sortButton, findsOneWidget);
+      await tester.tap(sortButton);
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(CheckedPopupMenuItem<MirrorSortMode>, '按延迟'),
+      );
+      await tester.pump(const Duration(milliseconds: 80));
+      expect(find.byKey(const ValueKey('mirror-row-direct')), findsOneWidget);
+      await tester.pumpAndSettle();
+      expect(mirrors.sortMode, MirrorSortMode.latency);
+
+      final directY = tester
+          .getTopLeft(find.byKey(const ValueKey('mirror-row-direct')))
+          .dy;
+      final nextY = tester
+          .getTopLeft(find.byKey(ValueKey('mirror-row-${custom.id}')))
+          .dy;
+      expect(directY, lessThan(nextY));
+      expect(
+        nextY,
+        lessThan(
+          tester.getTopLeft(find.byKey(const ValueKey('mirror-row-669966'))).dy,
+        ),
+      );
+
+      await tester.tap(sortButton);
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(CheckedPopupMenuItem<MirrorSortMode>, '按成功率'),
+      );
+      await tester.pumpAndSettle();
+      expect(mirrors.sortMode, MirrorSortMode.successRate);
+      expect(
+        tester.getTopLeft(find.byKey(const ValueKey('mirror-row-direct'))).dy,
+        lessThan(
+          tester
+              .getTopLeft(find.byKey(const ValueKey('mirror-row-ghproxy')))
+              .dy,
+        ),
+      );
+      await tester.pumpWidget(const SizedBox.shrink());
     },
   );
 

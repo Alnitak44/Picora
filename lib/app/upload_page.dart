@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:picora/legacy/utils/common_functions.dart';
 import 'models.dart';
+import 'camera_permission.dart';
 import 'controller.dart';
 import 'hero_theme.dart';
 import 'markdown_migration_page.dart';
@@ -81,6 +82,9 @@ class EntryImage extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) {
+    final duration = MediaQuery.maybeOf(context)?.disableAnimations ?? false
+        ? Duration.zero
+        : const Duration(milliseconds: 180);
     Widget fallback() => SizedBox(
       height: natural ? 140 : null,
       child: ColoredBox(
@@ -90,13 +94,21 @@ class EntryImage extends StatelessWidget {
         ),
       ),
     );
+    Widget fadeIn(Widget child, {required bool ready}) => AnimatedSwitcher(
+      duration: duration,
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      child: ready
+          ? KeyedSubtree(key: const ValueKey('loaded'), child: child)
+          : KeyedSubtree(key: const ValueKey('placeholder'), child: fallback()),
+    );
     final local = File(entry.path);
     if (entry.path.isNotEmpty && local.existsSync()) {
       return Image.file(
         local,
         fit: fit,
         frameBuilder: (_, child, frame, __) =>
-            frame == null ? fallback() : child,
+            fadeIn(child, ready: frame != null),
         errorBuilder: (_, __, ___) => fallback(),
       );
     }
@@ -105,7 +117,8 @@ class EntryImage extends StatelessWidget {
         entry.thumbnail,
         fit: fit,
         errorBuilder: (_, __, ___) => fallback(),
-        loadingBuilder: (_, child, event) => event == null ? child : fallback(),
+        loadingBuilder: (_, child, event) =>
+            fadeIn(child, ready: event == null),
       );
     }
     return fallback();
@@ -225,11 +238,13 @@ Future<void> chooseTarget(
 class UploadPage extends StatelessWidget {
   final PicoraController controller;
   final VoidCallback openRepositories, openAlbum;
+  final CameraPermissionGate? cameraPermission;
   const UploadPage({
     super.key,
     required this.controller,
     required this.openRepositories,
     required this.openAlbum,
+    this.cameraPermission,
   });
   Future<void> _upload(
     BuildContext context,
@@ -258,6 +273,11 @@ class UploadPage extends StatelessWidget {
     }
     try {
       if (camera) {
+        final allowed =
+            await (cameraPermission ?? CameraPermissionGate.platform()).ensure(
+              context,
+            );
+        if (!allowed || !context.mounted) return;
         do {
           final image = await ImagePicker().pickImage(
             source: ImageSource.camera,
@@ -350,54 +370,61 @@ class UploadPage extends StatelessWidget {
         Center(
           child: SizedBox(
             width: double.infinity,
-            child: Material(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(18),
-              child: InkWell(
+            child: HeroPressable(
+              enabled: !controller.busy,
+              child: Material(
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(18),
-                onTap: controller.busy
-                    ? null
-                    : () => chooseTarget(context, controller, openRepositories),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 12,
-                  ),
-                  child: Row(
-                    children: [
-                      if (controller.target != null)
-                        RepositoryBadge(controller.target!.spec, size: 32)
-                      else
-                        const Icon(Icons.cloud_outlined, color: heroBlue),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              '当前上传目标',
-                              style: TextStyle(color: heroMuted, fontSize: 10),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              controller.target?.name ?? '选择一个图床',
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(18),
+                  onTap: controller.busy
+                      ? null
+                      : () =>
+                            chooseTarget(context, controller, openRepositories),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 12,
+                    ),
+                    child: Row(
+                      children: [
+                        if (controller.target != null)
+                          RepositoryBadge(controller.target!.spec, size: 32)
+                        else
+                          const Icon(Icons.cloud_outlined, color: heroBlue),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                '当前上传目标',
+                                style: TextStyle(
+                                  color: heroMuted,
+                                  fontSize: 10,
+                                ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 3),
+                              Text(
+                                controller.target?.name ?? '选择一个图床',
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 20),
-                      const Icon(
-                        Icons.keyboard_arrow_down_rounded,
-                        size: 20,
-                        color: heroMuted,
-                      ),
-                    ],
+                        const SizedBox(width: 20),
+                        const Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          size: 20,
+                          color: heroMuted,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -460,52 +487,90 @@ class UploadPage extends StatelessWidget {
                   ),
           ),
         ),
-        if (controller.busy) ...[
-          const SizedBox(height: 18),
-          HeroPanel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(controller.activity, style: const TextStyle(fontSize: 12)),
-                const SizedBox(height: 12),
-                LinearProgressIndicator(
-                  value: controller.progress == 0 ? null : controller.progress,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ],
-            ),
-          ),
-        ],
-        if (controller.failure != null) ...[
-          const SizedBox(height: 14),
-          HeroPanel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  controller.failure!,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.error,
-                    fontSize: 12,
-                  ),
-                ),
-                if (controller.failedPath != null)
-                  TextButton.icon(
-                    onPressed: controller.busy
-                        ? null
-                        : () => _upload(
-                            context,
-                            () => controller.uploadFiles([
-                              controller.failedPath!,
-                            ]),
+        AnimatedSize(
+          duration: MediaQuery.maybeOf(context)?.disableAnimations ?? false
+              ? Duration.zero
+              : const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: Column(
+            children: [
+              AnimatedSwitcher(
+                duration:
+                    MediaQuery.maybeOf(context)?.disableAnimations ?? false
+                    ? Duration.zero
+                    : const Duration(milliseconds: 200),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                child: controller.busy
+                    ? Padding(
+                        key: const ValueKey('upload-progress'),
+                        padding: const EdgeInsets.only(top: 18),
+                        child: HeroPanel(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                controller.activity,
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                              const SizedBox(height: 12),
+                              LinearProgressIndicator(
+                                value: controller.progress == 0
+                                    ? null
+                                    : controller.progress,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ],
                           ),
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('重试这张图片'),
-                  ),
-              ],
-            ),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+              AnimatedSwitcher(
+                duration:
+                    MediaQuery.maybeOf(context)?.disableAnimations ?? false
+                    ? Duration.zero
+                    : const Duration(milliseconds: 200),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                child: controller.failure == null
+                    ? const SizedBox.shrink()
+                    : Padding(
+                        key: ValueKey(controller.failure),
+                        padding: const EdgeInsets.only(top: 14),
+                        child: HeroPanel(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                controller.failure!,
+                                style: TextStyle(
+                                  color: Theme.of(context).colorScheme.error,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              if (controller.failedPath != null)
+                                TextButton.icon(
+                                  onPressed: controller.busy
+                                      ? null
+                                      : () => _upload(
+                                          context,
+                                          () => controller.uploadFiles([
+                                            controller.failedPath!,
+                                          ]),
+                                        ),
+                                  icon: const Icon(Icons.refresh),
+                                  label: const Text('重试这张图片'),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+              ),
+            ],
           ),
-        ],
+        ),
         const SizedBox(height: 20),
         SectionLabel(
           '最近上传',
@@ -521,44 +586,57 @@ class UploadPage extends StatelessWidget {
             ),
           ),
         ),
-        if (controller.latest == null)
-          HeroPanel(
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: heroMuted.withValues(alpha: .07),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(Icons.history_rounded, color: heroMuted),
-                ),
-                const SizedBox(width: 16),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+        AnimatedSwitcher(
+          duration: MediaQuery.maybeOf(context)?.disableAnimations ?? false
+              ? Duration.zero
+              : const Duration(milliseconds: 220),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          child: controller.latest == null
+              ? HeroPanel(
+                  key: const ValueKey('latest-empty'),
+                  child: Row(
                     children: [
-                      Text(
-                        '暂无上传记录',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: heroMuted.withValues(alpha: .07),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: const Icon(
+                          Icons.history_rounded,
+                          color: heroMuted,
                         ),
                       ),
-                      SizedBox(height: 6),
-                      Text(
-                        '成功上传后，链接会出现在这里',
-                        style: TextStyle(fontSize: 11, color: heroMuted),
+                      const SizedBox(width: 16),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '暂无上传记录',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            SizedBox(height: 6),
+                            Text(
+                              '成功上传后，链接会出现在这里',
+                              style: TextStyle(fontSize: 11, color: heroMuted),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
+                )
+              : LatestUploadCard(
+                  controller.latest!,
+                  key: ValueKey(controller.latest!.id),
                 ),
-              ],
-            ),
-          )
-        else
-          LatestUploadCard(controller.latest!),
+        ),
       ],
     ),
   );
@@ -576,27 +654,39 @@ class _UploadAction extends StatelessWidget {
     this.onTap,
   });
   @override
-  Widget build(BuildContext context) => Material(
-    color: primary ? heroBlue : Theme.of(context).colorScheme.surface,
-    borderRadius: BorderRadius.circular(17),
-    child: InkWell(
-      onTap: onTap,
+  Widget build(BuildContext context) => HeroPressable(
+    enabled: onTap != null,
+    child: Material(
+      color: primary ? heroBlue : Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.circular(17),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Column(
-          children: [
-            Icon(icon, color: primary ? Colors.white : heroBlue, size: 25),
-            const SizedBox(height: 10),
-            Text(
-              label,
-              style: TextStyle(
-                color: primary ? Colors.white : null,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(17),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            children: [
+              AnimatedScale(
+                scale: primary ? 1.06 : 1,
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOutCubic,
+                child: Icon(
+                  icon,
+                  color: primary ? Colors.white : heroBlue,
+                  size: 25,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 10),
+              Text(
+                label,
+                style: TextStyle(
+                  color: primary ? Colors.white : null,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     ),

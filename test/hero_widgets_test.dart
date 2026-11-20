@@ -9,10 +9,13 @@ import 'package:flustars_flutter3/flustars_flutter3.dart';
 import 'package:fluro/fluro.dart';
 import 'package:picora/app/hero_app.dart';
 import 'package:picora/app/hero_theme.dart';
+import 'package:picora/app/camera_permission.dart';
 import 'package:picora/app/controller.dart';
 import 'package:picora/app/models.dart';
+import 'package:picora/app/upload_page.dart';
 import 'package:picora/legacy/router/application.dart';
 import 'package:picora/app/plugins/uploader_registry.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'cloud_delete_fixture.dart';
 
 Future<void> screenshot(WidgetTester tester, String name) async {
@@ -114,6 +117,16 @@ PicoraController exampleController({
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  test('Android uses the predictive back transition', () {
+    final builders = heroTheme(Brightness.light).pageTransitionsTheme.builders;
+    final transition = builders[TargetPlatform.android];
+    expect(transition, isA<PredictiveBackPageTransitionsBuilder>());
+    expect(transition!.transitionDuration, const Duration(milliseconds: 220));
+    expect(
+      transition.reverseTransitionDuration,
+      const Duration(milliseconds: 180),
+    );
+  });
   setUpAll(() async {
     Application.router = FluroRouter();
     SharedPreferences.setMockInitialValues({});
@@ -227,6 +240,15 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('上传设置'), findsOneWidget);
       expect(find.text('图床参数设置'), findsNothing);
+      await tester.drag(
+        find.byKey(const PageStorageKey('settings')),
+        const Offset(0, -900),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('上传后删除原图'), findsOneWidget);
+      expect(find.text('完成上传后删除本地图片。'), findsOneWidget);
+      expect(find.text('同步删除云端文件'), findsNothing);
+      expect(find.text('同步删除本地原图'), findsNothing);
       await screenshot(tester, 'settings');
       await tester.tap(find.byKey(const ValueKey('nav-1')));
 
@@ -235,6 +257,46 @@ void main() {
       expect(tester.takeException(), isNull);
       await tester.pumpWidget(const SizedBox.shrink());
       debugDisableShadows = true;
+      controller.dispose();
+    },
+  );
+
+  testWidgets(
+    'camera upload asks for permission and offers app settings when denied',
+    (tester) async {
+      var requested = 0, openedSettings = 0;
+      final controller = exampleController(images: false);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: heroTheme(Brightness.light),
+          home: Scaffold(
+            body: UploadPage(
+              controller: controller,
+              openRepositories: () {},
+              openAlbum: () {},
+              cameraPermission: CameraPermissionGate(
+                status: () async => PermissionStatus.denied,
+                request: () async {
+                  requested++;
+                  return PermissionStatus.permanentlyDenied;
+                },
+                openSettings: () async {
+                  openedSettings++;
+                  return true;
+                },
+                isMobile: () => true,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text('拍照上传'));
+      await tester.pumpAndSettle();
+      expect(requested, 1);
+      expect(find.text('需要相机权限'), findsOneWidget);
+      await tester.tap(find.text('前往设置'));
+      await tester.pumpAndSettle();
+      expect(openedSettings, 1);
       controller.dispose();
     },
   );
@@ -248,6 +310,10 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('nav-1')));
 
       await tester.pumpAndSettle();
+      expect(
+        tester.getSize(find.byKey(const ValueKey('album-card-aliyun:0'))).width,
+        closeTo(358, .1),
+      );
       await screenshot(tester, 'album-grid');
       await tester.tap(find.byTooltip('瀑布流'));
 
@@ -255,6 +321,8 @@ void main() {
       await screenshot(tester, 'album-masonry');
       await tester.tap(find.byTooltip('列表'));
 
+      await tester.pump(const Duration(milliseconds: 80));
+      await screenshot(tester, 'album-switch-mid');
       await tester.pumpAndSettle();
       await screenshot(tester, 'album-list');
       await tester.enterText(find.byType(TextField).first, 'blue_hour');
@@ -422,6 +490,71 @@ void main() {
     debugDisableShadows = true;
     controller.dispose();
   });
+  testWidgets('horizontal drag previews a tab and commits it on release', (
+    tester,
+  ) async {
+    final controller = exampleController();
+    await initialize(tester, controller);
+    final pager = tester.widget<PageView>(find.byType(PageView)).controller!;
+    Color? iconColor(int index) => tester
+        .widget<Icon>(
+          find.descendant(
+            of: find.byKey(ValueKey('nav-$index')),
+            matching: find.byType(Icon),
+          ),
+        )
+        .color;
+
+    expect(pager.page, 0);
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.byKey(const ValueKey('nav-0'))),
+    );
+    await gesture.moveBy(const Offset(20, 0));
+    await tester.pump(const Duration(milliseconds: 20));
+    await gesture.moveTo(tester.getCenter(find.byKey(const ValueKey('nav-2'))));
+    await tester.pumpAndSettle();
+    expect(pager.page, 0);
+    expect(iconColor(0), heroMuted);
+    expect(iconColor(2), Colors.white);
+    expect(find.textContaining('松开前往'), findsNothing);
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(pager.page, 2);
+    expect(iconColor(0), heroMuted);
+    expect(iconColor(2), Colors.white);
+    expect(tester.takeException(), isNull);
+    debugDisableShadows = true;
+    await tester.pumpWidget(const SizedBox.shrink());
+    controller.dispose();
+  });
+
+  testWidgets('navigation indicator stays inside the bar at both ends', (
+    tester,
+  ) async {
+    final controller = exampleController();
+    await initialize(tester, controller);
+    final surface = find.byKey(const ValueKey('nav-surface'));
+    final indicator = find.byKey(const ValueKey('nav-indicator'));
+    final bounds = tester.getRect(surface);
+
+    await tester.tap(find.byKey(const ValueKey('nav-3')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 160));
+    expect(tester.getRect(indicator).right, lessThanOrEqualTo(bounds.right));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('nav-0')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 160));
+    expect(tester.getRect(indicator).left, greaterThanOrEqualTo(bounds.left));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    debugDisableShadows = true;
+    await tester.pumpWidget(const SizedBox.shrink());
+    controller.dispose();
+  });
+
   testWidgets(
     'bottom navigation labels can be hidden and restored from appearance settings',
     (tester) async {

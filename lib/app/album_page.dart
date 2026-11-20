@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flustars_flutter3/flustars_flutter3.dart';
 import 'package:picora/legacy/utils/common_functions.dart';
-import 'package:picora/legacy/utils/global.dart';
 import 'controller.dart';
 import 'models.dart';
 import 'hero_theme.dart';
@@ -179,7 +178,7 @@ class _AlbumPageState extends State<AlbumPage> {
             ),
             const SizedBox(height: 12),
             Text(
-              '将删除 ${entries.length} 条上传记录。${Global.isDeleteCloud ? '同时删除云端图片。' : '云端图片会保留。'}${Global.isDeleteLocal ? '同时删除本地原文件。' : ''}',
+              '将删除 ${entries.length} 条上传记录，云端图片会保留。',
               style: const TextStyle(color: heroMuted, height: 1.7),
             ),
             const SizedBox(height: 24),
@@ -314,7 +313,11 @@ class _AlbumPageState extends State<AlbumPage> {
                           Icons.delete_outline_rounded,
                           size: 18,
                         ),
-                        label: const Text('删除上传记录'),
+                        label: const Text(
+                          '删除上传记录',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 10,
@@ -343,11 +346,18 @@ class _AlbumPageState extends State<AlbumPage> {
                             widget.controller.isCloudImageDeleted(entry)
                                 ? '云端图片已删除'
                                 : '删除云端图片',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Theme.of(
                               context,
                             ).colorScheme.error,
+                            side: BorderSide(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.error.withValues(alpha: .52),
+                            ),
                             padding: const EdgeInsets.symmetric(
                               horizontal: 10,
                               vertical: 12,
@@ -371,20 +381,29 @@ class _AlbumPageState extends State<AlbumPage> {
 
   Widget _item(AlbumEntry entry, {bool list = false, bool masonry = false}) {
     final selected = _selected.contains(entry.id);
-    final image = ClipRRect(
-      borderRadius: BorderRadius.circular(list ? 13 : 18),
-      child: masonry
-          ? EntryImage(entry, natural: true)
-          : AspectRatio(aspectRatio: list ? 1 : 1.16, child: EntryImage(entry)),
+    final image = SizedBox(
+      width: double.infinity,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(list ? 13 : 18),
+        child: masonry
+            ? EntryImage(entry, natural: true)
+            : AspectRatio(
+                aspectRatio: list ? 1 : 1.34,
+                child: EntryImage(entry),
+              ),
+      ),
     );
     return Material(
+      key: ValueKey('album-card-${entry.id}'),
       color: Theme.of(context).colorScheme.surface,
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onLongPress: () => _select(entry),
         onTap: () => _selectionMode ? _select(entry) : _details(entry),
         borderRadius: BorderRadius.circular(20),
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
@@ -392,7 +411,7 @@ class _AlbumPageState extends State<AlbumPage> {
               width: selected ? 2 : 1,
             ),
           ),
-          padding: const EdgeInsets.all(7),
+          padding: const EdgeInsets.all(6),
           child: list
               ? Row(
                   children: [
@@ -449,11 +468,26 @@ class _AlbumPageState extends State<AlbumPage> {
                           Positioned(
                             top: 5,
                             right: 5,
-                            child: Icon(
-                              selected
-                                  ? Icons.check_circle_rounded
-                                  : Icons.circle_outlined,
-                              color: selected ? heroBlue : Colors.white,
+                            child: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 180),
+                              transitionBuilder: (child, animation) =>
+                                  ScaleTransition(
+                                    scale: CurvedAnimation(
+                                      parent: animation,
+                                      curve: Curves.easeOutBack,
+                                    ),
+                                    child: FadeTransition(
+                                      opacity: animation,
+                                      child: child,
+                                    ),
+                                  ),
+                              child: Icon(
+                                selected
+                                    ? Icons.check_circle_rounded
+                                    : Icons.circle_outlined,
+                                key: ValueKey(selected),
+                                color: selected ? heroBlue : Colors.white,
+                              ),
                             ),
                           ),
                       ],
@@ -515,11 +549,12 @@ class _AlbumPageState extends State<AlbumPage> {
   Widget build(BuildContext context) {
     final images = _visible;
     final width = MediaQuery.of(context).size.width;
-    final columns = width > 850
-        ? 4
-        : width > 600
+    final columns = width >= 960
         ? 3
-        : 2;
+        : width >= 560
+        ? 2
+        : 1;
+    final pagePadding = width >= 560 ? 24.0 : 16.0;
     return PopScope<void>(
       canPop: !widget.isActive || !_selectionMode,
       onPopInvokedWithResult: (didPop, _) {
@@ -529,7 +564,7 @@ class _AlbumPageState extends State<AlbumPage> {
         onRefresh: widget.controller.loadImages,
         child: ListView(
           key: const PageStorageKey('album'),
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 130),
+          padding: EdgeInsets.fromLTRB(pagePadding, 20, pagePadding, 130),
           children: [
             Row(
               children: [
@@ -579,156 +614,264 @@ class _AlbumPageState extends State<AlbumPage> {
                   style: const TextStyle(color: heroMuted, fontSize: 12),
                 ),
                 const Spacer(),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  padding: const EdgeInsets.all(3),
-                  child: Row(
-                    children: [
-                      for (final view in [
-                        ('masonry', Icons.dashboard_outlined, '瀑布流'),
-                        ('grid', Icons.grid_view_rounded, '网格'),
-                        ('list', Icons.view_list_outlined, '列表'),
-                      ])
-                        Tooltip(
-                          message: view.$3,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(9),
-                            onTap: () {
-                              setState(() => _view = view.$1);
-                              SpUtil.putString('hero_album_view', _view);
-                            },
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 180),
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: _view == view.$1
-                                    ? heroBlue.withValues(alpha: .10)
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(9),
-                              ),
-                              child: Icon(
-                                view.$2,
-                                color: _view == view.$1 ? heroBlue : heroMuted,
-                                size: 18,
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
+                _AlbumViewSwitch(
+                  value: _view,
+                  onChanged: (value) {
+                    setState(() => _view = value);
+                    SpUtil.putString('hero_album_view', _view);
+                  },
                 ),
               ],
             ),
             const SizedBox(height: 18),
-            if (_selectionMode) ...[
-              HeroPanel(
-                padding: const EdgeInsets.all(10),
-                child: Row(
-                  children: [
-                    Checkbox(
-                      value:
-                          images.isNotEmpty &&
-                          _selected.length == images.length,
-                      onChanged: (_) => setState(() {
-                        if (_selected.length == images.length) {
-                          _selected.clear();
-                        } else {
-                          _selected.addAll(images.map((e) => e.id));
-                        }
-                      }),
+            AnimatedSwitcher(
+              duration: MediaQuery.maybeOf(context)?.disableAnimations ?? false
+                  ? Duration.zero
+                  : const Duration(milliseconds: 240),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) {
+                final curved = CurvedAnimation(
+                  parent: animation,
+                  curve: Curves.easeOutCubic,
+                );
+                return FadeTransition(
+                  opacity: animation,
+                  child: SizeTransition(
+                    sizeFactor: curved,
+                    axisAlignment: -1,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, -.12),
+                        end: Offset.zero,
+                      ).animate(curved),
+                      child: child,
                     ),
-                    Text(
-                      '已选 ${_selected.length}',
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      tooltip: '复制选中链接',
-                      onPressed: _selected.isEmpty ? null : _batchCopy,
-                      icon: const Icon(Icons.copy_outlined, size: 19),
-                    ),
-                    IconButton(
-                      tooltip: '删除选中图片',
-                      onPressed: _selected.isEmpty
-                          ? null
-                          : () => _delete(
-                              widget.controller.images
-                                  .where((e) => _selected.contains(e.id))
-                                  .toList(),
+                  ),
+                );
+              },
+              child: !_selectionMode
+                  ? const SizedBox(key: ValueKey('album-selection-bar-hidden'))
+                  : Padding(
+                      key: const ValueKey('album-selection-bar'),
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: HeroPanel(
+                        padding: const EdgeInsets.all(10),
+                        child: Row(
+                          children: [
+                            Checkbox(
+                              value:
+                                  images.isNotEmpty &&
+                                  _selected.length == images.length,
+                              onChanged: (_) => setState(() {
+                                if (_selected.length == images.length) {
+                                  _selected.clear();
+                                } else {
+                                  _selected.addAll(images.map((e) => e.id));
+                                }
+                              }),
                             ),
-                      icon: const Icon(Icons.delete_outline_rounded, size: 21),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-            if (images.isEmpty)
-              HeroPanel(
-                child: HeroEmpty(
-                  icon: Icons.photo_library_outlined,
-                  title: _query.isEmpty ? '暂无上传图片' : '未找到匹配图片',
-                  message: _query.isEmpty
-                      ? '成功上传的图片会显示在这里。'
-                      : '试试其他名称，或切换到全部相册。',
-                  action: _query.isEmpty
-                      ? FilledButton.icon(
-                          onPressed: widget.openUpload,
-                          icon: const Icon(Icons.add_rounded),
-                          label: const Text('上传图片'),
-                        )
-                      : null,
-                ),
-              )
-            else if (_view == 'list')
-              ...images.map(
-                (e) => Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _item(e, list: true),
-                ),
-              )
-            else if (_view == 'masonry')
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  for (var col = 0; col < columns; col++) ...[
-                    if (col > 0) const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          for (var i = col; i < images.length; i += columns)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: _item(images[i], masonry: true),
+                            Text(
+                              '已选 ${_selected.length}',
+                              style: const TextStyle(fontSize: 12),
                             ),
-                        ],
+                            const Spacer(),
+                            IconButton(
+                              tooltip: '复制选中链接',
+                              onPressed: _selected.isEmpty ? null : _batchCopy,
+                              icon: const Icon(Icons.copy_outlined, size: 19),
+                            ),
+                            IconButton(
+                              tooltip: '删除选中图片',
+                              onPressed: _selected.isEmpty
+                                  ? null
+                                  : () => _delete(
+                                      widget.controller.images
+                                          .where(
+                                            (e) => _selected.contains(e.id),
+                                          )
+                                          .toList(),
+                                    ),
+                              icon: const Icon(
+                                Icons.delete_outline_rounded,
+                                size: 21,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ],
-                ],
-              )
-            else
-              LayoutBuilder(
-                builder: (context, constraints) => Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: images
-                      .map(
-                        (e) => SizedBox(
-                          width:
-                              (constraints.maxWidth - (columns - 1) * 12) /
-                              columns,
-                          child: _item(e),
+            ),
+            AnimatedSize(
+              duration: MediaQuery.maybeOf(context)?.disableAnimations ?? false
+                  ? Duration.zero
+                  : const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: AnimatedSwitcher(
+                duration:
+                    MediaQuery.maybeOf(context)?.disableAnimations ?? false
+                    ? Duration.zero
+                    : const Duration(milliseconds: 180),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                layoutBuilder: (current, previous) => Stack(
+                  alignment: Alignment.topCenter,
+                  children: [...previous, if (current != null) current],
+                ),
+                transitionBuilder: (child, animation) =>
+                    FadeTransition(opacity: animation, child: child),
+                child: KeyedSubtree(
+                  key: ValueKey('album-$_view-${images.isEmpty}'),
+                  child: images.isEmpty
+                      ? HeroPanel(
+                          child: HeroEmpty(
+                            icon: Icons.photo_library_outlined,
+                            title: _query.isEmpty ? '暂无上传图片' : '未找到匹配图片',
+                            message: _query.isEmpty
+                                ? '成功上传的图片会显示在这里。'
+                                : '试试其他名称，或切换到全部相册。',
+                            action: _query.isEmpty
+                                ? FilledButton.icon(
+                                    onPressed: widget.openUpload,
+                                    icon: const Icon(Icons.add_rounded),
+                                    label: const Text('上传图片'),
+                                  )
+                                : null,
+                          ),
+                        )
+                      : _view == 'list'
+                      ? Column(
+                          children: images
+                              .map(
+                                (e) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 12),
+                                  child: _item(e, list: true),
+                                ),
+                              )
+                              .toList(),
+                        )
+                      : _view == 'masonry'
+                      ? Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            for (var col = 0; col < columns; col++) ...[
+                              if (col > 0) const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  children: [
+                                    for (
+                                      var i = col;
+                                      i < images.length;
+                                      i += columns
+                                    )
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 12,
+                                        ),
+                                        child: _item(images[i], masonry: true),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        )
+                      : LayoutBuilder(
+                          builder: (context, constraints) => Wrap(
+                            spacing: 12,
+                            runSpacing: 12,
+                            children: images
+                                .map(
+                                  (e) => SizedBox(
+                                    width:
+                                        (constraints.maxWidth -
+                                            (columns - 1) * 12) /
+                                        columns,
+                                    child: _item(e),
+                                  ),
+                                )
+                                .toList(),
+                          ),
                         ),
-                      )
-                      .toList(),
                 ),
               ),
+            ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _AlbumViewSwitch extends StatelessWidget {
+  final String value;
+  final ValueChanged<String> onChanged;
+  const _AlbumViewSwitch({required this.value, required this.onChanged});
+  static const views = [
+    ('masonry', Icons.dashboard_outlined, '瀑布流'),
+    ('grid', Icons.grid_view_rounded, '网格'),
+    ('list', Icons.view_list_outlined, '列表'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = views.indexWhere((item) => item.$1 == value).clamp(0, 2);
+    final duration = MediaQuery.maybeOf(context)?.disableAnimations ?? false
+        ? Duration.zero
+        : const Duration(milliseconds: 220);
+    return Container(
+      width: 112,
+      height: 40,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.circular(13),
+      ),
+      padding: const EdgeInsets.all(3),
+      child: Stack(
+        children: [
+          AnimatedAlign(
+            duration: duration,
+            curve: Curves.easeOutCubic,
+            alignment: Alignment(-1 + selected.toDouble(), 0),
+            child: FractionallySizedBox(
+              widthFactor: 1 / 3,
+              heightFactor: 1,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: heroBlue.withValues(alpha: .12),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: heroBlue.withValues(alpha: .12)),
+                ),
+              ),
+            ),
+          ),
+          Row(
+            children: [
+              for (final view in views)
+                Expanded(
+                  child: Tooltip(
+                    message: view.$3,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: () => onChanged(view.$1),
+                      child: Center(
+                        child: AnimatedScale(
+                          scale: value == view.$1 ? 1.08 : 1,
+                          duration: duration,
+                          child: Icon(
+                            view.$2,
+                            color: value == view.$1 ? heroBlue : heroMuted,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }

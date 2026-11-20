@@ -5,6 +5,7 @@ import 'package:uri_to_file/uri_to_file.dart';
 import 'diagnostics.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:picora/legacy/router/application.dart';
 import 'controller.dart';
 import 'hero_theme.dart';
@@ -138,71 +139,11 @@ class _HeroShellState extends State<HeroShell> {
     );
   }
 
-  Widget _navigation(BuildContext context) {
-    final surface = Theme.of(context).colorScheme.surface;
-    return SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
-        child: Align(
-          heightFactor: 1,
-          alignment: Alignment.bottomCenter,
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 500),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(26),
-              boxShadow: [
-                BoxShadow(
-                  color: heroInk.withValues(alpha: .08),
-                  blurRadius: 28,
-                  offset: const Offset(0, 9),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(26),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-                child: Container(
-                  padding: const EdgeInsets.all(7),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(26),
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        surface.withValues(alpha: .91),
-                        surface.withValues(alpha: .73),
-                      ],
-                    ),
-                    border: Border.all(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white12
-                          : Colors.white.withValues(alpha: .9),
-                      width: 1.5,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      for (var i = 0; i < 4; i++)
-                        Expanded(
-                          child: _NavItem(
-                            index: i,
-                            selected: _index == i,
-                            showLabel: widget.controller.showNavigationLabels,
-                            onTap: () => _go(i),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  Widget _navigation(BuildContext context) => _GlassNavigation(
+    selectedIndex: _index,
+    showLabels: widget.controller.showNavigationLabels,
+    onSelected: _go,
+  );
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
@@ -266,6 +207,198 @@ class _HeroShellState extends State<HeroShell> {
   );
 }
 
+class _GlassNavigation extends StatefulWidget {
+  final int selectedIndex;
+  final bool showLabels;
+  final ValueChanged<int> onSelected;
+  const _GlassNavigation({
+    required this.selectedIndex,
+    required this.showLabels,
+    required this.onSelected,
+  });
+
+  @override
+  State<_GlassNavigation> createState() => _GlassNavigationState();
+}
+
+class _GlassNavigationState extends State<_GlassNavigation> {
+  int? _previewIndex;
+
+  int get _activeIndex => _previewIndex ?? widget.selectedIndex;
+
+  void _previewAt(Offset position, double width) {
+    if (width <= 0) return;
+    final next = (position.dx / width * 4).floor().clamp(0, 3);
+    if (next == _previewIndex) return;
+    unawaited(HapticFeedback.selectionClick());
+    setState(() => _previewIndex = next);
+  }
+
+  void _commit() {
+    final target = _previewIndex;
+    if (target == null) return;
+    setState(() => _previewIndex = null);
+    if (target != widget.selectedIndex) widget.onSelected(target);
+  }
+
+  void _cancel() {
+    if (_previewIndex != null) setState(() => _previewIndex = null);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final duration = reduceMotion
+        ? Duration.zero
+        : const Duration(milliseconds: 250);
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+        child: Align(
+          heightFactor: 1,
+          alignment: Alignment.bottomCenter,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                constraints: const BoxConstraints(maxWidth: 540),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: [
+                    BoxShadow(
+                      color: (dark ? Colors.black : heroInk).withValues(
+                        alpha: dark ? .38 : .14,
+                      ),
+                      blurRadius: 40,
+                      offset: const Offset(0, 14),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+                    child: Container(
+                      key: const ValueKey('nav-surface'),
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(28),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: dark
+                              ? [
+                                  const Color(
+                                    0xFF182238,
+                                  ).withValues(alpha: .80),
+                                  const Color(
+                                    0xFF101827,
+                                  ).withValues(alpha: .70),
+                                ]
+                              : [
+                                  Colors.white.withValues(alpha: .76),
+                                  const Color(
+                                    0xFFF6F9FF,
+                                  ).withValues(alpha: .60),
+                                ],
+                        ),
+                        border: Border.all(
+                          color: dark
+                              ? Colors.white.withValues(alpha: .13)
+                              : Colors.white.withValues(alpha: .62),
+                          width: 1,
+                        ),
+                      ),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final itemWidth = constraints.maxWidth / 4;
+                          return GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onHorizontalDragStart: (details) {
+                              unawaited(HapticFeedback.selectionClick());
+                              _previewAt(details.localPosition, itemWidth * 4);
+                            },
+                            onHorizontalDragUpdate: (details) => _previewAt(
+                              details.localPosition,
+                              itemWidth * 4,
+                            ),
+                            onHorizontalDragEnd: (_) => _commit(),
+                            onHorizontalDragCancel: _cancel,
+                            child: Stack(
+                              children: [
+                                AnimatedPositioned(
+                                  key: const ValueKey('nav-indicator'),
+                                  duration: duration,
+                                  // Overshooting curves clip the pill at the
+                                  // first and last destinations.
+                                  curve: Curves.easeOutCubic,
+                                  left: _activeIndex * itemWidth,
+                                  top: 0,
+                                  bottom: 0,
+                                  width: itemWidth,
+                                  child: IgnorePointer(
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [
+                                            Color(0xFF285FEA),
+                                            Color(0xFF4F86FF),
+                                          ],
+                                        ),
+                                        borderRadius: BorderRadius.circular(22),
+                                        border: Border.all(
+                                          color: Colors.white.withValues(
+                                            alpha: .28,
+                                          ),
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: heroBlue.withValues(
+                                              alpha: dark ? .42 : .32,
+                                            ),
+                                            blurRadius: 22,
+                                            offset: const Offset(0, 7),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                Row(
+                                  children: [
+                                    for (var i = 0; i < 4; i++)
+                                      Expanded(
+                                        child: _NavItem(
+                                          index: i,
+                                          selected: _activeIndex == i,
+                                          showLabel: widget.showLabels,
+                                          onTap: () => widget.onSelected(i),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _NavItem extends StatelessWidget {
   final int index;
   final bool selected;
@@ -285,52 +418,67 @@ class _NavItem extends StatelessWidget {
     Icons.tune_rounded,
   ];
   @override
-  Widget build(BuildContext context) => Semantics(
-    selected: selected,
-    button: true,
-    label: labels[index],
-    child: Material(
-      color: Colors.transparent,
-      child: InkWell(
-        key: ValueKey('nav-$index'),
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 230),
-          padding: EdgeInsets.symmetric(vertical: showLabel ? 10 : 14),
-          decoration: BoxDecoration(
-            color: selected
-                ? heroBlue.withValues(alpha: .10)
-                : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: AnimatedSize(
-            duration: const Duration(milliseconds: 230),
-            curve: Curves.easeOutCubic,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  icons[index],
-                  color: selected ? heroBlue : heroMuted,
-                  size: 23,
-                ),
-                if (showLabel) ...[
-                  const SizedBox(height: 5),
-                  Text(
-                    labels[index],
-                    style: TextStyle(
-                      color: selected ? heroBlue : heroMuted,
-                      fontSize: 10,
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+  Widget build(BuildContext context) {
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final duration = reduceMotion
+        ? Duration.zero
+        : const Duration(milliseconds: 230);
+    final foreground = selected ? Colors.white : heroMuted;
+    final labelStyle = DefaultTextStyle.of(context).style.copyWith(
+      color: foreground,
+      fontSize: 10,
+      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+    );
+    return Semantics(
+      selected: selected,
+      button: true,
+      label: labels[index],
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          key: ValueKey('nav-$index'),
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: AnimatedContainer(
+            duration: duration,
+            padding: EdgeInsets.symmetric(vertical: showLabel ? 10 : 14),
+            child: AnimatedSize(
+              duration: duration,
+              curve: Curves.easeOutCubic,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  AnimatedScale(
+                    scale: selected ? 1.04 : 1,
+                    duration: duration,
+                    curve: Curves.easeOutBack,
+                    child: TweenAnimationBuilder<Color?>(
+                      duration: duration,
+                      curve: Curves.easeOut,
+                      tween: ColorTween(end: foreground),
+                      builder: (context, color, _) => Icon(
+                        icons[index],
+                        color: color ?? foreground,
+                        size: 23,
+                      ),
                     ),
                   ),
+                  if (showLabel) ...[
+                    const SizedBox(height: 5),
+                    AnimatedDefaultTextStyle(
+                      duration: duration,
+                      curve: Curves.easeOut,
+                      style: labelStyle,
+                      child: Text(labels[index]),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }
