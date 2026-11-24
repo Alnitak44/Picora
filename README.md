@@ -31,7 +31,7 @@ Picora支持自定义插件，理论上可以通过插件实现对任何图床�
 
 同时Picora对部分PicGo插件适配，可通过 PicGo Bridge 调用。
 
-[插件文档](https://github.com/Alnitak44/picora-plugins/tree/main/docs) · [插件模板](plugins/template)
+[插件文档](https://github.com/Alnitak44/picora-plugins/tree/main/docs) · [插件模板](plugins/template) · [插件开发 Skill](https://github.com/Alnitak44/Picora-Plugin-Maker.skill)
 ## 下载
 
 [GitHub Releases](https://github.com/Alnitak44/Picora/releases)
