@@ -748,6 +748,15 @@ void main() {
     expect(find.byKey(const ValueKey('plugin-filter-tag-token')), findsNothing);
     expect(find.text('筛选'), findsNothing);
     expect(find.byIcon(Icons.tune_rounded), findsOneWidget);
+    final searchBorder = tester
+        .widget<TextField>(find.byType(TextField).first)
+        .decoration
+        ?.enabledBorder;
+    expect(searchBorder, isA<OutlineInputBorder>());
+    expect(
+      (searchBorder! as OutlineInputBorder).borderRadius,
+      BorderRadius.circular(14),
+    );
 
     final filterBar = tester.getRect(
       find.byKey(const ValueKey('plugin-install-filter-bar')),

@@ -46,6 +46,7 @@ class PicoraController extends ChangeNotifier {
   bool continuousCamera = false;
   bool showNavigationLabels = true;
   bool deleteOriginalAfterUpload = false;
+  bool uninstallCountdown = true;
   RepositoryConfig? target;
   String? defaultId;
   AlbumEntry? latest;
@@ -117,6 +118,10 @@ class PicoraController extends ChangeNotifier {
       deleteOriginalAfterUpload = SpUtil.getBool(
         'hero_delete_original_after_upload',
         defValue: false,
+      )!;
+      uninstallCountdown = SpUtil.getBool(
+        'hero_uninstall_countdown',
+        defValue: true,
       )!;
       await loadRepositories();
       await loadImages();
@@ -240,7 +245,12 @@ class PicoraController extends ChangeNotifier {
     Map<String, dynamic> source,
   ) {
     final values = <String, dynamic>{};
-    for (final field in spec.fields) {
+    final authMode =
+        spec.authModes
+            .where((mode) => mode.id == source['authMode'])
+            .firstOrNull ??
+        spec.authModes.firstOrNull;
+    for (final field in [...spec.fields, ...?authMode?.fields]) {
       var value = source[field.key];
       if (value == null || value == 'undetermined' || value == '') {
         value = field.defaultValue ?? 'None';
@@ -250,6 +260,7 @@ class PicoraController extends ChangeNotifier {
       }
       values[field.key] = value;
     }
+    if (authMode != null) values['authMode'] = authMode.id;
     if (spec.id == 'github' &&
         values['token'] != 'None' &&
         !values['token'].toString().startsWith('Bearer ')) {
@@ -321,11 +332,18 @@ class PicoraController extends ChangeNotifier {
     RepositoryConfig? existing,
   }) async {
     if (busy) throw const HeroFailure('上传进行中，请稍后修改配置');
+    final trimmedName = name.trim();
+    if (trimmedName.isEmpty) {
+      throw const HeroFailure('请填写图床配置名称');
+    }
+    if (isRepositoryNameTaken(trimmedName, exceptId: existing?.id)) {
+      throw const HeroFailure('已有同名配置，请换一个名称');
+    }
     final normalized = normalizeValues(spec, values);
     if (spec.isPlugin) {
       final config = await pluginManager.saveRepository(
         spec,
-        name,
+        trimmedName,
         normalized,
         existing: existing,
       );
@@ -367,17 +385,26 @@ class PicoraController extends ChangeNotifier {
     }
     await ConfigureStoreFile().updateConfigureFileKey(spec.id, slot, {
       ...normalized,
-      'remarkName': name.trim(),
+      'remarkName': trimmedName,
     });
     final config = RepositoryConfig(
       host: spec.id,
       slot: slot,
-      name: name.trim(),
+      name: trimmedName,
       values: normalized,
     );
     if (defaultId == null || config.id == defaultId) await setDefault(config);
     await loadRepositories();
     return config;
+  }
+
+  bool isRepositoryNameTaken(String name, {String? exceptId}) {
+    final normalized = name.trim().toLowerCase();
+    if (normalized.isEmpty) return false;
+    return repositories.any(
+      (item) =>
+          item.id != exceptId && item.name.trim().toLowerCase() == normalized,
+    );
   }
 
   Future<void> deleteRepository(RepositoryConfig config) async {
@@ -754,8 +781,27 @@ class PicoraController extends ChangeNotifier {
       }[type] ??
       'png';
 
-  bool supportsCloudDelete(AlbumEntry entry) =>
-      uploaderRegistry.supportsDelete(entry.host);
+  bool supportsCloudDelete(AlbumEntry entry) {
+    if (!uploaderRegistry.supportsDelete(entry.host)) return false;
+    final spec = hostSpec(entry.host);
+    if (!spec.supportsAuthModes) return true;
+    final config = _repositoryFor(entry);
+    if (config == null) return true;
+    final modeId = config.values['authMode']?.toString();
+    final mode =
+        spec.authModes.where((item) => item.id == modeId).firstOrNull ??
+        spec.authModes.firstOrNull;
+    return mode?.supportsDelete ?? false;
+  }
+
+  RepositoryConfig? _repositoryFor(AlbumEntry entry) {
+    final byId = repositories
+        .where((r) => r.id == entry.repositoryId && r.host == entry.host)
+        .firstOrNull;
+    if (byId != null) return byId;
+    if (entry.host.startsWith('plugin.')) return null;
+    return repositories.where((r) => r.host == entry.host).firstOrNull;
+  }
 
   bool isCloudImageDeleted(AlbumEntry entry) =>
       entry.cloudDeleted ||
@@ -777,15 +823,7 @@ class PicoraController extends ChangeNotifier {
         throw const HeroFailure('此图床未提供云端删除接口');
       }
       final isPlugin = current.host.startsWith('plugin.');
-      final config =
-          repositories
-              .where(
-                (r) => r.id == current.repositoryId && r.host == current.host,
-              )
-              .firstOrNull ??
-          (isPlugin
-              ? null
-              : repositories.where((r) => r.host == current.host).firstOrNull);
+      final config = _repositoryFor(current);
       if (isPlugin && config == null) {
         throw const HeroFailure('原插件配置组已不存在，无法删除云端图片；上传记录已保留');
       }
@@ -908,6 +946,14 @@ class PicoraController extends ChangeNotifier {
       throw const HeroFailure('上传后删除原图设置保存失败，请重试');
     }
     deleteOriginalAfterUpload = value;
+    notifyListeners();
+  }
+
+  Future<void> setUninstallCountdown(bool value) async {
+    if (await SpUtil.putBool('hero_uninstall_countdown', value) != true) {
+      throw const HeroFailure('卸载倒计时设置保存失败，请重试');
+    }
+    uninstallCountdown = value;
     notifyListeners();
   }
 

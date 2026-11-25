@@ -238,6 +238,7 @@ class PicoraPluginPackage {
         'delete',
         'prepare',
         'requires',
+        'authModes',
       ])
         if (original[key] != null) key: original[key],
     };

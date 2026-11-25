@@ -938,9 +938,27 @@ class _PluginRepositoryPageState extends State<PluginRepositoryPage> {
                     Expanded(
                       child: TextField(
                         onChanged: (value) => setState(() => _query = value),
-                        decoration: const InputDecoration(
+                        decoration: InputDecoration(
                           hintText: '搜索插件',
-                          prefixIcon: Icon(Icons.search_rounded),
+                          prefixIcon: const Icon(Icons.search_rounded),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide(
+                              color: heroMuted.withValues(alpha: .18),
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide(
+                              color: heroMuted.withValues(alpha: .18),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide(
+                              color: heroBlue.withValues(alpha: .52),
+                            ),
+                          ),
                         ),
                       ),
                     ),

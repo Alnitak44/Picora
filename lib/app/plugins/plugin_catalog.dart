@@ -117,11 +117,14 @@ extension PluginTagDerivation on Iterable<HostField> {
 extension PluginManifestTags on PicoraPluginManifest {
   Set<PluginTag> get derivedTags => Set.unmodifiable({
     ...fields.derivedTags,
+    ...authModes.expand((mode) => mode.fields).derivedTags,
     if (delete != null) PluginTag.cloudDelete,
     if (isPrereleaseVersion(version)) PluginTag.beta,
   });
 
-  bool get derivedRequiresAuth => fields.derivedRequiresAuth;
+  bool get derivedRequiresAuth =>
+      authModes.any((mode) => mode.fields.derivedRequiresAuth) ||
+      fields.derivedRequiresAuth;
 }
 
 /// `1.2.0-beta.1` is a preview build; `1.2.0+build.5` is not.

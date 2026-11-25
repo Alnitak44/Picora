@@ -6,6 +6,7 @@ class HostField {
   final String key, label, hint;
   final bool required, secret;
   final String? role;
+  final String? inputPattern, inputMessage;
   final Object? defaultValue;
   final List<String>? choices;
   const HostField(
@@ -15,10 +16,17 @@ class HostField {
     this.required = false,
     this.secret = false,
     this.role,
+    this.inputPattern,
+    this.inputMessage,
     this.defaultValue,
     this.choices,
   });
   bool get isToggle => defaultValue is bool;
+  bool matchesInput(String value) {
+    final pattern = inputPattern;
+    if (pattern == null || value.isEmpty) return true;
+    return RegExp('^(?:$pattern)+\$').hasMatch(value);
+  }
 }
 
 class HostSpec {
@@ -31,6 +39,7 @@ class HostSpec {
   final String? pluginId, pluginVersion;
   final bool builtInConnector;
   final List<String> permissionSummary;
+  final List<PluginAuthChoice> authModes;
   const HostSpec(
     this.id,
     this.name,
@@ -45,11 +54,25 @@ class HostSpec {
     this.pluginVersion,
     this.builtInConnector = false,
     this.permissionSummary = const [],
+    this.authModes = const [],
   });
   bool get isPlugin => pluginId != null;
   bool get isRuntimePlugin => isPlugin && !builtInConnector;
   bool get canBrowse => !isPlugin;
   bool get canExportToPicGo => !isPlugin;
+  bool get supportsAuthModes => authModes.isNotEmpty;
+}
+
+class PluginAuthChoice {
+  final String id, label;
+  final List<HostField> fields;
+  final bool supportsDelete;
+  const PluginAuthChoice({
+    required this.id,
+    required this.label,
+    required this.fields,
+    this.supportsDelete = false,
+  });
 }
 
 HostSpec unknownHostSpec(String id) => HostSpec(

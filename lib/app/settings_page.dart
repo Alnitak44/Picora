@@ -618,8 +618,9 @@ class _SettingsPageState extends State<SettingsPage> {
           },
         ),
         _row(
-          '镜像自动切换',
+          '自动切换',
           Icons.swap_horiz_rounded,
+          subtitle: '当前节点不可用时自动切换下一线路',
           toggle: GitHubMirrors.instance.autoFallbackEnabled,
           change: (value) => _guard(
             '保存自动切换设置',
@@ -684,11 +685,21 @@ class _SettingsPageState extends State<SettingsPage> {
         _row(
           '上传后删除原图',
           Icons.delete_outline_rounded,
-          subtitle: '完成上传后删除本地图片。',
+          subtitle: '完成上传后删除本地图片',
           toggle: widget.controller.deleteOriginalAfterUpload,
           change: (value) => _guard(
             '保存删除原图设置',
             () => widget.controller.setDeleteOriginalAfterUpload(value),
+          ),
+        ),
+        _row(
+          '卸载插件倒计时',
+          Icons.timer_outlined,
+          subtitle: '卸载插件时等待 3 秒，防止误触',
+          toggle: widget.controller.uninstallCountdown,
+          change: (value) => _guard(
+            '保存卸载倒计时设置',
+            () => widget.controller.setUninstallCountdown(value),
           ),
         ),
       ]),

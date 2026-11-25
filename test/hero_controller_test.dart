@@ -280,6 +280,24 @@ void main() {
       controller.dispose();
     },
   );
+  test('repository names are unique ignoring case and whitespace', () async {
+    final controller = PicoraController()..repositories = [configA];
+    expect(controller.isRepositoryNameTaken(' 工作图库 '), true);
+    expect(
+      controller.isRepositoryNameTaken('工作图库', exceptId: configA.id),
+      false,
+    );
+    expect(controller.isRepositoryNameTaken('简单图床(1)'), false);
+    await expectLater(
+      controller.saveRepository(hostSpec('sm.ms'), ' 工作图库 ', {
+        'token': 'test-token',
+      }),
+      throwsA(
+        predicate((e) => e is HeroFailure && e.toString().contains('已有同名配置')),
+      ),
+    );
+    controller.dispose();
+  });
   test(
     'deleting history preserves the original file when local deletion is off',
     () async {

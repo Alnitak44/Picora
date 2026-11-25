@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:picora/app/diagnostics.dart';
 import 'package:picora/app/plugins/plugin_manifest.dart';
+import 'package:picora/app/plugins/plugin_catalog.dart';
 import 'package:picora/app/plugins/plugin_package.dart';
 import 'package:picora/app/plugins/plugin_manager.dart';
 import 'package:picora/app/plugins/uploader_registry.dart';
@@ -159,6 +160,130 @@ Map<String, dynamic> superbedProgram() {
   };
   return p;
 }
+
+Map<String, dynamic> authModesProgram() => {
+  'schemaVersion': 2,
+  'requires': ['auth-modes', 'credential-cache'],
+  'permissions': {
+    'network': ['api.example.test'],
+    'readSelectedFile': true,
+    'deleteUploadedFile': true,
+  },
+  'config': [
+    {'key': 'baseUrl', 'label': '图床地址', 'type': 'text'},
+  ],
+  'authModes': [
+    {
+      'id': 'guest',
+      'label': '游客',
+      'config': [],
+      'upload': {
+        'method': 'POST',
+        'url': 'https://api.example.test/upload',
+        'body': {'type': 'multipart', 'fileField': 'image'},
+        'response': {
+          'url': 'url',
+          'successStatuses': [200],
+          'success': {'path': 'ok', 'equals': true},
+          'errorMessage': 'message',
+          'deleteKey': 'deleteKey',
+        },
+      },
+      'delete': {
+        'method': 'POST',
+        'url': 'https://api.example.test/delete',
+        'body': {
+          'type': 'json',
+          'fields': {'key': r'${upload.deleteKey}'},
+        },
+        'response': {
+          'success': {'path': 'ok', 'equals': true},
+          'errorMessage': 'message',
+        },
+      },
+    },
+    {
+      'id': 'token',
+      'label': 'API Token',
+      'config': [
+        {
+          'key': 'token',
+          'label': 'Token',
+          'type': 'secret',
+          'role': 'token',
+          'required': true,
+          'input': {
+            'allow': '[A-Za-z0-9._-]',
+            'message': 'Token 只能包含字母、数字和 ._-',
+          },
+        },
+      ],
+      'upload': {
+        'method': 'POST',
+        'url': 'https://api.example.test/upload',
+        'headers': {'Authorization': r'Bearer ${config.token}'},
+        'body': {'type': 'multipart', 'fileField': 'image'},
+        'response': {
+          'url': 'url',
+          'successStatuses': [200],
+          'success': {'path': 'ok', 'equals': true},
+          'errorMessage': 'message',
+          'deleteKey': 'deleteKey',
+        },
+      },
+    },
+    {
+      'id': 'password',
+      'label': '账号密码',
+      'config': [
+        {
+          'key': 'account',
+          'label': '账号',
+          'type': 'text',
+          'role': 'account',
+          'required': true,
+        },
+        {'key': 'password', 'label': '密码', 'type': 'secret', 'required': true},
+      ],
+      'prepare': [
+        {
+          'id': 'login',
+          'method': 'POST',
+          'url': 'https://api.example.test/login',
+          'body': {
+            'type': 'json',
+            'fields': {
+              'account': r'${config.account}',
+              'password': r'${config.password}',
+            },
+          },
+          'response': {
+            'successStatuses': [200],
+            'success': {'path': 'ok', 'equals': true},
+            'errorMessage': 'message',
+            'exports': {
+              'token': {'path': 'token', 'type': 'string', 'secret': true},
+            },
+          },
+          'cache': {'ttlSeconds': 3600},
+        },
+      ],
+      'upload': {
+        'method': 'POST',
+        'url': 'https://api.example.test/upload',
+        'headers': {'Authorization': r'Bearer ${steps.login.token}'},
+        'body': {'type': 'multipart', 'fileField': 'image'},
+        'response': {
+          'url': 'url',
+          'successStatuses': [200],
+          'success': {'path': 'ok', 'equals': true},
+          'errorMessage': 'message',
+          'deleteKey': 'deleteKey',
+        },
+      },
+    },
+  ],
+};
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -1057,4 +1182,233 @@ void main() {
       await upload(runtime, plugin: manifest(p));
     },
   );
+
+  test('auth modes survive parsing and serialization', () {
+    final plugin = manifest(authModesProgram());
+    expect(plugin.authModes.map((mode) => mode.id), [
+      'guest',
+      'token',
+      'password',
+    ]);
+    expect(plugin.authModes.map((mode) => mode.label), [
+      '游客',
+      'API Token',
+      '账号密码',
+    ]);
+    expect(plugin.authModes[1].fields.single.role, 'token');
+    expect(plugin.authModes[1].fields.single.inputPattern, '[A-Za-z0-9._-]');
+    expect(plugin.authModes[2].prepare.single.id, 'login');
+
+    final serialized = plugin.toJson();
+    expect(serialized['authModes'], hasLength(3));
+    expect(serialized.containsKey('upload'), false);
+    expect(serialized.containsKey('delete'), false);
+    expect(PicoraPluginManifest.fromJson(serialized).toJson(), serialized);
+    expect(
+      PicoraPluginPackage.fromLegacy(plugin).manifest.toJson(),
+      serialized,
+    );
+
+    final spec = plugin.toHostSpec();
+    expect(spec.authModes, hasLength(3));
+    expect(spec.authModes.first.supportsDelete, true);
+    expect(spec.authModes[1].supportsDelete, false);
+    expect(
+      plugin.derivedTags,
+      containsAll([PluginTag.token, PluginTag.account]),
+    );
+    expect(plugin.derivedRequiresAuth, true);
+  });
+
+  test(
+    'auth mode selects its own fields, request chain and delete rule',
+    () async {
+      final logins = <String>[];
+      final calls = <String>[];
+      final runtime = PluginHttpRuntime(
+        dio: transport((o) {
+          calls.add('${o.method} ${o.uri.path}');
+          if (o.uri.path == '/login') {
+            logins.add(jsonEncode(o.data));
+            return reply(o, {'ok': true, 'token': 'session-${logins.length}'});
+          }
+          if (o.uri.path == '/delete') {
+            expect((o.data as Map)['key'], 'one-image');
+            return reply(o, {'ok': true});
+          }
+          expect((o.data as FormData).files.single.key, 'image');
+          return reply(o, {
+            'ok': true,
+            'url': 'https://cdn.example.test/pixel.png',
+            'deleteKey': 'one-image',
+          });
+        }),
+      );
+      final plugin = manifest(authModesProgram());
+      Future<dynamic> run(
+        Map<String, dynamic> config, {
+        String group = 'same',
+      }) => upload(runtime, plugin: plugin, config: config, group: group);
+
+      expect(
+        (await run({'authMode': 'guest'}))[2],
+        'https://cdn.example.test/pixel.png',
+      );
+      expect(calls, ['POST /upload']);
+
+      calls.clear();
+      await run({'authMode': 'token', 'token': 'personal-token'});
+      expect(calls, ['POST /upload']);
+      expect(logins, isEmpty);
+
+      calls.clear();
+      await run({
+        'authMode': 'password',
+        'account': 'alice',
+        'password': 'secret',
+      });
+      expect(calls, ['POST /login', 'POST /upload']);
+      expect(jsonDecode(logins.single), {
+        'account': 'alice',
+        'password': 'secret',
+      });
+
+      calls.clear();
+      await run({
+        'authMode': 'password',
+        'account': 'alice',
+        'password': 'secret',
+      });
+      expect(calls, ['POST /upload']);
+      expect(logins, hasLength(1));
+
+      calls.clear();
+      await run({'authMode': 'token', 'token': 'personal-token'});
+      expect(calls, ['POST /upload']);
+      expect(logins, hasLength(1));
+
+      await run({
+        'authMode': 'password',
+        'account': 'bob',
+        'password': 'secret',
+      });
+      expect(logins, hasLength(2));
+
+      await expectLater(
+        run({'authMode': 'token'}),
+        throwsA(
+          predicate(
+            (e) => e is HeroFailure && e.toString().contains('请填写Token'),
+          ),
+        ),
+      );
+      await expectLater(
+        run({'authMode': 'password', 'account': 'alice'}),
+        throwsA(
+          predicate((e) => e is HeroFailure && e.toString().contains('请填写密码')),
+        ),
+      );
+
+      final guest = await run({'authMode': 'guest'}, group: 'guest');
+      await runtime.delete(
+        plugin,
+        deleteMap: {'pictureKey': guest[3]},
+        config: {'authMode': 'guest'},
+        configurationId: 'guest',
+        allowCloudDelete: true,
+      );
+      final token = await run({
+        'authMode': 'token',
+        'token': 'personal-token',
+      }, group: 'token');
+      await expectLater(
+        runtime.delete(
+          plugin,
+          deleteMap: {'pictureKey': token[3]},
+          config: {'authMode': 'token', 'token': 'personal-token'},
+          configurationId: 'token',
+          allowCloudDelete: true,
+        ),
+        throwsA(
+          predicate(
+            (e) => e is HeroFailure && e.toString().contains('当前登录方式不支持云端删除'),
+          ),
+        ),
+      );
+    },
+  );
+
+  test('installer rejects malformed auth modes', () {
+    void reject(void Function(Map<String, dynamic>) change) {
+      final p = authModesProgram();
+      change(p);
+      expect(() => manifest(p), throwsA(isA<HeroFailure>()));
+    }
+
+    reject((p) => (p['requires'] as List).remove('auth-modes'));
+    reject((p) => p['authModes'][1]['id'] = 'guest');
+    reject((p) => p['authModes'][0]['id'] = 'Guest');
+    reject((p) => p['authModes'][2]['config'][1]['key'] = 'account');
+    reject((p) => p['config'].add({'key': 'token', 'label': 'Token'}));
+    reject((p) => p['authModes'][1]['config'][0]['key'] = 'authMode');
+    reject(
+      (p) => p['authModes'][1]['upload']['headers'] = {
+        'X-Test': r'${config.password}',
+      },
+    );
+    reject(
+      (p) => p['authModes'][0]['upload']['headers'] = {
+        'X-Test': r'${steps.login.token}',
+      },
+    );
+    reject((p) => (p['authModes'][0] as Map).remove('upload'));
+    reject((p) => p['authModes'][0]['unknown'] = true);
+    reject((p) => p['schemaVersion'] = 1);
+  });
+
+  test('config input rules survive serialization and reject invalid ones', () {
+    final p = program();
+    p['config'] = [
+      {
+        'key': 'path',
+        'label': '目录',
+        'type': 'text',
+        'required': true,
+        'input': {'allow': '[a-z/]', 'message': '只能使用小写字母和斜杠'},
+      },
+    ];
+    final plugin = manifest(p);
+    expect(plugin.fields.single.inputPattern, '[a-z/]');
+    expect(plugin.fields.single.inputMessage, '只能使用小写字母和斜杠');
+    final serialized = plugin.toJson();
+    expect(serialized['config'][0]['input'], {
+      'allow': '[a-z/]',
+      'message': '只能使用小写字母和斜杠',
+    });
+    expect(PicoraPluginManifest.fromJson(serialized).toJson(), serialized);
+
+    void reject(void Function(Map<String, dynamic>) change) {
+      final value = program();
+      value['config'] = [
+        {
+          'key': 'path',
+          'label': '目录',
+          'type': 'text',
+          'input': {'allow': '[a-z/]'},
+        },
+      ];
+      change(value);
+      expect(() => manifest(value), throwsA(isA<HeroFailure>()));
+    }
+
+    reject((p) => p['config'][0]['input'] = 'text');
+    reject(
+      (p) => p['config'][0]['input'] = {'allow': '[a-z/]', 'unknown': true},
+    );
+    reject((p) => p['config'][0]['type'] = 'toggle');
+    reject((p) => p['config'][0]['input']['allow'] = '[');
+    reject((p) => p['config'][0]['input']['allow'] = '');
+    reject((p) => p['config'][0]['input']['allow'] = '[a-z]+');
+    reject((p) => p['config'][0]['input']['message'] = 'x' * 81);
+  });
 }

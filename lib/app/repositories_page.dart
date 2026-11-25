@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:picora/legacy/router/application.dart';
 import 'package:picora/legacy/router/routers.dart';
 import 'dart:convert';
@@ -503,17 +504,27 @@ class _RepositoryEditorState extends State<RepositoryEditor> {
   final _name = TextEditingController();
   final _fields = <String, TextEditingController>{};
   final _toggles = <String, bool>{};
+  late String _authMode;
   bool _saving = false, _visible = false;
   bool _cloudDelete = false, _cloudDeleteBusy = false;
   @override
   void initState() {
     super.initState();
     _name.text = widget.existing?.name ?? widget.spec.name;
+    _authMode = widget.existing?.values['authMode']?.toString() ?? '';
+    if (!widget.spec.authModes.any((mode) => mode.id == _authMode)) {
+      _authMode = widget.spec.authModes.isEmpty
+          ? ''
+          : widget.spec.authModes.first.id;
+    }
     final pluginId = widget.spec.pluginId;
     _cloudDelete =
         pluginId != null &&
         widget.controller.pluginManager.isCloudDeleteAllowed(pluginId);
-    for (final field in widget.spec.fields) {
+    for (final field in [
+      ...widget.spec.fields,
+      ...widget.spec.authModes.expand((mode) => mode.fields),
+    ]) {
       final value = widget.existing?.values[field.key] ?? field.defaultValue;
       if (field.isToggle) {
         _toggles[field.key] = value == true || value == 'true';
@@ -540,6 +551,9 @@ class _RepositoryEditorState extends State<RepositoryEditor> {
     final value = text?.trim() ?? '';
     if (field.required && value.isEmpty) return '请填写${field.label}';
     if (value.isEmpty) return null;
+    if (!field.matchesInput(value)) {
+      return field.inputMessage ?? '输入内容格式不正确';
+    }
     if ([
           'host',
           'customUrl',
@@ -586,9 +600,20 @@ class _RepositoryEditorState extends State<RepositoryEditor> {
             initialValue: field.choices!.contains(_fields[field.key]!.text)
                 ? _fields[field.key]!.text
                 : field.choices!.first,
-            decoration: InputDecoration(labelText: field.label),
+            isExpanded: true,
+            borderRadius: BorderRadius.circular(16),
+            dropdownColor: Theme.of(context).colorScheme.surface,
+            elevation: 6,
+            style: _dropdownStyle,
+            icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 20),
+            decoration: _inputDecoration(field.label),
             items: field.choices!
-                .map((v) => DropdownMenuItem(value: v, child: Text(v)))
+                .map(
+                  (v) => DropdownMenuItem(
+                    value: v,
+                    child: Text(v, style: _dropdownStyle),
+                  ),
+                )
                 .toList(),
             onChanged: (v) {
               _fields[field.key]!.text = v!;
@@ -599,6 +624,13 @@ class _RepositoryEditorState extends State<RepositoryEditor> {
             obscureText: field.secret && !_visible,
             autocorrect: !field.secret,
             enableSuggestions: !field.secret,
+            inputFormatters: field.inputPattern == null
+                ? null
+                : [
+                    FilteringTextInputFormatter.allow(
+                      RegExp(field.inputPattern!),
+                    ),
+                  ],
             style: const TextStyle(fontSize: 13),
             validator: (v) => _validate(field, v),
             decoration: InputDecoration(
@@ -619,6 +651,53 @@ class _RepositoryEditorState extends State<RepositoryEditor> {
             ),
           ),
   );
+
+  InputDecoration _inputDecoration(String label) {
+    final scheme = Theme.of(context).colorScheme;
+    return InputDecoration(
+      labelText: label,
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(
+          color: scheme.primary.withValues(alpha: .45),
+          width: 1.2,
+        ),
+      ),
+    ).applyDefaults(Theme.of(context).inputDecorationTheme);
+  }
+
+  TextStyle get _dropdownStyle =>
+      TextStyle(fontSize: 14, color: Theme.of(context).colorScheme.onSurface);
+
+  Widget _authFields(List<HostField> fields, String section) => AnimatedSize(
+    duration: const Duration(milliseconds: 260),
+    curve: Curves.easeOutCubic,
+    alignment: Alignment.topCenter,
+    child: AnimatedSwitcher(
+      duration: const Duration(milliseconds: 200),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
+      layoutBuilder: (current, previous) => Stack(
+        alignment: Alignment.topCenter,
+        children: [...previous, if (current != null) current],
+      ),
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, .035),
+            end: Offset.zero,
+          ).animate(animation),
+          child: child,
+        ),
+      ),
+      child: Column(
+        key: ValueKey('auth-$section-$_authMode'),
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: fields.map(_field).toList(),
+      ),
+    ),
+  );
   bool get _supportsCloudDelete =>
       widget.spec.pluginId != null &&
       widget.controller.uploaderRegistry.supportsDelete(widget.spec.id);
@@ -632,10 +711,7 @@ class _RepositoryEditorState extends State<RepositoryEditor> {
       if (mounted) setState(() => _cloudDelete = value);
     } catch (e, stack) {
       if (mounted) {
-        heroSnack(
-          context,
-          widget.controller.describeError('修改删除权限', e, stack),
-        );
+        heroSnack(context, widget.controller.describeError('修改删除权限', e, stack));
       }
     } finally {
       if (mounted) setState(() => _cloudDeleteBusy = false);
@@ -651,6 +727,15 @@ class _RepositoryEditorState extends State<RepositoryEditor> {
           field.key: field.isToggle
               ? _toggles[field.key]
               : _fields[field.key]!.text.trim(),
+        if (widget.spec.authModes.isNotEmpty) 'authMode': _authMode,
+        if (_authMode.isNotEmpty)
+          for (final field
+              in widget.spec.authModes
+                  .firstWhere((mode) => mode.id == _authMode)
+                  .fields)
+            field.key: field.isToggle
+                ? _toggles[field.key]
+                : _fields[field.key]!.text.trim(),
       };
       if (widget.spec.id == 'alist' && values['adminToken'] == '') {
         values['adminToken'] = values['token'];
@@ -675,6 +760,16 @@ class _RepositoryEditorState extends State<RepositoryEditor> {
   Widget build(BuildContext context) {
     final required = widget.spec.fields.where((f) => f.required).toList();
     final optional = widget.spec.fields.where((f) => !f.required).toList();
+    final selectedAuth = widget.spec.authModes.isEmpty
+        ? null
+        : widget.spec.authModes.firstWhere(
+            (mode) => mode.id == _authMode,
+            orElse: () => widget.spec.authModes.first,
+          );
+    final authRequired =
+        selectedAuth?.fields.where((f) => f.required).toList() ?? const [];
+    final authOptional =
+        selectedAuth?.fields.where((f) => !f.required).toList() ?? const [];
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -720,8 +815,17 @@ class _RepositoryEditorState extends State<RepositoryEditor> {
                   const SectionLabel('配置名称'),
                   TextFormField(
                     controller: _name,
-                    validator: (v) =>
-                        v == null || v.trim().isEmpty ? '请输入图床配置名称' : null,
+                    validator: (v) {
+                      final name = v?.trim() ?? '';
+                      if (name.isEmpty) return '请输入图床配置名称';
+                      if (widget.controller.isRepositoryNameTaken(
+                        name,
+                        exceptId: widget.existing?.id,
+                      )) {
+                        return '已有同名配置，请换一个名称';
+                      }
+                      return null;
+                    },
                     decoration: InputDecoration(
                       hintText: widget.spec.id == 'aws'
                           ? '例如 Backblaze / Amazon'
@@ -739,22 +843,70 @@ class _RepositoryEditorState extends State<RepositoryEditor> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SectionLabel('连接与认证'),
+                  if (widget.spec.authModes.length > 1) ...[
+                    DropdownButtonFormField<String>(
+                      key: const ValueKey('auth-mode'),
+                      initialValue: _authMode,
+                      isExpanded: true,
+                      borderRadius: BorderRadius.circular(16),
+                      dropdownColor: Theme.of(context).colorScheme.surface,
+                      elevation: 6,
+                      style: _dropdownStyle,
+                      icon: const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 20,
+                      ),
+                      decoration: _inputDecoration('登录方式'),
+                      items: widget.spec.authModes
+                          .map(
+                            (mode) => DropdownMenuItem(
+                              value: mode.id,
+                              child: Text(mode.label, style: _dropdownStyle),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setState(() => _authMode = value);
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   ...required.map(_field),
+                  if (widget.spec.authModes.isNotEmpty)
+                    _authFields(authRequired, 'required'),
                 ],
               ),
             ),
-            if (optional.isNotEmpty) ...[
-              const SizedBox(height: 18),
-              HeroPanel(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SectionLabel('更多选项'),
-                    ...optional.map(_field),
-                  ],
-                ),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                child: optional.isNotEmpty || authOptional.isNotEmpty
+                    ? Padding(
+                        key: const ValueKey('more-options'),
+                        padding: const EdgeInsets.only(top: 18),
+                        child: HeroPanel(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SectionLabel('更多选项'),
+                              ...optional.map(_field),
+                              if (widget.spec.authModes.isNotEmpty)
+                                _authFields(authOptional, 'optional'),
+                            ],
+                          ),
+                        ),
+                      )
+                    : const SizedBox.shrink(
+                        key: ValueKey('more-options-empty'),
+                      ),
               ),
-            ],
+            ),
             if (_supportsCloudDelete) ...[
               const SizedBox(height: 18),
               HeroPanel(
@@ -773,9 +925,7 @@ class _RepositoryEditorState extends State<RepositoryEditor> {
                         style: TextStyle(fontSize: 11),
                       ),
                       value: _cloudDelete,
-                      onChanged: _cloudDeleteBusy
-                          ? null
-                          : _toggleCloudDelete,
+                      onChanged: _cloudDeleteBusy ? null : _toggleCloudDelete,
                     ),
                   ],
                 ),

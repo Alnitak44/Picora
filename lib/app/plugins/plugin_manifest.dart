@@ -333,6 +333,168 @@ class PluginPrepareSpec {
   };
 }
 
+class PluginAuthMode {
+  final String id, label;
+  final List<HostField> fields;
+  final List<PluginPrepareSpec> prepare;
+  final PluginRequestSpec upload;
+  final PluginRequestSpec? delete;
+
+  const PluginAuthMode({
+    required this.id,
+    required this.label,
+    required this.fields,
+    required this.prepare,
+    required this.upload,
+    required this.delete,
+  });
+
+  factory PluginAuthMode.fromJson(Object? value, {required int schemaVersion}) {
+    if (schemaVersion != 2) {
+      throw const HeroFailure('authModes 仅支持 http-v2');
+    }
+    if (value is! Map) throw const HeroFailure('authModes 项必须是对象');
+    pluginKeys(value, {
+      'id',
+      'label',
+      'config',
+      'prepare',
+      'upload',
+      'delete',
+    }, 'authModes');
+    final id = value['id']?.toString().trim() ?? '';
+    if (!RegExp(r'^[a-z][a-z0-9-]{0,31}$').hasMatch(id)) {
+      throw const HeroFailure('authModes.id 无效');
+    }
+    final label = _requiredString(
+      Map<String, dynamic>.from(value),
+      'label',
+      max: 40,
+    );
+    final rawFields = value['config'];
+    if (rawFields is! List || rawFields.length > 20) {
+      throw const HeroFailure('authModes.config 必须是字段数组，最多 20 项');
+    }
+    final fields = <HostField>[];
+    final keys = <String>{};
+    for (final item in rawFields) {
+      if (item is! Map) throw const HeroFailure('鉴权方式配置字段必须是对象');
+      pluginKeys(item, {
+        'key',
+        'label',
+        'type',
+        'hint',
+        'required',
+        'default',
+        'options',
+        'role',
+        'input',
+      }, '鉴权方式配置字段');
+      if (item.containsKey('required') && item['required'] is! bool) {
+        throw const HeroFailure('配置字段 required 必须是布尔值');
+      }
+      final role = item['role']?.toString().trim();
+      if (role != null && !RegExp(r'^[a-z][a-z0-9-]{0,23}$').hasMatch(role)) {
+        throw HeroFailure('配置字段 role 无效：$role');
+      }
+      final key = item['key']?.toString().trim() ?? '';
+      if (!RegExp(r'^[A-Za-z][A-Za-z0-9_]{0,39}$').hasMatch(key) ||
+          !keys.add(key)) {
+        throw HeroFailure('鉴权方式配置字段键无效或重复：$key');
+      }
+      final type = item['type']?.toString() ?? 'text';
+      if (!['text', 'secret', 'toggle', 'select'].contains(type)) {
+        throw HeroFailure('插件字段 $key 使用了不支持的类型：$type');
+      }
+      final input = _fieldInput(item['input'], key, type);
+      final options = (item['options'] as List?)
+          ?.map((option) => option.toString())
+          .toList();
+      if (type == 'select' && (options == null || options.isEmpty)) {
+        throw HeroFailure('插件字段 $key 的 select 缺少 options');
+      }
+      Object? defaultValue = item['default'];
+      if (type == 'toggle') defaultValue = defaultValue == true;
+      fields.add(
+        HostField(
+          key,
+          _requiredString(Map<String, dynamic>.from(item), 'label', max: 50),
+          hint: item['hint']?.toString() ?? '',
+          required: item['required'] == true,
+          secret: type == 'secret',
+          role: role,
+          inputPattern: input?.pattern,
+          inputMessage: input?.message,
+          defaultValue: defaultValue,
+          choices: type == 'select' ? options : null,
+        ),
+      );
+    }
+    final rawPrepare = value['prepare'] ?? [];
+    if (rawPrepare is! List || rawPrepare.length > 4) {
+      throw const HeroFailure('鉴权方式最多 4 个前置请求');
+    }
+    final prepare = rawPrepare.map(PluginPrepareSpec.fromJson).toList();
+    final upload = PluginRequestSpec.fromJson(
+      value['upload'],
+      upload: true,
+      schemaVersion: 2,
+    );
+    final delete = value['delete'] == null
+        ? null
+        : PluginRequestSpec.fromJson(
+            value['delete'],
+            upload: false,
+            schemaVersion: 2,
+          );
+    if (delete != null && delete.refreshCredentials != null) {
+      throw const HeroFailure('删除操作不能自动重试');
+    }
+    return PluginAuthMode(
+      id: id,
+      label: label,
+      fields: fields,
+      prepare: prepare,
+      upload: upload,
+      delete: delete,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'label': label,
+    'config': fields
+        .map(
+          (field) => {
+            'key': field.key,
+            'label': field.label,
+            'type': field.isToggle
+                ? 'toggle'
+                : field.choices != null
+                ? 'select'
+                : field.secret
+                ? 'secret'
+                : 'text',
+            if (field.hint.isNotEmpty) 'hint': field.hint,
+            if (field.required) 'required': true,
+            if (field.role != null) 'role': field.role,
+            if (field.inputPattern != null)
+              'input': {
+                'allow': field.inputPattern,
+                if (field.inputMessage != null) 'message': field.inputMessage,
+              },
+            if (field.defaultValue != null) 'default': field.defaultValue,
+            if (field.choices != null) 'options': field.choices,
+          },
+        )
+        .toList(),
+    if (prepare.isNotEmpty)
+      'prepare': prepare.map((step) => step.toJson()).toList(),
+    'upload': upload.toJson(),
+    if (delete != null) 'delete': delete!.toJson(),
+  };
+}
+
 class PluginRequestSpec {
   final String method, url;
   final Map<String, dynamic> headers, query;
@@ -514,6 +676,7 @@ class PicoraPluginManifest {
   final PluginRequestSpec? delete;
   final List<PluginPrepareSpec> prepare;
   final List<String> requires;
+  final List<PluginAuthMode> authModes;
   final Map<String, Uint8List> resources;
 
   const PicoraPluginManifest({
@@ -533,9 +696,21 @@ class PicoraPluginManifest {
     this.resources = const {},
     this.prepare = const [],
     this.requires = const [],
+    this.authModes = const [],
   });
 
   String get hostId => 'plugin.$id';
+  PluginAuthMode? authMode(String? id) {
+    for (final mode in authModes) {
+      if (mode.id == id) return mode;
+    }
+    return null;
+  }
+
+  List<HostField> get allFields => [
+    ...fields,
+    ...authModes.expand((mode) => mode.fields),
+  ];
 
   factory PicoraPluginManifest.parse(String source) {
     Object? decoded;
@@ -571,7 +746,7 @@ class PicoraPluginManifest {
       'config',
       'upload',
       'delete',
-      if (schemaVersion == 2) ...['prepare', 'requires'],
+      if (schemaVersion == 2) ...['prepare', 'requires', 'authModes'],
     }, '程序');
     final requires = json['requires'] ?? <String>[];
     if (requires is! List ||
@@ -613,6 +788,7 @@ class PicoraPluginManifest {
         'default',
         'options',
         'role',
+        'input',
       }, '配置字段');
       if (item.containsKey('required') && item['required'] is! bool) {
         throw const HeroFailure('配置字段 required 必须是布尔值');
@@ -623,13 +799,15 @@ class PicoraPluginManifest {
       }
       final key = item['key']?.toString().trim() ?? '';
       if (!RegExp(r'^[A-Za-z][A-Za-z0-9_]{0,39}$').hasMatch(key) ||
-          !keys.add(key)) {
+          !keys.add(key) ||
+          key == 'authMode') {
         throw HeroFailure('插件配置字段键无效或重复：$key');
       }
       final type = item['type']?.toString() ?? 'text';
       if (!['text', 'secret', 'toggle', 'select'].contains(type)) {
         throw HeroFailure('插件字段 $key 使用了不支持的类型：$type');
       }
+      final input = _fieldInput(item['input'], key, type);
       final options = (item['options'] as List?)
           ?.map((option) => option.toString())
           .toList();
@@ -646,12 +824,24 @@ class PicoraPluginManifest {
           required: item['required'] == true,
           secret: type == 'secret',
           role: role,
+          inputPattern: input?.pattern,
+          inputMessage: input?.message,
           defaultValue: defaultValue,
           choices: type == 'select' ? options : null,
         ),
       );
     }
     if (fields.length > 30) throw const HeroFailure('插件配置字段不能超过 30 个');
+    final rawAuthModes = json['authModes'] ?? <Object?>[];
+    if (rawAuthModes is! List || rawAuthModes.length > 8) {
+      throw const HeroFailure('authModes 必须包含 1–8 种鉴权方式');
+    }
+    final authModes = rawAuthModes
+        .map(
+          (value) =>
+              PluginAuthMode.fromJson(value, schemaVersion: schemaVersion),
+        )
+        .toList();
     final mark = (json['mark']?.toString().trim().toUpperCase() ?? 'P');
     if (mark.isEmpty || mark.length > 3) {
       throw const HeroFailure('插件 mark 需要 1–3 个字符');
@@ -664,7 +854,10 @@ class PicoraPluginManifest {
     for (final permission in permissions.networkHosts.where(
       (h) => h.startsWith('config.'),
     )) {
-      final field = fields.where((f) => f.key == permission.substring(7));
+      final field = [
+        ...fields,
+        for (final mode in authModes) ...mode.fields,
+      ].where((f) => f.key == permission.substring(7));
       if (field.isEmpty || field.single.secret) {
         throw const HeroFailure('网络端点必须引用当前配置的非密码字段');
       }
@@ -674,13 +867,20 @@ class PicoraPluginManifest {
       throw const HeroFailure('最多 4 个前置请求');
     }
     final prepare = rawPrepare.map(PluginPrepareSpec.fromJson).toList();
-    if (prepare.any((step) => step.request.body.conditionalFields.isNotEmpty)) {
+    void validateConditionalFields(
+      List<PluginPrepareSpec> steps,
+      Iterable<HostField> configFields,
+    ) {
+      final conditionalSteps = steps.where(
+        (step) => step.request.body.conditionalFields.isNotEmpty,
+      );
+      if (conditionalSteps.isEmpty) return;
       if (!requires.contains('conditional-json-fields')) {
         throw const HeroFailure('条件 JSON 字段需要声明 conditional-json-fields 能力');
       }
-      for (final step in prepare) {
+      for (final step in conditionalSteps) {
         for (final conditional in step.request.body.conditionalFields) {
-          final matching = fields.where(
+          final matching = configFields.where(
             (field) => field.key == conditional.config,
           );
           if (matching.isEmpty ||
@@ -692,46 +892,86 @@ class PicoraPluginManifest {
         }
       }
     }
+
+    validateConditionalFields(prepare, fields);
     final available = <String, Set<String>>{};
-    for (final step in prepare) {
-      if (available.containsKey(step.id)) throw const HeroFailure('前置请求 ID 重复');
+    void validatePrepare(
+      List<PluginPrepareSpec> steps,
+      Set<String> configKeys,
+    ) {
+      final local = <String, Set<String>>{};
+      for (final step in steps) {
+        if (local.containsKey(step.id)) {
+          throw const HeroFailure('前置请求 ID 重复');
+        }
+        _validatePluginTemplates(
+          step.request.toJson(),
+          configKeys,
+          local,
+          resources,
+          operation: 'prepare',
+          schemaVersion: schemaVersion,
+        );
+        local[step.id] = step.request.responseRules.exports.keys.toSet();
+      }
+      available.addAll(local);
+    }
+
+    validatePrepare(prepare, keys);
+    if (authModes.isNotEmpty) {
+      if (!requires.contains('auth-modes')) {
+        throw const HeroFailure('多鉴权方式需要声明 auth-modes 能力');
+      }
+      if (authModes.map((mode) => mode.id).toSet().length != authModes.length) {
+        throw const HeroFailure('authModes.id 不能重复');
+      }
+      final sharedKeys = fields.map((field) => field.key).toSet();
+      final modeKeys = <String>{};
+      for (final mode in authModes) {
+        for (final field in mode.fields) {
+          if (!modeKeys.add(field.key) ||
+              sharedKeys.contains(field.key) ||
+              field.key == 'authMode') {
+            throw HeroFailure('鉴权方式字段键不能重复或与公共字段冲突：${field.key}');
+          }
+        }
+      }
+    }
+    final upload = authModes.isEmpty
+        ? PluginRequestSpec.fromJson(
+            json['upload'],
+            upload: true,
+            schemaVersion: schemaVersion,
+          )
+        : authModes.first.upload;
+    if (authModes.isEmpty) {
       _validatePluginTemplates(
-        step.request.toJson(),
+        upload.toJson(),
         keys,
         available,
         resources,
-        operation: 'prepare',
+        operation: 'upload',
         schemaVersion: schemaVersion,
       );
-      available[step.id] = step.request.responseRules.exports.keys.toSet();
+      if (upload.refreshCredentials != null &&
+          upload.refreshCredentials!.steps.any(
+            (id) => !prepare.any((step) => step.id == id && step.cache != null),
+          )) {
+        throw const HeroFailure('刷新必须引用有缓存的前置请求');
+      }
     }
-    final upload = PluginRequestSpec.fromJson(
-      json['upload'],
-      upload: true,
-      schemaVersion: schemaVersion,
-    );
-    _validatePluginTemplates(
-      upload.toJson(),
-      keys,
-      available,
-      resources,
-      operation: 'upload',
-      schemaVersion: schemaVersion,
-    );
-    if (upload.refreshCredentials != null &&
-        upload.refreshCredentials!.steps.any(
-          (id) => !prepare.any((step) => step.id == id && step.cache != null),
-        )) {
-      throw const HeroFailure('刷新必须引用有缓存的前置请求');
-    }
-    final delete = json['delete'] == null
-        ? null
-        : PluginRequestSpec.fromJson(
-            json['delete'],
-            upload: false,
-            schemaVersion: schemaVersion,
-          );
-    if (delete != null) {
+    final delete = authModes.isEmpty
+        ? json['delete'] == null
+              ? null
+              : PluginRequestSpec.fromJson(
+                  json['delete'],
+                  upload: false,
+                  schemaVersion: schemaVersion,
+                )
+        : authModes.any((mode) => mode.delete != null)
+        ? authModes.firstWhere((mode) => mode.delete != null).delete
+        : null;
+    if (authModes.isEmpty && delete != null) {
       if (!permissions.deleteUploadedFile) {
         throw const HeroFailure('需要显式 deleteUploadedFile 权限');
       }
@@ -748,6 +988,61 @@ class PicoraPluginManifest {
       );
       if (schemaVersion == 2 && !_hasDeleteReference(delete.toJson())) {
         throw const HeroFailure('删除必须使用单张图片的删除凭证或链接');
+      }
+    }
+    for (final mode in authModes) {
+      final modeKeys = {...keys, ...mode.fields.map((field) => field.key)};
+      final modeAvailable = <String, Set<String>>{...available};
+      for (final step in mode.prepare) {
+        if (modeAvailable.containsKey(step.id)) {
+          throw const HeroFailure('前置请求 ID 重复');
+        }
+        _validatePluginTemplates(
+          step.request.toJson(),
+          modeKeys,
+          modeAvailable,
+          resources,
+          operation: 'prepare',
+          schemaVersion: schemaVersion,
+        );
+        modeAvailable[step.id] = step.request.responseRules.exports.keys
+            .toSet();
+      }
+      validateConditionalFields(mode.prepare, [...fields, ...mode.fields]);
+      _validatePluginTemplates(
+        mode.upload.toJson(),
+        modeKeys,
+        modeAvailable,
+        resources,
+        operation: 'upload',
+        schemaVersion: schemaVersion,
+      );
+      if (mode.upload.refreshCredentials != null &&
+          mode.upload.refreshCredentials!.steps.any(
+            (id) =>
+                !modeAvailable.containsKey(id) ||
+                ![
+                  ...prepare,
+                  ...mode.prepare,
+                ].any((step) => step.id == id && step.cache != null),
+          )) {
+        throw const HeroFailure('刷新必须引用有缓存的前置请求');
+      }
+      if (mode.delete != null) {
+        if (!permissions.deleteUploadedFile) {
+          throw const HeroFailure('需要显式 deleteUploadedFile 权限');
+        }
+        _validatePluginTemplates(
+          mode.delete!.toJson(),
+          modeKeys,
+          const {},
+          resources,
+          operation: 'delete',
+          schemaVersion: schemaVersion,
+        );
+        if (!_hasDeleteReference(mode.delete!.toJson())) {
+          throw const HeroFailure('删除必须使用单张图片的删除凭证或链接');
+        }
       }
     }
     return PicoraPluginManifest(
@@ -767,6 +1062,7 @@ class PicoraPluginManifest {
       delete: delete,
       prepare: prepare,
       requires: requires.cast<String>(),
+      authModes: authModes,
     );
   }
 
@@ -781,6 +1077,16 @@ class PicoraPluginManifest {
     iconFormat: iconFormat,
     pluginId: id,
     pluginVersion: version,
+    authModes: authModes
+        .map(
+          (mode) => PluginAuthChoice(
+            id: mode.id,
+            label: mode.label,
+            fields: mode.fields,
+            supportsDelete: mode.delete != null,
+          ),
+        )
+        .toList(),
     permissionSummary: [
       '读取待上传文件',
       '访问 ${permissions.networkHosts.join('、')}',
@@ -819,6 +1125,11 @@ class PicoraPluginManifest {
             if (field.hint.isNotEmpty) 'hint': field.hint,
             if (field.required) 'required': true,
             if (field.role != null) 'role': field.role,
+            if (field.inputPattern != null)
+              'input': {
+                'allow': field.inputPattern,
+                if (field.inputMessage != null) 'message': field.inputMessage,
+              },
             if (field.defaultValue != null) 'default': field.defaultValue,
             if (field.choices != null) 'options': field.choices,
           },
@@ -827,11 +1138,45 @@ class PicoraPluginManifest {
     if (prepare.isNotEmpty)
       'prepare': prepare.map((step) => step.toJson()).toList(),
     if (requires.isNotEmpty) 'requires': requires,
-    'upload': upload.toJson(),
-    if (delete != null) 'delete': delete!.toJson(),
+    if (authModes.isNotEmpty)
+      'authModes': authModes.map((mode) => mode.toJson()).toList(),
+    if (authModes.isEmpty) 'upload': upload.toJson(),
+    if (authModes.isEmpty && delete != null) 'delete': delete!.toJson(),
   };
 
   String encode() => const JsonEncoder.withIndent('  ').convert(toJson());
+}
+
+({String? pattern, String? message})? _fieldInput(
+  Object? raw,
+  String key,
+  String type,
+) {
+  if (raw == null) return null;
+  if (raw is! Map) {
+    throw HeroFailure('配置字段 $key 的 input 必须是对象');
+  }
+  pluginKeys(raw, {'allow', 'message'}, '配置字段 input');
+  if (!{'text', 'secret'}.contains(type)) {
+    throw HeroFailure('配置字段 $key 的 input 仅支持文本或密码字段');
+  }
+  final allow = raw['allow'];
+  if (allow is! String || allow.trim().isEmpty || allow.length > 200) {
+    throw HeroFailure('配置字段 $key 的 input.allow 必须是 1–200 字符的正则');
+  }
+  try {
+    RegExp(allow);
+  } on FormatException {
+    throw HeroFailure('配置字段 $key 的 input.allow 不是有效正则');
+  }
+  if (!RegExp(r'^\[[^\[\]]+\]$').hasMatch(allow)) {
+    throw HeroFailure('配置字段 $key 的 input.allow 必须是字符集写法，例如 [A-Za-z0-9._-]');
+  }
+  final message = raw['message']?.toString().trim() ?? '';
+  if (message.length > 80) {
+    throw HeroFailure('配置字段 $key 的 input.message 不能超过 80 字符');
+  }
+  return (pattern: allow, message: message.isEmpty ? null : message);
 }
 
 String _requiredString(

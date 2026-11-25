@@ -244,7 +244,20 @@ class PluginHttpRuntime {
     Map<String, dynamic> supplied,
   ) {
     final result = <String, dynamic>{};
-    for (final field in manifest.fields) {
+    final selectedMode = supplied['authMode']?.toString();
+    var mode = manifest.authMode(selectedMode);
+    if (manifest.authModes.isNotEmpty && mode == null) {
+      mode =
+          selectedMode == null ||
+              selectedMode.isEmpty ||
+              selectedMode == 'default'
+          ? manifest.authModes.first
+          : null;
+      if (mode == null) {
+        throw const HeroFailure('登录方式无效，请重新编辑配置');
+      }
+    }
+    for (final field in [...manifest.fields, ...?mode?.fields]) {
       final value = supplied[field.key] ?? field.defaultValue ?? '';
       if (value is! String && value is! num && value is! bool) {
         throw const HeroFailure('配置只能包含标量');
@@ -255,6 +268,7 @@ class PluginHttpRuntime {
       }
       result[field.key] = value;
     }
+    if (mode != null) result['authMode'] = mode.id;
     return result;
   }
 
@@ -270,6 +284,9 @@ class PluginHttpRuntime {
     if (await file.length() > 100 * 1024 * 1024) {
       throw const HeroFailure('插件上传文件不能超过 100 MB');
     }
+    final mode = manifest.authMode(scoped['authMode']?.toString());
+    final uploadSpec = mode?.upload ?? manifest.upload;
+    final prepareSpec = [...manifest.prepare, ...?mode?.prepare];
     final context = _TemplateContext(
       config: scoped,
       upload: const {},
@@ -287,20 +304,28 @@ class PluginHttpRuntime {
       'config': scoped,
     });
     final used = <String, _CredentialEntry>{}, generation = _generation;
-    await _prepare(manifest, context, scope, used, configurationId, generation);
+    await _prepare(
+      manifest,
+      prepareSpec,
+      context,
+      scope,
+      used,
+      configurationId,
+      generation,
+    );
     for (var attempt = 0; attempt < 2; attempt++) {
       if (generation != _generation) throw const HeroFailure('插件或配置已变更，请重新上传');
       final response = await _execute(
         manifest,
-        manifest.upload,
+        uploadSpec,
         context,
         includeFile: true,
         step: 'upload',
         configurationId: configurationId,
       );
-      final data = response.data, spec = manifest.upload.response!;
+      final data = response.data, spec = uploadSpec.response!;
       if (!spec.accepts(response.statusCode, data)) {
-        final refresh = manifest.upload.refreshCredentials;
+        final refresh = uploadSpec.refreshCredentials;
         if (attempt == 0 &&
             refresh != null &&
             refresh.matches(response.statusCode, data) &&
@@ -314,6 +339,7 @@ class PluginHttpRuntime {
           }
           await _prepare(
             manifest,
+            prepareSpec,
             context,
             scope,
             used,
@@ -324,7 +350,7 @@ class PluginHttpRuntime {
         }
         throw _failure(
           manifest,
-          manifest.upload,
+          uploadSpec,
           response,
           context,
           'upload',
@@ -389,6 +415,7 @@ class PluginHttpRuntime {
 
   Future<void> _prepare(
     PicoraPluginManifest manifest,
+    List<PluginPrepareSpec> prepare,
     _TemplateContext context,
     String scope,
     Map<String, _CredentialEntry> used,
@@ -396,7 +423,7 @@ class PluginHttpRuntime {
     int generation,
   ) async {
     context.steps.clear();
-    for (final step in manifest.prepare) {
+    for (final step in prepare) {
       final key = _fingerprint({
         'scope': scope,
         'step': step.id,
@@ -540,9 +567,7 @@ class PluginHttpRuntime {
     String? configurationId,
     bool allowCloudDelete = false,
   }) async {
-    if (!allowCloudDelete ||
-        !manifest.permissions.deleteUploadedFile ||
-        manifest.delete == null) {
+    if (!allowCloudDelete || !manifest.permissions.deleteUploadedFile) {
       throw const HeroFailure('该插件的云端删除权限未开启；上传记录已保留');
     }
     Map<String, dynamic> record;
@@ -575,6 +600,13 @@ class PluginHttpRuntime {
       }
     }
     final scoped = _configuration(manifest, config);
+    final mode = manifest.authMode(scoped['authMode']?.toString());
+    final deleteSpec = manifest.authModes.isEmpty
+        ? manifest.delete
+        : mode?.delete;
+    if (deleteSpec == null) {
+      throw const HeroFailure('当前登录方式不支持云端删除');
+    }
     if (record['configurationRevision'] != null &&
         record['configurationRevision'] != _fingerprint(scoped)) {
       throw const HeroFailure('原配置已修改，已停止云端删除；上传记录已保留');
@@ -589,19 +621,16 @@ class PluginHttpRuntime {
     );
     final response = await _execute(
       manifest,
-      manifest.delete!,
+      deleteSpec,
       context,
       includeFile: false,
       step: 'delete',
       configurationId: configurationId,
     );
-    if (!manifest.delete!.responseRules.accepts(
-      response.statusCode,
-      response.data,
-    )) {
+    if (!deleteSpec.responseRules.accepts(response.statusCode, response.data)) {
       throw _failure(
         manifest,
-        manifest.delete!,
+        deleteSpec,
         response,
         context,
         'delete',

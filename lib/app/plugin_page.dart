@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'dart:io';
+import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -324,60 +325,12 @@ class _PluginCenterPageState extends State<PluginCenterPage> {
       final configs = widget.controller.repositories
           .where((item) => item.host == manifest.hostId)
           .toList();
-      final confirmed = await heroSheet<bool>(
-        context,
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                '卸载这个插件？',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                configs.isEmpty
-                    ? '${manifest.name}\n上传记录会保留。'
-                    : '${manifest.name}\n下列图床配置会一并删除，上传记录保留。',
-              ),
-              if (configs.isNotEmpty) ...[
-                const SizedBox(height: 14),
-                for (final config in configs)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.folder_outlined,
-                          size: 16,
-                          color: heroMuted,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            config.name,
-                            style: const TextStyle(fontSize: 13),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-              const SizedBox(height: 22),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.error,
-                  ),
-                  child: Text(configs.isEmpty ? '卸载插件' : '删除配置并卸载'),
-                ),
-              ),
-            ],
-          ),
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (_) => PluginUninstallDialog(
+          pluginName: manifest.name,
+          configNames: configs.map((item) => item.name).toList(),
+          countdown: widget.controller.uninstallCountdown,
         ),
       );
       if (confirmed == true) {
@@ -756,4 +709,130 @@ String? _pluginGithubUrl(PicoraPluginPackage package) {
     }
   }
   return null;
+}
+
+class PluginUninstallDialog extends StatefulWidget {
+  final String pluginName;
+  final List<String> configNames;
+  final bool countdown;
+  const PluginUninstallDialog({
+    super.key,
+    required this.pluginName,
+    required this.configNames,
+    this.countdown = true,
+  });
+  @override
+  State<PluginUninstallDialog> createState() => _PluginUninstallDialogState();
+}
+
+class _PluginUninstallDialogState extends State<PluginUninstallDialog> {
+  Timer? _timer;
+  int _remaining = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!widget.countdown) return;
+    _remaining = 3;
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        _remaining--;
+        if (_remaining <= 0) timer.cancel();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final hasConfigs = widget.configNames.isNotEmpty;
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      title: const Text(
+        '卸载这个插件？',
+        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+      ),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              hasConfigs
+                  ? '${widget.pluginName} 将从设备移除，下列 '
+                        '${widget.configNames.length} 个图床配置会一并删除，上传记录保留。'
+                  : '${widget.pluginName} 将从设备移除，上传记录会保留。',
+            ),
+            if (hasConfigs) ...[
+              const SizedBox(height: 14),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 220),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final name in widget.configNames)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.folder_outlined,
+                                size: 16,
+                                color: heroMuted,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  name,
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 14),
+            Text(
+              '此操作不可撤销。',
+              style: TextStyle(color: scheme.error, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('取消'),
+        ),
+        FilledButton(
+          onPressed: _remaining == 0
+              ? () => Navigator.pop(context, true)
+              : null,
+          style: FilledButton.styleFrom(
+            backgroundColor: scheme.error,
+            foregroundColor: scheme.onError,
+            disabledBackgroundColor: scheme.error.withValues(alpha: .32),
+            disabledForegroundColor: scheme.onError.withValues(alpha: .8),
+          ),
+          child: Text(_remaining > 0 ? '$_remaining 秒后确认' : '确认卸载'),
+        ),
+      ],
+    );
+  }
 }
