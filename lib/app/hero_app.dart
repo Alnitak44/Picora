@@ -178,21 +178,36 @@ class _HeroShellState extends State<HeroShell> {
                   child: PageView(
                     controller: _pager,
                     physics: const NeverScrollableScrollPhysics(),
+                    // Keep the neighbouring pages mounted and laid out so a
+                    // tab change does not pay their first-build cost.
+                    allowImplicitScrolling: true,
                     children: [
-                      UploadPage(
-                        controller: widget.controller,
-                        openRepositories: () => _go(2),
-                        openAlbum: () => _go(1),
+                      RepaintBoundary(
+                        key: const ValueKey('hero-page-upload'),
+                        child: UploadPage(
+                          controller: widget.controller,
+                          openRepositories: () => _go(2),
+                          openAlbum: () => _go(1),
+                        ),
                       ),
-                      AlbumPage(
-                        controller: widget.controller,
-                        openUpload: () => _go(0),
-                        isActive: _index == 1,
+                      RepaintBoundary(
+                        key: const ValueKey('hero-page-album'),
+                        child: AlbumPage(
+                          controller: widget.controller,
+                          openUpload: () => _go(0),
+                          isActive: _index == 1,
+                        ),
                       ),
-                      RepositoriesPage(controller: widget.controller),
-                      SettingsPage(
-                        controller: widget.controller,
-                        openRepositories: () => _go(2),
+                      RepaintBoundary(
+                        key: const ValueKey('hero-page-repositories'),
+                        child: RepositoriesPage(controller: widget.controller),
+                      ),
+                      RepaintBoundary(
+                        key: const ValueKey('hero-page-settings'),
+                        child: SettingsPage(
+                          controller: widget.controller,
+                          openRepositories: () => _go(2),
+                        ),
                       ),
                     ],
                   ),

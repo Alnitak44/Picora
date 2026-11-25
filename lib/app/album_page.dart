@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -22,28 +24,26 @@ class AlbumPage extends StatefulWidget {
   State<AlbumPage> createState() => _AlbumPageState();
 }
 
-class _AlbumPageState extends State<AlbumPage>
-    with SingleTickerProviderStateMixin {
+class _AlbumPageState extends State<AlbumPage> {
   static const _gap = 12.0;
   static const _minColumns = 2.0, _maxColumns = 6.0;
+  static const _columnScaleStep = 1.25;
+  static const _magnetRadius = .18;
   String _view = 'grid', _query = '';
   String? _host;
 
-  /// 当前渲染的列数，恒为整数：pinch 过程中取 [ _pinchDesired ] 的上取整。
+  /// 当前目标列数。手势中为连续值，松手后吸附为整数。
   double _columnWidth = 2;
 
   /// 手势基线（连续值，便于双指增减被系统重置时无缝续接）。
   double _startColumns = 2;
 
-  /// 目标列数（连续值）。
+  /// 当前手势计算出的连续列数。
   double _pinchDesired = 2;
+  int _detent = 2;
+  double? _baseScale;
 
-  /// 预览放大系数，恒 >= 1：内容只会被放大裁切，绝不会缩小留白。
-  double _scale = 1;
-  double _settleFrom = 1;
-  double _availWidth = 358;
   bool _pinching = false, _pinchAllowed = false;
-  late final AnimationController _settle;
   final _selected = <String>{};
   bool _selectionMode = false;
 
@@ -55,37 +55,24 @@ class _AlbumPageState extends State<AlbumPage>
       'hero_album_columns',
       defValue: 2,
     )!.clamp(2, 6).toDouble();
-    _settle =
-        AnimationController(
-            vsync: this,
-            duration: const Duration(milliseconds: 200),
-          )
-          ..addListener(() {
-            final t = Curves.easeOutCubic.transform(_settle.value);
-            setState(() => _scale = _settleFrom + (1 - _settleFrom) * t);
-          })
-          ..addStatusListener((status) {
-            if (status == AnimationStatus.completed && _scale != 1) {
-              setState(() => _scale = 1);
-            }
-          });
   }
 
-  @override
-  void dispose() {
-    _settle.dispose();
-    super.dispose();
+  int get _gridColumns => _columnWidth.ceil().clamp(2, 6);
+
+  /// 每一列对应相同的缩放比例，档位间距均匀且不随列数放大。
+  double _columnsForScale(double scale) {
+    final relative = (scale / _baseScale!).clamp(.08, 5.0);
+    final delta = math.log(relative) / math.log(1 / _columnScaleStep);
+    return (_startColumns + delta).clamp(_minColumns, _maxColumns);
   }
 
-  int get _columnCount => _columnWidth.round().clamp(2, 6);
-
-  double _cellWidth(double columns) =>
-      (_availWidth - (columns - 1) * _gap) / columns;
-
-  /// 由当前视觉格子宽度反推等效列数，用于手势续接（不产生跳变）。
-  double _desiredFromVisual() {
-    final visual = _cellWidth(_columnWidth) * (_scale < 1 ? 1.0 : _scale);
-    return ((_availWidth + _gap) / (visual + _gap)).clamp(
+  /// 整数档附近增加磁性区，手指轻微抖动时保持视觉尺寸稳定。
+  double _magnetizeColumns(double raw) {
+    final nearest = raw.roundToDouble();
+    final delta = raw - nearest;
+    if (delta.abs() >= _magnetRadius) return raw;
+    final t = delta / _magnetRadius;
+    return (nearest + _magnetRadius * t * t * t).clamp(
       _minColumns,
       _maxColumns,
     );
@@ -96,33 +83,39 @@ class _AlbumPageState extends State<AlbumPage>
     // 手势中途加减手指时，识别器会重新派发 onStart，这里按当前视觉尺寸续接。
     if (_pinching) {
       _startColumns = _pinchDesired;
+      _baseScale = null;
       return;
     }
     _pinchAllowed = _view == 'grid';
     if (!_pinchAllowed) return;
-    _settle.stop();
-    final desired = _desiredFromVisual();
-    _startColumns = desired;
-    _pinchDesired = desired;
+    _startColumns = _columnWidth;
+    _pinchDesired = _columnWidth;
+    _detent = _columnWidth.round().clamp(2, 6);
+    _baseScale = null;
     setState(() {
       _pinching = true;
-      _columnWidth = desired.ceil().clamp(2, 6).toDouble();
-      _scale = (_cellWidth(desired) / _cellWidth(_columnWidth)).clamp(1.0, 1.6);
     });
   }
 
   void _onScaleUpdate(ScaleUpdateDetails details) {
     if (!_pinching || !_pinchAllowed || details.pointerCount < 2) return;
-    final factor = details.scale.clamp(.2, 5.0);
-    final desired = (_startColumns / factor).clamp(_minColumns, _maxColumns);
-    final columns = desired.ceil().clamp(2, 6).toDouble();
-    final scale = (_cellWidth(desired) / _cellWidth(columns)).clamp(1.0, 1.6);
-    _pinchDesired = desired;
-    if (columns == _columnWidth && (scale - _scale).abs() < .002) return;
-    setState(() {
-      _columnWidth = columns;
-      _scale = scale;
-    });
+    if (_baseScale == null) {
+      _baseScale = details.scale;
+      return;
+    }
+    final raw = _columnsForScale(details.scale);
+    final visual = _magnetizeColumns(raw);
+    final detent = raw.round().clamp(2, 6);
+    if (detent != _detent) {
+      _detent = detent;
+      HapticFeedback.selectionClick();
+    }
+    if ((visual - _columnWidth).abs() < .0005 &&
+        (raw - _pinchDesired).abs() < .0005) {
+      return;
+    }
+    _pinchDesired = raw;
+    setState(() => _columnWidth = visual);
   }
 
   void _onScaleEnd(ScaleEndDetails details) {
@@ -131,23 +124,12 @@ class _AlbumPageState extends State<AlbumPage>
       return;
     }
     _pinchAllowed = false;
-    // 吸附到与当前视觉尺寸最接近的整数列，回弹幅度不超过半档。
     final target = _pinchDesired.round().clamp(2, 6).toDouble();
-    _settleFrom = (_cellWidth(_pinchDesired) / _cellWidth(target)).clamp(
-      .5,
-      1.6,
-    );
     setState(() {
       _columnWidth = target;
-      _scale = _settleFrom;
       _pinching = false;
     });
     SpUtil.putInt('hero_album_columns', target.round());
-    if ((_settleFrom - 1).abs() < .002) {
-      setState(() => _scale = 1);
-      return;
-    }
-    _settle.forward(from: 0);
   }
 
   void _endSelection() => setState(() {
@@ -1051,7 +1033,6 @@ class _AlbumPageState extends State<AlbumPage>
                             )
                           : LayoutBuilder(
                               builder: (context, constraints) {
-                                _availWidth = constraints.maxWidth;
                                 final cellWidth =
                                     (constraints.maxWidth -
                                         (_columnWidth - 1) * _gap) /
@@ -1060,24 +1041,17 @@ class _AlbumPageState extends State<AlbumPage>
                                   cellWidth,
                                 );
 
-                                // 非吸附动画期间恒为 1，避免残留缩放导致两侧留白。
-                                final preview = _settle.isAnimating
-                                    ? _scale
-                                    : (_scale < 1 ? 1.0 : _scale);
                                 return ClipRect(
                                   clipper: _HorizontalEdgeClipper(),
-                                  child: Transform.scale(
-                                    scale: preview,
-                                    alignment: Alignment.topLeft,
-                                    child: _AlbumGrid(
-                                      columns: _columnCount,
-                                      cellWidth: cellWidth,
-                                      cellHeight: cellHeight,
-                                      gap: _gap,
-                                      items: images,
-                                      itemBuilder: (e, compact) =>
-                                          _item(e, compact: compact),
-                                    ),
+                                  child: _AlbumGrid(
+                                    columns: _gridColumns,
+                                    cellWidth: cellWidth,
+                                    cellHeight: cellHeight,
+                                    gap: _gap,
+                                    animate: !_pinching,
+                                    items: images,
+                                    itemBuilder: (e, compact) =>
+                                        _item(e, compact: compact),
                                   ),
                                 );
                               },
@@ -1120,6 +1094,7 @@ class _AlbumGrid extends StatelessWidget {
   final double cellWidth;
   final double cellHeight;
   final double gap;
+  final bool animate;
   final List<AlbumEntry> items;
   final Widget Function(AlbumEntry entry, bool compact) itemBuilder;
 
@@ -1128,6 +1103,7 @@ class _AlbumGrid extends StatelessWidget {
     required this.cellWidth,
     required this.cellHeight,
     required this.gap,
+    required this.animate,
     required this.items,
     required this.itemBuilder,
   });
@@ -1138,7 +1114,8 @@ class _AlbumGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final duration = (MediaQuery.maybeOf(context)?.disableAnimations ?? false)
+    final duration =
+        !animate || (MediaQuery.maybeOf(context)?.disableAnimations ?? false)
         ? Duration.zero
         : const Duration(milliseconds: 220);
     final rows = (items.length + columns - 1) ~/ columns;
@@ -1147,6 +1124,7 @@ class _AlbumGrid extends StatelessWidget {
       width: double.infinity,
       height: height,
       child: Stack(
+        clipBehavior: Clip.none,
         children: [
           for (var i = 0; i < items.length; i++)
             AnimatedPositioned(

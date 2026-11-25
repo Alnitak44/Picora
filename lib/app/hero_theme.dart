@@ -7,8 +7,12 @@ const heroBlue = Color(0xFF316BFA);
 const heroInk = Color(0xFF17233C);
 const heroMuted = Color(0xFF8C96A9);
 
-/// Keeps Android's predictive-back preview and shared-element transition while
-/// shortening the non-gesture completion so it does not feel sluggish.
+/// Keeps Android's predictive-back progress and shared-element transition.
+///
+/// The system writes gesture progress directly into the route controller.
+/// The visible shared-element commit uses the first half of the reverse
+/// duration, so 400 ms reverse produces a 200 ms release animation. Cancel uses
+/// the forward duration directly.
 class _PicoraPredictiveBackPageTransitionsBuilder
     extends PredictiveBackPageTransitionsBuilder {
   const _PicoraPredictiveBackPageTransitionsBuilder();
@@ -17,7 +21,7 @@ class _PicoraPredictiveBackPageTransitionsBuilder
   Duration get transitionDuration => const Duration(milliseconds: 220);
 
   @override
-  Duration get reverseTransitionDuration => const Duration(milliseconds: 180);
+  Duration get reverseTransitionDuration => const Duration(milliseconds: 400);
 }
 
 ThemeData heroTheme(Brightness brightness) {

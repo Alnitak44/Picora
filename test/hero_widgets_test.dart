@@ -288,10 +288,12 @@ void main() {
     final builders = heroTheme(Brightness.light).pageTransitionsTheme.builders;
     final transition = builders[TargetPlatform.android];
     expect(transition, isA<PredictiveBackPageTransitionsBuilder>());
+    // Flutter's shared-element motion completes in the first half of this
+    // controller duration.
     expect(transition!.transitionDuration, const Duration(milliseconds: 220));
     expect(
       transition.reverseTransitionDuration,
-      const Duration(milliseconds: 180),
+      const Duration(milliseconds: 400),
     );
   });
   setUpAll(() async {
@@ -528,6 +530,42 @@ void main() {
     debugDisableShadows = true;
     controller.dispose();
   });
+  testWidgets('one deliberate pinch lands on the requested column', (
+    tester,
+  ) async {
+    final controller = exampleController();
+    await initialize(tester, controller);
+    await tester.tap(find.byKey(const ValueKey('nav-1')));
+    await tester.pumpAndSettle();
+
+    const center = Offset(195, 700);
+    for (var target = 3; target <= 6; target++) {
+      final left = await tester.startGesture(center - const Offset(100, 0));
+      final right = await tester.startGesture(center + const Offset(100, 0));
+      await tester.pump();
+      for (var i = 0; i < 4; i++) {
+        await left.moveBy(const Offset(5, 0));
+        await right.moveBy(const Offset(-5, 0));
+        await tester.pump();
+      }
+      expect(find.text('$target 列'), findsOneWidget);
+      await left.up();
+      await right.up();
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(ValueKey('album-grid-$target')),
+        findsOneWidget,
+        reason: '一次手势应落到 $target 列',
+      );
+      expect(
+        tester.getSize(find.byKey(const ValueKey('album-card-aliyun:0'))).width,
+        closeTo((358 - (target - 1) * 12) / target, .1),
+      );
+    }
+    SpUtil.putInt('hero_album_columns', 2);
+    debugDisableShadows = true;
+    controller.dispose();
+  });
   testWidgets('album grid keeps full width at every pinch level', (
     tester,
   ) async {
@@ -624,9 +662,7 @@ void main() {
         closeTo(173, .1),
       );
       await screenshot(tester, 'album-grid');
-      final center = tester.getCenter(
-        find.byKey(const ValueKey('album-card-aliyun:0')),
-      );
+      const center = Offset(195, 700);
       final left = await tester.startGesture(center - const Offset(100, 0));
       final right = await tester.startGesture(center + const Offset(100, 0));
       await tester.pump();
@@ -854,7 +890,9 @@ void main() {
   ) async {
     final controller = exampleController();
     await initialize(tester, controller);
-    final pager = tester.widget<PageView>(find.byType(PageView)).controller!;
+    final pageView = tester.widget<PageView>(find.byType(PageView));
+    final pager = pageView.controller!;
+    expect(pageView.allowImplicitScrolling, isTrue);
     Color? iconColor(int index) => tester
         .widget<Icon>(
           find.descendant(
@@ -882,6 +920,31 @@ void main() {
     expect(pager.page, 2);
     expect(iconColor(0), heroMuted);
     expect(iconColor(2), Colors.white);
+    expect(tester.takeException(), isNull);
+    debugDisableShadows = true;
+    await tester.pumpWidget(const SizedBox.shrink());
+    controller.dispose();
+  });
+
+  testWidgets('adjacent tabs are mounted before navigation', (tester) async {
+    final controller = exampleController();
+    await initialize(tester, controller);
+
+    final album = find.byKey(
+      const ValueKey('hero-page-album'),
+      skipOffstage: false,
+    );
+    expect(album, findsOneWidget);
+    final albumElement = tester.element(album);
+    await tester.tap(find.byKey(const ValueKey('nav-2')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const ValueKey('hero-page-settings'), skipOffstage: false),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const ValueKey('nav-1')));
+    await tester.pumpAndSettle();
+    expect(identical(tester.element(album), albumElement), isTrue);
     expect(tester.takeException(), isNull);
     debugDisableShadows = true;
     await tester.pumpWidget(const SizedBox.shrink());
